@@ -8,7 +8,7 @@ Ao final desta aula, você deverá:
 - Diferenciar balanceamento externo e interno;
 - Entender Application Load Balancer x Network Load Balancer;
 - Entender frontend, backend e health check;
-- Relacionar Load Balancer com MIG.
+- Relacionar Load Balancer com MIG (Managed Instance Group).
 
 ---
 
