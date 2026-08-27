@@ -152,7 +152,7 @@ Tipos principais:
 
 ---
 
-# 10. Cloud Router e BGP
+# 10. Cloud Router e BGP (Border Gateway Protocol)
 
 Cloud Router troca rotas dinamicamente usando BGP em cenários como:
 
