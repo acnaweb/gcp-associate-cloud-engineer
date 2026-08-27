@@ -107,6 +107,18 @@ gcloud compute firewall-rules create ace-allow-http \
   --target-tags=web
 ```
 
+* Exemplo: permitir tráfego da subnet 10.10.0.0/24 para instâncias da mesma VPC na porta 8080
+
+```bash
+gcloud compute firewall-rules create allow-subnet-sp-to-us-8080 \
+  --network=vpc-producao \
+  --direction=INGRESS \
+  --priority=1000 \
+  --action=ALLOW \
+  --rules=tcp:8080 \
+  --source-ranges=10.10.0.0/24
+```
+
 ---
 
 # 7. Aplicar tag à VM
