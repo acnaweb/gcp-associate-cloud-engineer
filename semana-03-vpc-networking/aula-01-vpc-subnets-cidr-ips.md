@@ -1,97 +1,226 @@
-# Aula 1 — VPC, Subnets, CIDR e IPs
+# Aula 1 — VPC, Subnets, CIDR e IPs no Google Cloud
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final desta aula, você deverá ser capaz de:
 
-- Entender o que é uma VPC;
-- Saber que VPC é global e subnet é regional;
-- Diferenciar auto mode e custom mode;
-- Entender CIDR;
-- Diferenciar IP interno e externo;
-- Criar uma VPC customizada e suas subnets.
+- Entender o que é uma **VPC** no Google Cloud;
+- Entender que uma VPC é um recurso **global**;
+- Entender que **subnets são regionais**;
+- Diferenciar **VPC auto mode** e **custom mode**;
+- Entender o que é **CIDR**;
+- Calcular faixas básicas de endereçamento;
+- Entender IP interno e IP externo;
+- Entender IP efêmero e IP estático;
+- Criar uma VPC customizada;
+- Criar subnets em regiões diferentes;
+- Criar VMs utilizando subnets específicas;
+- Observar comunicação privada entre subnets da mesma VPC;
+- Verificar endereços internos e externos;
+- Reservar um endereço IP estático;
+- Identificar erros de sobreposição de CIDR;
+- Usar `gcloud` para inspecionar redes e interfaces;
+- Relacionar os conceitos com questões da certificação Associate Cloud Engineer.
 
 ---
 
 # 1. O que é uma VPC?
 
-Uma Virtual Private Cloud é a rede virtual na qual recursos do Google Cloud se comunicam.
+VPC significa:
 
 ```text
-VPC
- │
- ├── Subnet A
- │     └── VMs
- │
- └── Subnet B
-       └── VMs
+Virtual Private Cloud
 ```
 
-Uma VPC pode conter recursos em várias regiões.
+No Google Cloud, uma VPC representa uma rede virtual privada onde recursos podem se comunicar.
+
+Exemplo:
+
+```text
+Google Cloud Project
+        |
+        v
++----------------------+
+| VPC                  |
+|                      |
+|  subnet-a            |
+|  subnet-b            |
+|                      |
++----------------------+
+```
+
+A VPC define o domínio de rede.
 
 ---
 
-# 2. Escopo da VPC
+# 2. VPC é global
 
-Ponto fundamental para o ACE:
+Este é um conceito muito importante no Google Cloud.
+
+A **VPC é global**.
+
+Isso significa que uma mesma VPC pode possuir subnets em regiões diferentes.
+
+Exemplo:
 
 ```text
-VPC     → Global
-Subnet  → Regional
-VM      → Zonal
+                 ace-vpc
+                    |
+        +-----------+-----------+
+        |                       |
+        v                       v
+us-central1                 southamerica-east1
+subnet-a                    subnet-b
+```
+
+A rede continua sendo a mesma:
+
+```text
+ace-vpc
+```
+
+mesmo com subnets em regiões distintas.
+
+---
+
+# 3. Subnets são regionais
+
+Enquanto a VPC é global:
+
+```text
+VPC
+= global
+```
+
+a subnet pertence a uma região:
+
+```text
+Subnet
+= regional
 ```
 
 Exemplo:
 
 ```text
-VPC: corp-vpc
-   │
-   ├── subnet-sp
-   │     region: southamerica-east1
-   │
-   └── subnet-us
-         region: us-central1
+ace-vpc
+   |
+   +--> subnet-us
+   |     us-central1
+   |     10.10.0.0/24
+   |
+   +--> subnet-br
+         southamerica-east1
+         10.20.0.0/24
+```
+
+Uma subnet não pertence a uma zona.
+
+Ela pertence a uma **região**.
+
+---
+
+# 4. Região x Zona
+
+Exemplo:
+
+```text
+Região:
+us-central1
+```
+
+Dentro dela existem zonas:
+
+```text
+us-central1-a
+us-central1-b
+us-central1-c
+us-central1-f
+```
+
+Uma subnet criada em:
+
+```text
+us-central1
+```
+
+pode ser utilizada por VMs em diferentes zonas daquela região.
+
+Exemplo:
+
+```text
+subnet-us
+10.10.0.0/24
+us-central1
+      |
+      +--> VM em us-central1-a
+      |
+      +--> VM em us-central1-b
 ```
 
 ---
 
-# 3. Auto Mode x Custom Mode
+# 5. Auto Mode x Custom Mode
+
+Ao criar uma VPC no Google Cloud, você pode encontrar dois modelos principais.
 
 ## Auto Mode
 
-Ao criar uma VPC auto mode, o Google cria automaticamente uma subnet em cada região suportada.
+O Google cria subnets automaticamente em regiões suportadas.
+
+Exemplo conceitual:
 
 ```text
-Auto Mode VPC
-   ├── subnet region A
-   ├── subnet region B
-   ├── subnet region C
-   └── ...
+auto-vpc
+   |
+   +--> subnet us-central1
+   +--> subnet europe-west1
+   +--> subnet asia-east1
+   +--> ...
 ```
 
-Bom para:
-
-- Laboratórios;
-- Cenários simples;
-- Primeiros testes.
-
-## Custom Mode
-
-Você cria as subnets explicitamente.
-
-```text
-Custom VPC
-   ├── subnet-app
-   └── subnet-data
-```
-
-Melhor para ambientes corporativos e produção.
+É simples para começar.
 
 ---
 
-# 4. CIDR
+## Custom Mode
 
-CIDR define o range de endereços IP.
+Você decide:
+
+- quais subnets existirão;
+- em quais regiões;
+- quais CIDRs utilizar;
+- como organizar o endereçamento.
+
+Exemplo:
+
+```text
+custom-vpc
+   |
+   +--> app-us
+   |     10.10.0.0/24
+   |
+   +--> data-us
+   |     10.20.0.0/24
+   |
+   +--> app-br
+         10.30.0.0/24
+```
+
+Para ambientes corporativos, **custom mode** oferece maior controle.
+
+Neste laboratório utilizaremos custom mode.
+
+---
+
+# 6. CIDR
+
+CIDR significa:
+
+```text
+Classless Inter-Domain Routing
+```
+
+É uma notação utilizada para representar uma faixa de IPs.
 
 Exemplo:
 
@@ -99,185 +228,1645 @@ Exemplo:
 10.10.0.0/24
 ```
 
-Um `/24` possui 256 endereços no espaço teórico.
+Temos:
 
-Exemplos:
+```text
+10.10.0.0
+```
+
+como endereço base e:
+
+```text
+/24
+```
+
+como tamanho do prefixo.
+
+---
+
+# 7. Como interpretar /24?
+
+IPv4 possui:
+
+```text
+32 bits
+```
+
+Quando usamos:
+
+```text
+/24
+```
+
+temos:
+
+```text
+24 bits
+```
+
+para identificar a rede.
+
+Sobram:
+
+```text
+8 bits
+```
+
+para endereços dentro da faixa.
+
+Quantidade teórica:
+
+```text
+2^8
+=
+256 endereços
+```
+
+Portanto:
+
+```text
+10.10.0.0/24
+```
+
+possui 256 endereços no bloco.
+
+> Nem todos são utilizáveis por VMs. O Google Cloud reserva endereços em cada subnet.
+
+---
+
+# 8. Alguns CIDRs comuns
+
+| CIDR | Quantidade teórica de endereços |
+|---|---:|
+| `/16` | 65.536 |
+| `/20` | 4.096 |
+| `/24` | 256 |
+| `/28` | 16 |
+| `/29` | 8 |
+
+Uma regra importante:
+
+```text
+prefixo menor
+=
+rede maior
+```
+
+Exemplo:
+
+```text
+/16
+```
+
+é maior que:
+
+```text
+/24
+```
+
+---
+
+# 9. Faixas privadas RFC1918
+
+Faixas privadas comuns:
+
+```text
+10.0.0.0/8
+```
+
+```text
+172.16.0.0/12
+```
+
+```text
+192.168.0.0/16
+```
+
+Exemplo de planejamento:
 
 ```text
 10.10.0.0/24
 10.20.0.0/24
-192.168.10.0/24
+10.30.0.0/24
 ```
-
-Evite ranges sobrepostos quando houver necessidade de conectividade entre redes.
 
 ---
 
-# 5. Subnets
+# 10. Sobreposição de CIDR
 
-Cada subnet possui um range primário.
+Duas subnets da mesma VPC não podem utilizar faixas primárias sobrepostas.
+
+Exemplo válido:
+
+```text
+subnet-a
+10.10.0.0/24
+
+subnet-b
+10.20.0.0/24
+```
+
+Exemplo problemático:
+
+```text
+subnet-a
+10.10.0.0/24
+
+subnet-b
+10.10.0.128/25
+```
+
+A segunda faixa está contida na primeira.
+
+---
+
+# 11. IP interno
+
+Uma VM ligada a uma subnet recebe um IP interno.
 
 Exemplo:
 
 ```text
-subnet-app
-region: southamerica-east1
-range: 10.10.0.0/24
+VM
+ |
+ v
+10.10.0.2
 ```
 
-Você pode ter mais de uma subnet na mesma região.
+Esse endereço é utilizado para comunicação privada.
 
----
-
-# 6. IP Interno
-
-Usado para comunicação dentro da rede.
+Exemplo:
 
 ```text
-VM1 10.10.0.2
-      │
-      ▼
+VM A
+10.10.0.2
+   |
+   v
 VPC
-      │
-      ▼
-VM2 10.10.0.3
+   |
+   v
+VM B
+10.20.0.2
 ```
 
 ---
 
-# 7. IP Externo
+# 12. IP externo
 
-Permite comunicação direta com a internet, sujeito às regras de firewall e demais controles.
+Uma VM também pode possuir um endereço IP externo.
+
+Exemplo:
 
 ```text
 Internet
-   │
-External IP
-   ▼
-  VM
+   |
+   v
+34.x.x.x
+   |
+   v
+VM
+   |
+   v
+10.10.0.2
 ```
 
-Nem toda VM precisa de IP externo.
+A VM possui:
+
+```text
+IP externo
++
+IP interno
+```
+
+O IP externo pode permitir comunicação com a internet, dependendo das regras e configuração.
 
 ---
 
-# 8. Laboratório — Criar VPC Customizada
+# 13. IP efêmero x estático
+
+## Efêmero
+
+Um IP externo criado automaticamente pode ser efêmero.
+
+Conceito:
+
+```text
+recurso
+   |
+   v
+IP temporário
+```
+
+Ele não deve ser tratado como um endereço permanente.
+
+---
+
+## Estático
+
+Pode ser reservado.
+
+Exemplo:
+
+```text
+IP estático
+   |
+   v
+34.x.x.x
+```
+
+É útil quando um endereço precisa permanecer estável.
+
+Exemplos:
+
+- Load Balancer;
+- DNS;
+- allowlist;
+- endpoint externo.
+
+---
+
+# 14. Arquitetura do laboratório
+
+Vamos construir:
+
+```text
+                         ace-vpc
+                            |
+               +------------+------------+
+               |                         |
+               v                         v
+        subnet-us                  subnet-br
+       10.10.0.0/24              10.20.0.0/24
+        us-central1          southamerica-east1
+               |                         |
+               v                         v
+             vm-us                     vm-br
+```
+
+Isso demonstrará que:
+
+```text
+VPC = global
+Subnets = regionais
+```
+
+---
+
+# 15. Pré-requisitos
+
+Abra o Cloud Shell.
+
+Veja o projeto:
+
+```bash
+gcloud config get-value project
+```
+
+Defina:
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+export REGION_US=us-central1
+export ZONE_US=us-central1-a
+export REGION_BR=southamerica-east1
+export ZONE_BR=southamerica-east1-b
+```
+
+Veja:
+
+```bash
+echo $PROJECT_ID
+echo $REGION_US
+echo $ZONE_US
+echo $REGION_BR
+echo $ZONE_BR
+```
+
+Habilite Compute Engine:
+
+```bash
+gcloud services enable compute.googleapis.com
+```
+
+---
+
+# 16. Criando uma configuração gcloud para o laboratório
+
+Crie:
+
+```bash
+gcloud config configurations create ace-vpc-lab
+```
+
+Ative:
+
+```bash
+gcloud config configurations activate ace-vpc-lab
+```
+
+Defina o projeto:
+
+```bash
+gcloud config set project $PROJECT_ID
+```
+
+Defina região e zona padrão:
+
+```bash
+gcloud config set compute/region $REGION_US
+```
+
+```bash
+gcloud config set compute/zone $ZONE_US
+```
+
+Veja:
+
+```bash
+gcloud config list
+```
+
+Lembre:
+
+> A configuration não cria recursos. Ela mantém o contexto do `gcloud`.
+
+---
+
+# 17. Criando a VPC customizada
+
+Execute:
 
 ```bash
 gcloud compute networks create ace-vpc \
   --subnet-mode=custom
 ```
 
-Listar:
+Liste:
 
 ```bash
 gcloud compute networks list
 ```
 
----
-
-# 9. Criar Subnet
+Descreva:
 
 ```bash
-gcloud compute networks subnets create ace-subnet-sp \
+gcloud compute networks describe ace-vpc
+```
+
+Observe:
+
+```text
+subnet mode = CUSTOM
+```
+
+---
+
+# 18. Criando subnet nos Estados Unidos
+
+Execute:
+
+```bash
+gcloud compute networks subnets create subnet-us \
   --network=ace-vpc \
-  --region=southamerica-east1 \
+  --region=$REGION_US \
   --range=10.10.0.0/24
 ```
 
-Criar outra:
+Descreva:
 
 ```bash
-gcloud compute networks subnets create ace-subnet-us \
-  --network=ace-vpc \
-  --region=us-central1 \
-  --range=10.20.0.0/24
+gcloud compute networks subnets describe subnet-us \
+  --region=$REGION_US
 ```
 
 ---
 
-# 10. Listar Subnets
+# 19. Criando subnet no Brasil
+
+Execute:
+
+```bash
+gcloud compute networks subnets create subnet-br \
+  --network=ace-vpc \
+  --region=$REGION_BR \
+  --range=10.20.0.0/24
+```
+
+Liste:
 
 ```bash
 gcloud compute networks subnets list \
   --network=ace-vpc
 ```
 
----
-
-# 11. Criar VM na Subnet
-
-```bash
-gcloud compute instances create ace-net-vm-01 \
-  --zone=southamerica-east1-a \
-  --machine-type=e2-micro \
-  --network=ace-vpc \
-  --subnet=ace-subnet-sp
-```
-
----
-
-# 12. VPC com múltiplas regiões
+Agora:
 
 ```text
-            ace-vpc
-               │
-       ┌───────┴────────┐
-       ▼                ▼
-southamerica-east1   us-central1
-  10.10.0.0/24       10.20.0.0/24
-       │                │
-      VM               VM
+                   ace-vpc
+                      |
+          +-----------+-----------+
+          |                       |
+          v                       v
+      subnet-us                subnet-br
+    us-central1          southamerica-east1
+   10.10.0.0/24            10.20.0.0/24
 ```
 
-A VPC continua sendo um recurso global.
+---
+
+# 20. Tentativa de CIDR sobreposto
+
+Vamos provocar um erro proposital.
+
+Tente criar:
+
+```bash
+gcloud compute networks subnets create subnet-overlap \
+  --network=ace-vpc \
+  --region=$REGION_US \
+  --range=10.10.0.128/25
+```
+
+A operação deverá falhar porque:
+
+```text
+10.10.0.128/25
+```
+
+sobrepõe:
+
+```text
+10.10.0.0/24
+```
+
+Esse é um excelente exemplo de erro de planejamento de endereçamento.
 
 ---
 
-# 13. Pegadinhas ACE
+# 21. Criando regra SSH temporária
 
-- VPC não é regional.
-- Subnet não é zonal.
-- Uma subnet pertence a uma única região.
-- Uma VPC pode ter várias subnets na mesma região.
-- Custom mode dá maior controle sobre endereçamento.
-- Evite CIDRs sobrepostos em redes que precisarão se conectar.
+Crie:
+
+```bash
+gcloud compute firewall-rules create ace-vpc-allow-ssh \
+  --network=ace-vpc \
+  --direction=INGRESS \
+  --priority=1000 \
+  --action=ALLOW \
+  --rules=tcp:22 \
+  --source-ranges=0.0.0.0/0 \
+  --target-tags=ssh-lab
+```
+
+> Para produção, prefira métodos mais restritivos como IAP e não libere SSH para toda a internet.
 
 ---
 
-# 14. Questões Estilo ACE
+# 22. Criando VM na subnet dos EUA
+
+Execute:
+
+```bash
+gcloud compute instances create vm-us \
+  --zone=$ZONE_US \
+  --machine-type=e2-micro \
+  --subnet=subnet-us \
+  --tags=ssh-lab \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
+
+Liste:
+
+```bash
+gcloud compute instances list
+```
+
+---
+
+# 23. Criando VM na subnet do Brasil
+
+Execute:
+
+```bash
+gcloud compute instances create vm-br \
+  --zone=$ZONE_BR \
+  --machine-type=e2-micro \
+  --subnet=subnet-br \
+  --tags=ssh-lab \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
+
+Liste:
+
+```bash
+gcloud compute instances list
+```
+
+---
+
+# 24. Observando os IPs
+
+Execute:
+
+```bash
+gcloud compute instances list \
+  --format="table(name,zone,networkInterfaces[0].networkIP:label=INTERNAL_IP,networkInterfaces[0].accessConfigs[0].natIP:label=EXTERNAL_IP)"
+```
+
+Você deverá observar algo semelhante:
+
+```text
+NAME    ZONE                    INTERNAL_IP   EXTERNAL_IP
+vm-us   us-central1-a           10.10.0.x     34.x.x.x
+vm-br   southamerica-east1-b    10.20.0.x     35.x.x.x
+```
+
+Isso mostra:
+
+```text
+IP interno
++
+IP externo
+```
+
+---
+
+# 25. Inspecionando a interface de rede
+
+Execute:
+
+```bash
+gcloud compute instances describe vm-us \
+  --zone=$ZONE_US
+```
+
+Procure:
+
+```text
+networkInterfaces
+```
+
+Você verá informações como:
+
+```text
+network
+subnetwork
+networkIP
+accessConfigs
+natIP
+```
+
+---
+
+# 26. Salvando os IPs internos
+
+Execute:
+
+```bash
+export VM_US_IP=$(gcloud compute instances describe vm-us \
+  --zone=$ZONE_US \
+  --format="value(networkInterfaces[0].networkIP)")
+```
+
+```bash
+export VM_BR_IP=$(gcloud compute instances describe vm-br \
+  --zone=$ZONE_BR \
+  --format="value(networkInterfaces[0].networkIP)")
+```
+
+Veja:
+
+```bash
+echo $VM_US_IP
+echo $VM_BR_IP
+```
+
+---
+
+# 27. Comunicação entre subnets da mesma VPC
+
+As subnets estão em regiões diferentes:
+
+```text
+subnet-us
+us-central1
+
+subnet-br
+southamerica-east1
+```
+
+mas pertencem à mesma:
+
+```text
+ace-vpc
+```
+
+Portanto existe roteamento de VPC entre suas faixas.
+
+Porém firewall continua sendo aplicado.
+
+---
+
+# 28. Testando ICMP antes da regra
+
+Entre na VM dos EUA:
+
+```bash
+gcloud compute ssh vm-us \
+  --zone=$ZONE_US
+```
+
+Teste:
+
+```bash
+ping -c 4 IP_INTERNO_VM_BR
+```
+
+Pode falhar porque ainda não liberamos ICMP.
+
+Saia:
+
+```bash
+exit
+```
+
+---
+
+# 29. Criando regra ICMP interna
+
+Execute:
+
+```bash
+gcloud compute firewall-rules create ace-vpc-allow-icmp \
+  --network=ace-vpc \
+  --direction=INGRESS \
+  --priority=1000 \
+  --action=ALLOW \
+  --rules=icmp \
+  --source-ranges=10.10.0.0/24,10.20.0.0/24
+```
+
+Teste:
+
+```bash
+gcloud compute ssh vm-us \
+  --zone=$ZONE_US \
+  --command="ping -c 4 $VM_BR_IP"
+```
+
+Agora deverá funcionar.
+
+---
+
+# 30. O que este teste provou?
+
+Provou que:
+
+```text
+VPC global
+   |
+   +--> subnet-us
+   |
+   +--> subnet-br
+```
+
+permite conectividade privada entre subnets, mesmo em regiões distintas, desde que:
+
+```text
+rota exista
++
+firewall permita
+```
+
+---
+
+# 31. Observando as rotas criadas automaticamente
+
+Execute:
+
+```bash
+gcloud compute routes list \
+  --filter="network:ace-vpc"
+```
+
+Você deverá encontrar rotas relacionadas a:
+
+```text
+10.10.0.0/24
+10.20.0.0/24
+```
+
+Essas rotas permitem que os recursos da VPC encontrem as subnets.
+
+---
+
+# 32. Criando uma VM sem IP externo
+
+Agora vamos criar uma VM privada.
+
+Execute:
+
+```bash
+gcloud compute instances create vm-private \
+  --zone=$ZONE_US \
+  --machine-type=e2-micro \
+  --subnet=subnet-us \
+  --no-address \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
+
+Liste:
+
+```bash
+gcloud compute instances list
+```
+
+Observe:
+
+```text
+vm-private
+INTERNAL_IP = 10.10.0.x
+EXTERNAL_IP = vazio
+```
+
+Isso significa:
+
+```text
+VM possui IP privado
+```
+
+mas:
+
+```text
+não possui IP externo
+```
+
+---
+
+# 33. IP externo não é obrigatório
+
+Uma VM pode funcionar perfeitamente sem IP externo.
+
+Exemplo:
+
+```text
+VM privada
+10.10.0.5
+```
+
+pode:
+
+- comunicar com outras VMs privadas;
+- acessar recursos internos;
+- utilizar Cloud NAT para saída à internet;
+- utilizar Private Google Access para APIs Google;
+- receber tráfego via Load Balancer.
+
+Isso será aprofundado nas próximas aulas.
+
+---
+
+# 34. Criando um IP externo estático
+
+Agora vamos praticar endereços estáticos.
+
+Crie um IP regional:
+
+```bash
+gcloud compute addresses create ace-static-ip \
+  --region=$REGION_US
+```
+
+Liste:
+
+```bash
+gcloud compute addresses list
+```
+
+Veja o endereço:
+
+```bash
+gcloud compute addresses describe ace-static-ip \
+  --region=$REGION_US \
+  --format="value(address)"
+```
+
+Salve:
+
+```bash
+export STATIC_IP=$(gcloud compute addresses describe ace-static-ip \
+  --region=$REGION_US \
+  --format="value(address)")
+```
+
+Veja:
+
+```bash
+echo $STATIC_IP
+```
+
+---
+
+# 35. IP regional x global
+
+Esse é um ponto importante.
+
+Um IP pode possuir escopo compatível com o recurso.
+
+Exemplo conceitual:
+
+```text
+VM
+→ IP externo regional
+```
+
+Enquanto certos Load Balancers globais utilizam:
+
+```text
+IP global
+```
+
+Não assuma que todo endereço reservado tem o mesmo escopo.
+
+---
+
+# 36. Atribuindo o IP estático a uma VM
+
+Para simplificar o laboratório, vamos criar uma nova VM já usando o IP reservado.
+
+Execute:
+
+```bash
+gcloud compute instances create vm-static \
+  --zone=$ZONE_US \
+  --machine-type=e2-micro \
+  --subnet=subnet-us \
+  --address=$STATIC_IP \
+  --tags=ssh-lab \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
+
+Liste:
+
+```bash
+gcloud compute instances list
+```
+
+Você deverá observar:
+
+```text
+vm-static
+EXTERNAL_IP = valor reservado
+```
+
+---
+
+# 37. Endereço efêmero x estático na prática
+
+Temos agora:
+
+```text
+vm-us
+→ IP externo efêmero
+```
+
+```text
+vm-static
+→ IP externo estático
+```
+
+E:
+
+```text
+vm-private
+→ sem IP externo
+```
+
+Esses três casos são importantes.
+
+---
+
+# 38. Inspecionando endereços reservados
+
+Execute:
+
+```bash
+gcloud compute addresses list
+```
+
+Observe campos como:
+
+```text
+NAME
+ADDRESS
+REGION
+STATUS
+```
+
+O status pode mostrar se o endereço está em uso.
+
+---
+
+# 39. Laboratório de troubleshooting 1 — subnet errada
+
+Imagine que uma aplicação deveria estar em:
+
+```text
+subnet-br
+```
+
+mas foi criada em:
+
+```text
+subnet-us
+```
+
+Como verificar?
+
+Execute:
+
+```bash
+gcloud compute instances describe vm-us \
+  --zone=$ZONE_US \
+  --format="yaml(networkInterfaces)"
+```
+
+Isso permite confirmar:
+
+```text
+VPC
+subnet
+IP interno
+IP externo
+```
+
+---
+
+# 40. Laboratório de troubleshooting 2 — CIDR incorreto
+
+Considere que alguém planejou:
+
+```text
+subnet-app
+10.10.0.0/24
+```
+
+e depois tentou criar:
+
+```text
+subnet-data
+10.10.0.128/25
+```
+
+Problema:
+
+```text
+overlap
+```
+
+Antes de criar subnets, sempre valide o plano de endereçamento.
+
+---
+
+# 41. Laboratório de troubleshooting 3 — comunicação entre regiões
+
+Suponha:
+
+```text
+vm-us
+não alcança
+vm-br
+```
+
+Não conclua:
+
+> "É porque estão em regiões diferentes."
+
+Essa conclusão seria errada.
+
+Primeiro verifique:
+
+```text
+1. Mesma VPC?
+2. IP correto?
+3. Rotas existem?
+4. Firewall permite?
+5. VM está RUNNING?
+```
+
+A VPC do Google Cloud é global.
+
+---
+
+# 42. Comandos fundamentais
+
+## Redes
+
+```bash
+gcloud compute networks list
+```
+
+## Subnets
+
+```bash
+gcloud compute networks subnets list
+```
+
+## VMs
+
+```bash
+gcloud compute instances list
+```
+
+## IPs reservados
+
+```bash
+gcloud compute addresses list
+```
+
+## Rotas
+
+```bash
+gcloud compute routes list
+```
+
+## Firewall
+
+```bash
+gcloud compute firewall-rules list
+```
+
+---
+
+# 43. Exercício — identifique os escopos
+
+Classifique:
+
+```text
+VPC
+Subnet
+VM
+IP estático regional
+```
+
+Resposta:
+
+```text
+VPC
+→ global
+
+Subnet
+→ regional
+
+VM
+→ zonal
+
+IP estático regional
+→ regional
+```
+
+Essa relação é muito importante para o ACE.
+
+---
+
+# 44. Exercício — CIDR
+
+Considere:
+
+```text
+10.10.0.0/24
+```
+
+Perguntas:
+
+1. Quantos bits possui um IPv4?
+2. Quantos bits são usados pelo prefixo?
+3. Quantos bits restam?
+4. Quantos endereços teóricos existem?
+
+Resposta:
+
+```text
+IPv4 = 32 bits
+
+prefixo = 24
+
+restam = 8
+
+2^8 = 256
+```
+
+---
+
+# 45. Exercício — planejamento de rede
+
+Você precisa de três subnets.
+
+Uma possibilidade:
+
+```text
+app
+10.10.0.0/24
+
+data
+10.20.0.0/24
+
+management
+10.30.0.0/24
+```
+
+Pergunta:
+
+> Elas se sobrepõem?
+
+Resposta:
+
+```text
+Não.
+```
+
+---
+
+# 46. Exercício — identifique o problema
+
+Considere:
+
+```text
+subnet-a
+10.10.0.0/24
+
+subnet-b
+10.10.0.0/25
+```
+
+Problema:
+
+```text
+CIDRs sobrepostos
+```
+
+---
+
+# 47. Pegadinhas ACE
+
+## Pegadinha 1
+
+> VPC é regional.
+
+**Errado.**
+
+No Google Cloud, a VPC é global.
+
+---
+
+## Pegadinha 2
+
+> Subnet é zonal.
+
+**Errado.**
+
+Subnet é regional.
+
+---
+
+## Pegadinha 3
+
+> Duas VMs em regiões diferentes precisam de VPC Peering.
+
+**Errado**, se estiverem em subnets da mesma VPC.
+
+A VPC é global.
+
+---
+
+## Pegadinha 4
+
+> Toda VM precisa de IP externo.
+
+**Errado.**
+
+VMs privadas podem operar sem IP externo.
+
+---
+
+## Pegadinha 5
+
+> IP externo e interno são a mesma coisa.
+
+**Errado.**
+
+IP interno é usado para comunicação privada.
+
+IP externo é utilizado para comunicação externa, conforme configuração.
+
+---
+
+## Pegadinha 6
+
+> `/16` é uma rede menor que `/24`.
+
+**Errado.**
+
+`/16` possui mais endereços.
+
+---
+
+## Pegadinha 7
+
+> Subnets podem usar qualquer CIDR mesmo que se sobreponham.
+
+**Errado.**
+
+Sobreposição causa conflitos e restrições.
+
+---
+
+# 48. Questões estilo ACE
 
 ## Questão 1
 
-Uma subnet foi criada em `southamerica-east1`.
+Uma empresa quer uma VPC com subnets apenas nas regiões escolhidas pela equipe de arquitetura.
 
-Qual seu escopo?
+Qual modo deve utilizar?
 
-**Resposta:** regional.
-
-## Questão 2
-
-Uma VPC possui subnets em São Paulo e Iowa.
-
-Isso é válido?
-
-**Resposta:** sim, pois VPC é global.
-
-## Questão 3
-
-Você precisa controlar cuidadosamente os ranges usados por cada ambiente.
-
-**Resposta:** Custom Mode VPC.
+**Resposta:** Custom mode.
 
 ---
 
-# 15. Checklist
+## Questão 2
 
-- [ ] Entendo VPC
-- [ ] Sei que VPC é global
-- [ ] Sei que subnet é regional
-- [ ] Entendo auto mode e custom mode
-- [ ] Entendo CIDR em nível básico
-- [ ] Sei criar VPC customizada
-- [ ] Sei criar subnet
-- [ ] Entendo IP interno e externo
+Uma empresa possui uma subnet em `us-central1` e outra em `southamerica-east1`, ambas na mesma VPC.
+
+É necessário VPC Peering para comunicação privada entre elas?
+
+**Resposta:** Não.
+
+---
+
+## Questão 3
+
+Qual é o escopo de uma VPC no Google Cloud?
+
+**Resposta:** Global.
+
+---
+
+## Questão 4
+
+Qual é o escopo de uma subnet?
+
+**Resposta:** Regional.
+
+---
+
+## Questão 5
+
+Uma VM não deve possuir endereço público, mas precisa acessar a internet para atualizações.
+
+Qual arquitetura pode ser utilizada?
+
+**Resposta:** VM sem IP externo + Cloud NAT.
+
+---
+
+## Questão 6
+
+Um endereço público precisa permanecer estável para uso em DNS e allowlists.
+
+Qual opção?
+
+**Resposta:** IP estático reservado.
+
+---
+
+## Questão 7
+
+Duas subnets são configuradas com:
+
+```text
+10.10.0.0/24
+10.10.0.128/25
+```
+
+Qual é o problema?
+
+**Resposta:** Sobreposição de CIDR.
+
+---
+
+# 49. Desafio de interpretação
+
+Associe:
+
+```text
+A. VPC
+B. Subnet
+C. VM
+D. IP interno
+E. IP estático
+F. CIDR
+```
+
+a:
+
+```text
+1. Endereço privado
+2. Recurso global de rede
+3. Faixa de endereços
+4. Endereço reservado
+5. Recurso regional de rede
+6. Recurso de compute normalmente zonal
+```
+
+Resposta:
+
+```text
+A -> 2
+B -> 5
+C -> 6
+D -> 1
+E -> 4
+F -> 3
+```
+
+---
+
+# 50. Arquitetura final do laboratório
+
+```text
+                              ace-vpc
+                                |
+                  +-------------+-------------+
+                  |                           |
+                  v                           v
+              subnet-us                  subnet-br
+             10.10.0.0/24              10.20.0.0/24
+              us-central1          southamerica-east1
+                  |                           |
+        +---------+---------+                 |
+        |         |         |                 |
+        v         v         v                 v
+      vm-us   vm-private  vm-static          vm-br
+        |         |         |
+        |         |         +--> IP estático
+        |         |
+        |         +------------> sem IP externo
+        |
+        +----------------------> IP efêmero
+```
+
+---
+
+# 51. Relação com as próximas aulas
+
+Esta aula fornece a base para entender:
+
+```text
+Aula 2
+Firewall Rules e Rotas
+```
+
+porque agora sabemos:
+
+```text
+VPC
+subnets
+IPs
+CIDRs
+```
+
+Depois:
+
+```text
+Aula 3
+Cloud NAT
+Private Google Access
+Cloud DNS
+```
+
+que parte do cenário:
+
+```text
+VM privada
+sem IP externo
+```
+
+Depois:
+
+```text
+Aula 4
+Load Balancing
+```
+
+e:
+
+```text
+Aula 5
+Shared VPC
+Peering
+VPN
+Interconnect
+```
+
+---
+
+# 52. Limpeza — VMs
+
+Remova:
+
+```bash
+gcloud compute instances delete vm-us \
+  --zone=$ZONE_US \
+  --quiet
+```
+
+```bash
+gcloud compute instances delete vm-private \
+  --zone=$ZONE_US \
+  --quiet
+```
+
+```bash
+gcloud compute instances delete vm-static \
+  --zone=$ZONE_US \
+  --quiet
+```
+
+```bash
+gcloud compute instances delete vm-br \
+  --zone=$ZONE_BR \
+  --quiet
+```
+
+---
+
+# 53. Limpeza — IP estático
+
+```bash
+gcloud compute addresses delete ace-static-ip \
+  --region=$REGION_US \
+  --quiet
+```
+
+---
+
+# 54. Limpeza — firewall
+
+```bash
+gcloud compute firewall-rules delete \
+  ace-vpc-allow-ssh \
+  ace-vpc-allow-icmp \
+  --quiet
+```
+
+---
+
+# 55. Limpeza — subnets
+
+```bash
+gcloud compute networks subnets delete subnet-us \
+  --region=$REGION_US \
+  --quiet
+```
+
+```bash
+gcloud compute networks subnets delete subnet-br \
+  --region=$REGION_BR \
+  --quiet
+```
+
+---
+
+# 56. Limpeza — VPC
+
+```bash
+gcloud compute networks delete ace-vpc \
+  --quiet
+```
+
+---
+
+# 57. Removendo a configuration
+
+Ative outra configuração:
+
+```bash
+gcloud config configurations activate default
+```
+
+Depois:
+
+```bash
+gcloud config configurations delete ace-vpc-lab
+```
+
+Liste:
+
+```bash
+gcloud config configurations list
+```
+
+---
+
+# 58. Checklist final
+
+- [ ] Entendo o que é uma VPC;
+- [ ] Sei que VPC é global;
+- [ ] Sei que subnet é regional;
+- [ ] Sei que VM normalmente é zonal;
+- [ ] Entendo auto mode;
+- [ ] Entendo custom mode;
+- [ ] Entendo CIDR;
+- [ ] Sei interpretar `/24`;
+- [ ] Entendo sobreposição de CIDR;
+- [ ] Conheço faixas privadas RFC1918;
+- [ ] Sei diferenciar IP interno e externo;
+- [ ] Sei diferenciar IP efêmero e estático;
+- [ ] Consegui criar uma VPC customizada;
+- [ ] Consegui criar subnets em regiões diferentes;
+- [ ] Consegui criar VMs em subnets diferentes;
+- [ ] Consegui observar IP interno e externo;
+- [ ] Consegui criar uma VM sem IP externo;
+- [ ] Consegui testar comunicação privada entre regiões;
+- [ ] Consegui observar as rotas das subnets;
+- [ ] Consegui provocar erro de CIDR sobreposto;
+- [ ] Consegui reservar um IP estático;
+- [ ] Consegui remover os recursos do laboratório.
+
+---
+
+# 59. O que você deve memorizar para o ACE
+
+A relação mais importante:
+
+```text
+VPC
+= global
+```
+
+```text
+Subnet
+= regional
+```
+
+```text
+VM
+= zonal
+```
+
+Também:
+
+```text
+CIDR
+= faixa de endereços
+```
+
+```text
+/16
+= bloco maior
+```
+
+```text
+/24
+= bloco menor
+```
+
+```text
+IP interno
+= comunicação privada
+```
+
+```text
+IP externo
+= comunicação externa
+```
+
+```text
+IP estático
+= endereço reservado
+```
+
+```text
+Custom Mode
+= controle sobre subnets e CIDRs
+```
+
+Arquitetura mental:
+
+```text
+VPC global
+   |
+   +--> subnet regional
+   |       |
+   |       +--> VM zonal
+   |
+   +--> subnet regional
+           |
+           +--> VM zonal
+```
+
+Se você consegue olhar para uma arquitetura e identificar corretamente **VPC, subnet, região, zona, CIDR, IP interno e IP externo**, já domina a base de networking necessária para avançar nas próximas aulas do Associate Cloud Engineer.
