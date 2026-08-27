@@ -4,253 +4,166 @@
 
 Ao final desta aula, você deverá:
 
-- Entender o que é um container;
-- Diferenciar image e container;
-- Entender Dockerfile em nível conceitual;
-- Entender Artifact Registry;
-- Publicar uma imagem;
-- Preparar uma imagem para Cloud Run e GKE.
+- Construir imagem Docker;
+- Criar Artifact Registry;
+- Autenticar Docker;
+- Push/pull de imagem;
 
 ---
 
-# 1. Container
-
-Um container empacota aplicação e dependências.
+# 1. Modelo mental
 
 ```text
-Application
-    │
-    ├── Runtime
-    ├── Libraries
-    └── Dependencies
-         │
-         ▼
-      Container
+Source ── docker build ──> Image
+                         └─ push ──> Artifact Registry
 ```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Image x Container
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
 
 ```text
-Image
-  │
-  │ instantiate
-  ▼
-Container
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
-
-## Image
-
-Artefato imutável usado como base.
-
-## Container
-
-Instância em execução da image.
 
 ---
 
-# 3. Dockerfile
-
-Exemplo:
-
-```dockerfile
-FROM nginx:alpine
-
-COPY index.html /usr/share/nginx/html/index.html
-
-EXPOSE 80
-```
-
-Construir:
+# 3. Laboratório principal
 
 ```bash
-docker build -t ace-web:v1 .
-```
+export PROJECT_ID=$(gcloud config get-value project)
+export REGION=us-central1
+export REPO=ace-containers
 
-Executar:
-
-```bash
-docker run -p 8080:80 ace-web:v1
-```
-
----
-
-# 4. Registry
-
-Uma image precisa ser armazenada em um registry.
-
-No Google Cloud, use:
-
-```text
-Artifact Registry
-```
-
-Modelo:
-
-```text
-Source Code
-    │
-    ▼
-Docker Build
-    │
-    ▼
-Container Image
-    │
-    ▼
-Artifact Registry
-    │
-    ├── Cloud Run
-    └── GKE
-```
-
----
-
-# 5. Habilitar APIs
-
-```bash
 gcloud services enable artifactregistry.googleapis.com
-gcloud services enable run.googleapis.com
-gcloud services enable container.googleapis.com
-```
 
----
-
-# 6. Criar repositório Docker
-
-```bash
-gcloud artifacts repositories create ace-containers \
+gcloud artifacts repositories create $REPO \
   --repository-format=docker \
-  --location=southamerica-east1 \
-  --description="ACE container images"
-```
+  --location=$REGION
 
----
+cat > Dockerfile <<'EOF'
+FROM nginx:alpine
+RUN echo 'ACE Container Lab' > /usr/share/nginx/html/index.html
+EOF
 
-# 7. Listar repositórios
+gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
 
-```bash
-gcloud artifacts repositories list
-```
+docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/web:v1 .
+docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/web:v1
 
----
-
-# 8. Configurar autenticação Docker
-
-```bash
-gcloud auth configure-docker \
-  southamerica-east1-docker.pkg.dev
-```
-
----
-
-# 9. Nome da imagem
-
-Formato:
-
-```text
-REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG
-```
-
-Exemplo:
-
-```text
-southamerica-east1-docker.pkg.dev/meu-projeto/ace-containers/ace-web:v1
-```
-
----
-
-# 10. Tag
-
-```bash
-PROJECT_ID=$(gcloud config get-value project)
-
-docker tag ace-web:v1 \
-  southamerica-east1-docker.pkg.dev/$PROJECT_ID/ace-containers/ace-web:v1
-```
-
----
-
-# 11. Push
-
-```bash
-docker push \
-  southamerica-east1-docker.pkg.dev/$PROJECT_ID/ace-containers/ace-web:v1
-```
-
----
-
-# 12. Listar imagens
-
-```bash
 gcloud artifacts docker images list \
-  southamerica-east1-docker.pkg.dev/$PROJECT_ID/ace-containers
+  $REGION-docker.pkg.dev/$PROJECT_ID/$REPO
 ```
 
 ---
 
-# 13. Tags e versionamento
+# 4. Testes e falhas propositais
 
-Evite depender apenas de:
+- Tente push antes de `gcloud auth configure-docker`.
+- Tag não é digest; digest identifica conteúdo imutável.
+- Artifact Registry armazena artefatos; não executa containers.
 
-```text
-latest
-```
-
-Prefira tags identificáveis:
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-v1
-v1.1
-2026-08-23
-commit-a1b2c3
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 14. Imutabilidade
+# 5. Troubleshooting
 
-Uma prática importante:
+Use este fluxo:
 
 ```text
-Build once
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
+```
+
+---
+
+# 6. Pegadinhas ACE
+
+- Image é template imutável; container é instância em execução.
+- Artifact Registry substitui Container Registry em novos fluxos.
+- IAM controla push/pull.
+
+---
+
+# 7. Questões estilo ACE
+
+- Onde armazenar imagens privadas no GCP? → Artifact Registry.
+- Precisa executar imagem serverless? → Cloud Run, não Artifact Registry.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
    ↓
-Store image
+Serviço/recurso correto
    ↓
-Promote same artifact
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
-Evite reconstruir imagens diferentes para cada ambiente sem necessidade.
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
----
-
-# 15. Questões Estilo ACE
-
-## Questão 1
-
-Onde armazenar imagens Docker privadas no Google Cloud?
-
-**Resposta:** Artifact Registry.
-
-## Questão 2
-
-Qual a diferença entre image e container?
-
-**Resposta:** image é o artefato; container é uma instância em execução.
-
-## Questão 3
-
-Cloud Run precisa receber o código-fonte diretamente?
-
-**Resposta:** conceitualmente, ele executa workloads empacotados em containers; o fluxo pode envolver build automático, mas o runtime executa imagens.
-
----
-
-# 16. Checklist
-
-- [ ] Entendo container
-- [ ] Entendo image
-- [ ] Entendo Dockerfile
-- [ ] Sei o papel do Artifact Registry
-- [ ] Sei criar repositório
-- [ ] Sei publicar imagem

@@ -4,259 +4,174 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Kubernetes em nível ACE;
-- Entender GKE;
-- Diferenciar Cluster, Node, Pod, Deployment e Service;
-- Criar cluster;
-- Usar `kubectl`;
-- Implantar aplicação.
+- Criar GKE Autopilot;
+- Usar kubectl;
+- Criar Deployment e Service;
+- Simular falha de Pod;
 
 ---
 
-# 1. Kubernetes
-
-Kubernetes orquestra containers.
+# 1. Modelo mental
 
 ```text
-Cluster
-   │
-   ├── Node
-   │    ├── Pod
-   │    └── Pod
-   │
-   └── Node
-        ├── Pod
-        └── Pod
+GKE Cluster
+ └─ Namespace
+    └─ Deployment
+       └─ ReplicaSet
+          ├─ Pod
+          └─ Pod
+    └─ Service
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. GKE
+# 3. Laboratório principal
 
-GKE é o Kubernetes gerenciado do Google Cloud.
-
-```text
-Kubernetes
-    +
-Google-managed control plane
-    =
-GKE
-```
-
----
-
-# 3. Cluster
-
-Conjunto de recursos Kubernetes.
-
----
-
-# 4. Node
-
-Máquina que executa workloads.
-
----
-
-# 5. Pod
-
-Menor unidade implantável no Kubernetes.
-
-```text
-Pod
- └── Container
-```
-
-Pode conter mais de um container, embora o caso simples seja um container por Pod.
-
----
-
-# 6. Deployment
-
-Gerencia Pods declarativamente.
-
-```text
-Deployment
-   │
-   ├── Pod
-   ├── Pod
-   └── Pod
-```
-
-Responsável por:
-
-- Replicas;
-- Rollout;
-- Desired state.
-
----
-
-# 7. Service
-
-Fornece endpoint estável para Pods.
-
-```text
-Client
-  │
-  ▼
-Service
-  │
- ┌┴┐
- ▼ ▼
-Pod Pod
-```
-
----
-
-# 8. Criar cluster
-
-Exemplo Standard:
+> GKE pode gerar custo. Exclua o cluster no final.
 
 ```bash
-gcloud container clusters create ace-gke \
-  --zone=southamerica-east1-a \
-  --num-nodes=2
-```
+export REGION=us-central1
+gcloud services enable container.googleapis.com
 
----
+gcloud container clusters create-auto ace-gke \
+  --region=$REGION
 
-# 9. Credenciais
-
-```bash
 gcloud container clusters get-credentials ace-gke \
-  --zone=southamerica-east1-a
-```
+  --region=$REGION
 
----
+kubectl create deployment web --image=nginx:alpine
+kubectl scale deployment web --replicas=2
+kubectl expose deployment web --port=80 --type=ClusterIP
 
-# 10. Ver nodes
-
-```bash
-kubectl get nodes
-```
-
----
-
-# 11. Criar Deployment
-
-```bash
-kubectl create deployment ace-nginx \
-  --image=nginx:alpine
-```
-
----
-
-# 12. Ver Pods
-
-```bash
-kubectl get pods
-```
-
----
-
-# 13. Escalar
-
-```bash
-kubectl scale deployment ace-nginx \
-  --replicas=3
-```
-
----
-
-# 14. Expor
-
-```bash
-kubectl expose deployment ace-nginx \
-  --type=LoadBalancer \
-  --port=80
-```
-
----
-
-# 15. Ver Services
-
-```bash
+kubectl get pods -o wide
+kubectl get deployments
 kubectl get services
 ```
 
+Self-healing:
+```bash
+POD=$(kubectl get pods -l app=web -o jsonpath='{.items[0].metadata.name}')
+kubectl delete pod $POD
+kubectl get pods -w
+```
+
 ---
 
-# 16. Desired State
+# 4. Testes e falhas propositais
 
-Kubernetes tenta manter o estado declarado.
+- Delete um Pod e observe Deployment restaurar réplica.
+- Service seleciona Pods por labels; selector errado = endpoint vazio.
+- Pod não é Deployment.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Desired = 3 Pods
-
-Pod fails
-   ↓
-Kubernetes
-   ↓
-creates replacement
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 17. YAML
+# 5. Troubleshooting
 
-Exemplo:
+Use este fluxo:
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ace-nginx
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: ace-nginx
-  template:
-    metadata:
-      labels:
-        app: ace-nginx
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:alpine
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
-Aplicar:
+Comandos-base:
 
 ```bash
-kubectl apply -f deployment.yaml
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 18. Questões Estilo ACE
+# 6. Pegadinhas ACE
 
-## Questão 1
-
-Qual é a menor unidade de deployment Kubernetes?
-
-**Resposta:** Pod.
-
-## Questão 2
-
-Qual objeto mantém quantidade desejada de Pods?
-
-**Resposta:** Deployment.
-
-## Questão 3
-
-Qual objeto oferece endpoint estável para Pods?
-
-**Resposta:** Service.
+- Deployment gerencia estado desejado de Pods.
+- Service oferece endpoint estável.
+- kubectl opera recursos Kubernetes, gcloud gerencia cluster GKE.
 
 ---
 
-# 19. Checklist
+# 7. Questões estilo ACE
 
-- [ ] Entendo Kubernetes
-- [ ] Entendo GKE
-- [ ] Entendo Cluster
-- [ ] Entendo Node
-- [ ] Entendo Pod
-- [ ] Entendo Deployment
-- [ ] Entendo Service
-- [ ] Sei usar comandos básicos `kubectl`
+- Pod morreu e voltou automaticamente por Deployment. Qual conceito? → reconciliation.
+- Precisa endpoint estável para Pods efêmeros? → Service.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

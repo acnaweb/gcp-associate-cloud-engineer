@@ -4,280 +4,178 @@
 
 Ao final desta aula, você deverá:
 
-- Diferenciar GKE Autopilot e Standard;
-- Entender node pools;
-- Entender autoscaling;
-- Entender HPA em nível conceitual;
-- Troubleshootar workloads;
-- Escolher Cloud Run x GKE x Compute Engine.
+- Comparar Autopilot e Standard;
+- Entender HPA/cluster autoscaling;
+- Praticar troubleshooting kubectl;
+- Escolher Cloud Run x GKE;
 
 ---
 
-# 1. GKE Autopilot
-
-No Autopilot, o Google gerencia mais aspectos da infraestrutura.
+# 1. Modelo mental
 
 ```text
-Application Team
-      │
-      ▼
-Kubernetes Workloads
-      │
-      ▼
-GKE Autopilot
-      │
-Google manages much of nodes/infrastructure
-```
+Autopilot → Google gerencia mais infraestrutura
+Standard  → maior controle de nodes/node pools
 
-É o modo recomendado para muitos workloads novos quando você não precisa de controle detalhado dos nodes.
-
----
-
-# 2. GKE Standard
-
-No Standard, você controla mais elementos.
-
-```text
-You manage
-  ├── Node Pools
-  ├── Machine types
-  ├── Scaling configuration
-  └── More infrastructure choices
-```
-
-Use quando requisitos exigirem maior controle.
-
----
-
-# 3. Autopilot x Standard
-
-| Requisito | Opção |
-|---|---|
-| Menos administração | Autopilot |
-| Controle detalhado de nodes | Standard |
-| Configurações específicas de infraestrutura | Standard |
-| Kubernetes com experiência mais gerenciada | Autopilot |
-
----
-
-# 4. Node Pool
-
-Em Standard:
-
-```text
-Cluster
-   │
-   ├── Node Pool A
-   │     ├── Node
-   │     └── Node
-   └── Node Pool B
-         └── Node
-```
-
-Node pools permitem máquinas diferentes no mesmo cluster.
-
----
-
-# 5. Cluster Autoscaler
-
-Ajusta quantidade de nodes de acordo com demanda de Pods.
-
-```text
-Pods pending
-    │
-    ▼
-Need capacity
-    │
-    ▼
-Add nodes
-```
-
----
-
-# 6. Horizontal Pod Autoscaler
-
-Ajusta quantidade de Pods.
-
-```text
-CPU / Metric ↑
-      │
-      ▼
-More Pods
-```
-
-Não confunda:
-
-```text
 HPA → Pods
-Cluster Autoscaler → Nodes
+Cluster autoscaler → Nodes (Standard)
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 7. Criar cluster Autopilot
+# 3. Laboratório principal
 
+Use cluster existente ou crie Autopilot temporário.
+
+Troubleshooting:
 ```bash
-gcloud container clusters create-auto ace-autopilot \
-  --region=southamerica-east1
-```
-
----
-
-# 8. Ver workloads
-
-```bash
-kubectl get deployments
-kubectl get pods
-kubectl get services
-```
-
----
-
-# 9. Describe
-
-```bash
+kubectl get pods -A
 kubectl describe pod POD_NAME
+kubectl logs POD_NAME
+kubectl get events --sort-by=.lastTimestamp
+kubectl get svc
+kubectl get endpoints
 ```
 
-Muito útil para troubleshooting.
+Crie falha de imagem:
+```bash
+kubectl create deployment quebrado \
+  --image=nginx:imagem-que-nao-existe
+kubectl get pods
+kubectl describe pod -l app=quebrado
+```
+
+Observe `ImagePullBackOff`/erros relacionados e corrija:
+```bash
+kubectl set image deployment/quebrado \
+  nginx=nginx:alpine
+```
+
+HPA conceitual/prático quando metrics server disponível:
+```bash
+kubectl autoscale deployment web \
+  --cpu-percent=60 --min=1 --max=5
+```
 
 ---
 
-# 10. Logs
+# 4. Testes e falhas propositais
+
+- ImagePullBackOff → imagem/credencial/tag.
+- CrashLoopBackOff → app inicia e falha repetidamente.
+- Pending → scheduling/recursos/policies.
+- Service sem endpoints → labels/selectors/readiness.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
+
+```text
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
+```
+
+---
+
+# 5. Troubleshooting
+
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
 
 ```bash
-kubectl logs POD_NAME
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 11. Problemas comuns
+# 6. Pegadinhas ACE
 
-## Pod Pending
-
-Verifique:
-
-- Recursos;
-- Scheduling;
-- Node capacity;
-- Constraints.
-
-## CrashLoopBackOff
-
-Verifique:
-
-- Logs;
-- Command;
-- Environment;
-- Dependency;
-- Probes.
-
-## ImagePullBackOff
-
-Verifique:
-
-- Nome da image;
-- Registry;
-- IAM;
-- Tag.
+- Autopilot reduz operação de nodes.
+- Standard oferece maior controle.
+- Cloud Run é mais simples para request-driven stateless sem necessidade de Kubernetes.
+- GKE quando há requisitos Kubernetes/orquestração avançada.
 
 ---
 
-# 12. Troubleshooting flow
+# 7. Questões estilo ACE
+
+- Equipe não quer gerenciar nodes e aceita constraints Autopilot? → Autopilot.
+- Precisa customização profunda de node pools? → Standard.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-kubectl get pods
-      ↓
-kubectl describe pod
-      ↓
-kubectl logs
-      ↓
-Events
-      ↓
-Image / IAM / Resource / Network
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 13. Cloud Run x GKE x Compute Engine
-
-| Requisito | Serviço |
-|---|---|
-| VM / SO controlado | Compute Engine |
-| Container serverless simples | Cloud Run |
-| Kubernetes | GKE |
-| Muitos serviços com recursos Kubernetes | GKE |
-| API stateless sem cluster | Cloud Run |
-| Aplicação legada em VM | Compute Engine |
-
----
-
-# 14. Modelo de decisão
-
-```text
-Precisa Kubernetes?
-   │
-   ├── Sim → GKE
-   │
-   └── Não
-        │
-        ▼
-Container stateless?
-   │
-   ├── Sim → Cloud Run
-   │
-   └── Não / precisa SO
-        ↓
-Compute Engine
-```
-
----
-
-# 15. Pegadinhas ACE
-
-- Cloud Run não exige cluster Kubernetes.
-- GKE Autopilot reduz responsabilidade de infraestrutura.
-- Standard oferece mais controle.
-- HPA escala Pods.
-- Cluster Autoscaler escala Nodes.
-- `kubectl describe` e `kubectl logs` são essenciais em troubleshooting.
-
----
-
-# 16. Questões Estilo ACE
-
-## Questão 1
-
-Equipe quer Kubernetes, mas quer minimizar administração de nodes.
-
-**Resposta:** GKE Autopilot.
-
-## Questão 2
-
-Equipe exige machine types e node pools específicos.
-
-**Resposta:** GKE Standard.
-
-## Questão 3
-
-CPU sobe e a aplicação precisa aumentar número de Pods.
-
-**Resposta:** Horizontal Pod Autoscaler.
-
-## Questão 4
-
-Pods não cabem nos nodes atuais.
-
-**Resposta:** Cluster Autoscaler pode aumentar capacidade.
-
----
-
-# 17. Checklist
-
-- [ ] Sei diferenciar Autopilot e Standard
-- [ ] Entendo node pools
-- [ ] Entendo HPA
-- [ ] Entendo Cluster Autoscaler
-- [ ] Sei usar `kubectl describe`
-- [ ] Sei usar `kubectl logs`
-- [ ] Sei escolher Cloud Run, GKE ou Compute Engine

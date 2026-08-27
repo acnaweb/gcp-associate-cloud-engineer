@@ -1,23 +1,12 @@
 # Semana 4 — Cloud Storage e Bancos de Dados
 
-## Objetivo da Semana
+## Método desta versão
 
-Ao final desta semana, você deverá dominar:
+Todas as aulas foram reorganizadas para privilegiar prática e raciocínio operacional:
 
-- Cloud Storage;
-- Buckets e objetos;
-- Classes de armazenamento;
-- Lifecycle Management;
-- Versioning, retenção e acesso;
-- Signed URLs;
-- Cloud SQL;
-- AlloyDB;
-- Spanner;
-- Firestore;
-- Bigtable;
-- BigQuery em nível ACE;
-- Escolha do banco adequado para cada cenário;
-- Backup, HA e recuperação em nível conceitual.
+```text
+Conceito → Criar → Inspecionar → Testar → Quebrar → Diagnosticar → Corrigir → Cleanup
+```
 
 ## Aulas
 
@@ -27,18 +16,13 @@ Ao final desta semana, você deverá dominar:
 4. [Aula 4 — Spanner, Firestore e Bigtable](./aula-04-spanner-firestore-bigtable.md)
 5. [Aula 5 — BigQuery e Matriz de Escolha de Bancos](./aula-05-bigquery-matriz-escolha-bancos.md)
 
-## Checklist da Semana
+## Checklist da semana
 
-- [ ] Sei criar buckets e objetos
-- [ ] Sei diferenciar Standard, Nearline, Coldline e Archive
-- [ ] Entendo duração mínima de armazenamento
-- [ ] Entendo Lifecycle Management
-- [ ] Entendo Versioning
-- [ ] Entendo retenção e signed URLs
-- [ ] Sei quando usar Cloud SQL
-- [ ] Sei quando usar AlloyDB
-- [ ] Sei quando usar Spanner
-- [ ] Sei quando usar Firestore
-- [ ] Sei quando usar Bigtable
-- [ ] Sei reconhecer BigQuery como serviço analítico
-- [ ] Sei comparar os principais serviços de banco GCP
+- [ ] Executei os laboratórios aplicáveis;
+- [ ] Consigo explicar os recursos sem decorar comandos;
+- [ ] Provoquei e diagnostiquei falhas;
+- [ ] Consigo distinguir IAM, rede, quota, aplicação e configuração;
+- [ ] Consigo justificar a escolha de serviço em cenários ACE;
+- [ ] Removi recursos com custo ao terminar.
+
+> Alguns recursos corporativos exigem Organization, billing permissions, provedores externos ou infraestrutura física. Nesses casos, a aula usa laboratório de inspeção/arquitetura/decisão em vez de simular provisionamento irreal.

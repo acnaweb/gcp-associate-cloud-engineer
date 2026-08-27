@@ -4,297 +4,171 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Instance Templates;
-- Criar templates reutilizáveis;
-- Entender Managed Instance Groups;
-- Diferenciar MIG zonal e regional;
-- Entender alta disponibilidade com MIG;
-- Reconhecer MIG stateless e stateful.
+- Criar Instance Template;
+- Criar MIG zonal e entender regional;
+- Redimensionar MIG;
+- Atualizar template conceitualmente;
 
 ---
 
-# 1. Instance Template
-
-Um Instance Template guarda uma configuração reutilizável de VM.
-
-Exemplo:
+# 1. Modelo mental
 
 ```text
 Instance Template
       │
-      ├── Machine Type
-      ├── Boot Image
-      ├── Network
-      ├── Metadata
-      ├── Startup Script
-      └── Service Account
-```
-
-É a base para criar VMs consistentes e para Managed Instance Groups.
-
----
-
-# 2. Por que usar?
-
-Sem template:
-
-```text
-VM1 → configuração manual
-VM2 → configuração manual
-VM3 → configuração manual
-```
-
-Com template:
-
-```text
-Instance Template
-      │
-  ┌───┼───┐
-  ▼   ▼   ▼
- VM1 VM2 VM3
-```
-
-Resultado:
-
-- Consistência;
-- Reprodutibilidade;
-- Escala;
-- Atualizações mais controladas.
-
----
-
-# 3. Criar Instance Template
-
-```bash
-gcloud compute instance-templates create ace-web-template-v1 \
-  --machine-type=e2-medium \
-  --metadata-from-file startup-script=startup.sh
-```
-
-Listar:
-
-```bash
-gcloud compute instance-templates list
-```
-
----
-
-# 4. Managed Instance Group
-
-Um MIG administra um conjunto de instâncias criadas a partir de um template.
-
-```text
-Instance Template
-       │
-       ▼
+      v
 Managed Instance Group
-       │
-   ┌───┼───┐
-   ▼   ▼   ▼
-  VM1 VM2 VM3
+   ├─ VM
+   ├─ VM
+   └─ VM
 ```
 
----
-
-# 5. Benefícios do MIG
-
-- Criação/recriação de VMs;
-- Autoscaling;
-- Autohealing;
-- Atualizações controladas;
-- Integração com Load Balancer;
-- Distribuição entre zones em MIG regional.
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 6. MIG Zonal
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
 
 ```text
-Zone A
-  │
-  └── MIG
-      ├── VM1
-      ├── VM2
-      └── VM3
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
-
-Se a zone falhar, o grupo pode ser afetado.
 
 ---
 
-# 7. MIG Regional
+# 3. Laboratório principal
+
+```bash
+cat > startup.sh <<'EOF'
+#!/bin/bash
+apt-get update
+apt-get install -y nginx
+echo "$(hostname)" > /var/www/html/index.html
+EOF
+
+gcloud compute instance-templates create ace-template-v1 \
+  --machine-type=e2-micro \
+  --metadata-from-file=startup-script=startup.sh \
+  --image-family=debian-12 --image-project=debian-cloud
+
+gcloud compute instance-groups managed create ace-mig \
+  --zone=us-central1-a \
+  --template=ace-template-v1 \
+  --size=2
+
+gcloud compute instance-groups managed list-instances ace-mig \
+  --zone=us-central1-a
+
+gcloud compute instance-groups managed resize ace-mig \
+  --zone=us-central1-a --size=3
+```
+
+---
+
+# 4. Testes e falhas propositais
+
+- Delete manualmente uma VM do MIG e observe o grupo recriá-la.
+- Instance Template é imutável: para mudanças, crie nova versão/template e faça update do MIG.
+- MIG regional distribui instâncias entre zonas e melhora disponibilidade.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Region
-  │
-  ├── Zone A → VM1
-  ├── Zone B → VM2
-  └── Zone C → VM3
-```
-
-Melhor opção para alta disponibilidade contra falha zonal.
-
----
-
-# 8. Criar MIG
-
-Exemplo zonal:
-
-```bash
-gcloud compute instance-groups managed create ace-web-mig \
-  --base-instance-name=ace-web \
-  --template=ace-web-template-v1 \
-  --size=2 \
-  --zone=southamerica-east1-a
-```
-
-Listar:
-
-```bash
-gcloud compute instance-groups managed list
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 9. Redimensionar manualmente
+# 5. Troubleshooting
 
-```bash
-gcloud compute instance-groups managed resize ace-web-mig \
-  --size=3 \
-  --zone=southamerica-east1-a
-```
-
----
-
-# 10. Stateless x Stateful MIG
-
-## Stateless
-
-As instâncias podem ser recriadas livremente.
-
-Bom para:
-
-- Web;
-- APIs;
-- workers;
-- frontends.
-
-## Stateful
-
-Preserva estado específico como discos e metadata em cenários compatíveis.
-
-Bom para workloads que precisam manter determinados dados/identidade.
-
-Para o ACE, o mais importante é saber:
-
-> O MIG stateless é o padrão mental para escalabilidade horizontal.
-
----
-
-# 11. Atualizações
-
-Você pode criar nova versão do template:
+Use este fluxo:
 
 ```text
-ace-web-template-v1
-        ↓
-ace-web-template-v2
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
-e atualizar o MIG gradualmente.
-
-Isso permite:
-
-- rolling updates;
-- canary;
-- menor indisponibilidade.
-
----
-
-# 12. MIG + Load Balancer
-
-Arquitetura típica:
-
-```text
-Internet
-   │
-   ▼
-Load Balancer
-   │
-   ▼
-Regional MIG
-   │
- ┌─┼─┐
- ▼ ▼ ▼
-VM VM VM
-```
-
----
-
-# 13. Laboratório
+Comandos-base:
 
 ```bash
-# Criar template
-gcloud compute instance-templates create ace-web-template-v1 \
-  --machine-type=e2-medium \
-  --metadata-from-file startup-script=startup.sh
-
-# Criar MIG zonal
-gcloud compute instance-groups managed create ace-web-mig \
-  --base-instance-name=ace-web \
-  --template=ace-web-template-v1 \
-  --size=2 \
-  --zone=southamerica-east1-a
-
-# Listar
-gcloud compute instance-groups managed list
-
-# Redimensionar
-gcloud compute instance-groups managed resize ace-web-mig \
-  --size=3 \
-  --zone=southamerica-east1-a
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 14. Pegadinhas ACE
+# 6. Pegadinhas ACE
 
-- MIG usa Instance Template.
-- MIG regional distribui instâncias entre zones.
-- MIG regional é preferível para maior disponibilidade.
-- Stateless MIG é adequado para workloads horizontalmente escaláveis.
-- Stateful MIG existe, mas exige configuração específica.
+- MIG gerencia instâncias; unmanaged group não oferece os mesmos recursos.
+- Template define 'como criar'. MIG define 'grupo desejado'.
+- Regional MIG é preferível quando requisito é resiliência zonal.
 
 ---
 
-# 15. Questões Estilo ACE
+# 7. Questões estilo ACE
 
-## Questão 1
-
-Você precisa criar 20 VMs com a mesma configuração.
-
-**Resposta:** Instance Template + MIG.
-
-## Questão 2
-
-Você precisa tolerar falha de uma zone.
-
-**Resposta:** Regional MIG.
-
-## Questão 3
-
-Você quer atualizar VMs gradualmente.
-
-**Resposta:** nova versão de template + rolling update no MIG.
+- Uma VM do grupo foi apagada. O que o MIG faz? → reconcilia com tamanho desejado.
+- Precisa mudar machine type de todas? → novo template + update.
 
 ---
 
-# 16. Checklist
+# 8. Checklist
 
-- [ ] Entendo Instance Template
-- [ ] Sei criar template
-- [ ] Entendo MIG
-- [ ] Sei criar MIG
-- [ ] Sei diferenciar zonal e regional MIG
-- [ ] Entendo stateless e stateful MIG
-- [ ] Entendo MIG + Load Balancer
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

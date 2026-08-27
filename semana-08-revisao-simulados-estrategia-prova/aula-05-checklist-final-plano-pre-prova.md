@@ -4,316 +4,178 @@
 
 Ao final desta aula, você deverá:
 
-- Fazer revisão final;
-- Saber se está pronto;
-- Organizar os últimos dias;
-- Evitar estudo desorganizado na véspera.
+- Validar prontidão;
+- Criar plano de revisão;
+- Repetir labs críticos;
+- Evitar estudo caótico na véspera;
 
 ---
 
-# 1. Checklist Técnico Final
-
-## Fundamentos
-
-- [ ] Organization
-- [ ] Folder
-- [ ] Project
-- [ ] Billing
-- [ ] APIs
-- [ ] Regions
-- [ ] Zones
-- [ ] `gcloud`
-
-## IAM
-
-- [ ] Principal
-- [ ] Role
-- [ ] Permission
-- [ ] Resource
-- [ ] Inheritance
-- [ ] Service Account
-- [ ] Impersonation
-- [ ] IAM Conditions
-- [ ] Least privilege
-
-## Compute
-
-- [ ] Compute Engine
-- [ ] Machine Types
-- [ ] Persistent Disks
-- [ ] Snapshots
-- [ ] Images
-- [ ] Templates
-- [ ] MIG
-- [ ] Autoscaling
-- [ ] Autohealing
-- [ ] Spot
-
-## Networking
-
-- [ ] VPC global
-- [ ] Subnet regional
-- [ ] CIDR
-- [ ] Firewall
-- [ ] Routes
-- [ ] Cloud NAT
-- [ ] Private Google Access
-- [ ] Load Balancer
-- [ ] Shared VPC
-- [ ] Peering
-- [ ] VPN
-- [ ] Interconnect
-
-## Storage
-
-- [ ] Standard
-- [ ] Nearline
-- [ ] Coldline
-- [ ] Archive
-- [ ] Lifecycle
-- [ ] Versioning
-- [ ] Retention
-- [ ] Signed URL
-
-## Databases
-
-- [ ] Cloud SQL
-- [ ] AlloyDB
-- [ ] Spanner
-- [ ] Firestore
-- [ ] Bigtable
-- [ ] BigQuery
-
-## Containers
-
-- [ ] Artifact Registry
-- [ ] Cloud Run
-- [ ] Revisions
-- [ ] Jobs
-- [ ] GKE
-- [ ] Pod
-- [ ] Deployment
-- [ ] Service
-- [ ] Autopilot
-- [ ] Standard
-- [ ] HPA
-- [ ] Cluster Autoscaler
-
-## Operations
-
-- [ ] Monitoring
-- [ ] Logging
-- [ ] Metrics
-- [ ] Alerts
-- [ ] Uptime Checks
-- [ ] Billing
-- [ ] Budget
-- [ ] Quota
-- [ ] Terraform
-
----
-
-# 2. Teste de Prontidão
-
-Você está próximo de estar pronto quando:
+# 1. Modelo mental
 
 ```text
-≥ 80% nos simulados
-+
-erros compreendidos
-+
-labs básicos executados
-+
-modelos mentais claros
+Lacunas
+  ↓ labs dirigidos
+  ↓ simulado
+  ↓ análise de erros
+  ↓ revisão final
 ```
 
-Mais importante que decorar:
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
 
 ```text
-saber decidir
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 3. Últimos 7 dias
+# 3. Laboratório principal
 
-## Dia -7
+### Checklist hands-on mínimo
+Execute ou explique sem consultar:
 
-Simulado completo.
+```text
+[ ] criar/configurar projeto/contexto gcloud
+[ ] criar VM e operar start/stop/reset
+[ ] disk + snapshot
+[ ] VPC/subnet/firewall/route
+[ ] Cloud NAT/PGA/DNS
+[ ] MIG + health check + LB
+[ ] bucket + IAM + lifecycle
+[ ] Cloud SQL/BigQuery escolha e operação básica
+[ ] Artifact Registry + Cloud Run
+[ ] GKE kubectl básico
+[ ] Monitoring/Logging
+[ ] quota/budget
+[ ] Terraform init/plan/apply/destroy
+[ ] SA + impersonation + least privilege
+```
 
-## Dia -6
+### Plano pré-prova
+- D-7 a D-4: repetir labs onde errou.
+- D-3: simulado completo.
+- D-2: revisar erros, IAM e networking.
+- D-1: revisão leve; não abrir novos temas.
+- Dia da prova: validar horário/documentos/regras e chegar com margem.
 
-Revisar IAM e Networking.
-
-## Dia -5
-
-Revisar Compute e Storage.
-
-## Dia -4
-
-Revisar Databases e Containers.
-
-## Dia -3
-
-Revisar Operations, Billing e Terraform.
-
-## Dia -2
-
-Simulado final + análise dos erros.
-
-## Dia -1
-
-Revisão leve.
-
-Não tente aprender dezenas de serviços novos.
+### Critério objetivo
+Você está pronto quando:
+1. acerta consistentemente simulados;
+2. explica por que alternativas erradas estão erradas;
+3. executa comandos fundamentais sem copiar receita;
+4. distingue rapidamente IAM, rede, quota, aplicação e serviço inadequado.
 
 ---
 
-# 4. Véspera
+# 4. Testes e falhas propositais
 
-Faça apenas:
+- Não decore só gcloud; entenda o recurso.
+- Evite estudar produto fora do escopo sacrificando fundamentos.
+- Sono e leitura cuidadosa têm impacto real em prova de cenário.
 
-```text
-IAM
-VPC
-Compute
-Storage
-Databases
-Cloud Run/GKE
-Monitoring
-```
-
-em revisão visual.
-
----
-
-# 5. Folha Mental
-
-Memorize:
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-VPC → Global
-Subnet → Regional
-VM → Zonal
-```
-
-```text
-HPA → Pods
-Cluster Autoscaler → Nodes
-```
-
-```text
-Autoscaling → Capacity
-Autohealing → Health
-```
-
-```text
-Budget → Money monitoring
-Quota → Technical limit
-```
-
-```text
-Snapshot → Backup
-Image → VM template/base
-```
-
-```text
-Cloud NAT → Outbound internet for private VM
-```
-
-```text
-Cloud SQL → Traditional relational
-Spanner → Distributed relational
-BigQuery → Analytics
-```
-
-```text
-Cloud Run → Serverless containers
-GKE → Kubernetes
-Compute Engine → VM control
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 6. Segurança Mental
+# 5. Troubleshooting
 
-Em questões de IAM:
+Use este fluxo:
 
 ```text
-Who?
-What role?
-Which resource?
-Which scope?
-Can I reduce privilege?
-Can I avoid long-lived key?
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 7. Diagnóstico Mental
+# 6. Pegadinhas ACE
 
-```text
-403
-→ IAM/Auth
-
-Timeout
-→ Network/Firewall/DNS
-
-Quota exceeded
-→ Quota
-
-500
-→ Application/Dependency
-
-High latency
-→ Monitoring + Logs
-```
+- Revisão final deve ser baseada em erros reais.
+- IAM + networking + compute + operações merecem prioridade alta.
+- Prática é melhor que releitura passiva.
 
 ---
 
-# 8. Objetivo Final
+# 7. Questões estilo ACE
 
-Não tente decorar o Google Cloud inteiro.
-
-O ACE avalia sua capacidade de:
-
-```text
-Configure
-Deploy
-Operate
-Secure
-Troubleshoot
-```
+- Se você não consegue explicar por que a opção errada está errada, ainda há lacuna.
+- Última revisão deve consolidar, não expandir.
 
 ---
 
-# 9. Próximo passo após aprovação
+# 8. Checklist
 
-Uma sequência natural de certificação pode ser:
-
-```text
-Associate Cloud Engineer
-        ↓
-Professional Data Engineer
-        ↓
-Professional Cloud Architect
-```
-
-ou ajustar conforme foco profissional.
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
 
 ---
 
-# 10. Checklist Final
+# 9. O que memorizar
 
-- [ ] Fiz simulados
-- [ ] Analisei erros
-- [ ] Executei labs
-- [ ] Revisei IAM
-- [ ] Revisei Networking
-- [ ] Revisei Compute
-- [ ] Revisei Storage
-- [ ] Revisei Databases
-- [ ] Revisei Containers
-- [ ] Revisei Operations
-- [ ] Estou confortável com `gcloud`
-- [ ] Estou confortável com cenários
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

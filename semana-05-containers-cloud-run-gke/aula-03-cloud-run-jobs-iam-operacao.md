@@ -4,227 +4,170 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Cloud Run Jobs;
-- Diferenciar Service e Job;
-- Entender Service Account de runtime;
-- Entender IAM;
-- Trabalhar com logs;
-- Entender variáveis e secrets em nível conceitual.
+- Criar Cloud Run Job;
+- Executar manualmente;
+- Configurar Service Account;
+- Ler executions/logs;
 
 ---
 
-# 1. Service x Job
-
-## Cloud Run Service
-
-Recebe requisições/eventos continuamente.
+# 1. Modelo mental
 
 ```text
-Request
-   ↓
-Service
-   ↓
-Response
+Scheduler/manual ──> Cloud Run Job
+                    └─ execution ── task(s)
 ```
 
-## Cloud Run Job
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
-Executa tarefas até a conclusão.
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
 
 ```text
-Start
-  ↓
-Task
-  ↓
-Complete
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. Casos de uso para Jobs
-
-- Batch;
-- ETL curto;
-- Processamento agendado;
-- Migração;
-- Scripts administrativos;
-- Workers finitos.
-
----
-
-# 3. Criar Job
+# 3. Laboratório principal
 
 ```bash
-PROJECT_ID=$(gcloud config get-value project)
+export REGION=us-central1
+gcloud services enable run.googleapis.com
 
 gcloud run jobs create ace-job \
-  --image=southamerica-east1-docker.pkg.dev/$PROJECT_ID/ace-containers/ace-web:v1 \
-  --region=southamerica-east1
-```
+  --image=alpine \
+  --region=$REGION \
+  --command=sh \
+  --args=-c,'echo ACE Job; date'
 
----
-
-# 4. Executar Job
-
-```bash
 gcloud run jobs execute ace-job \
-  --region=southamerica-east1
+  --region=$REGION \
+  --wait
+
+gcloud run jobs executions list \
+  --job=ace-job \
+  --region=$REGION
+```
+
+Service Account:
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+gcloud iam service-accounts create ace-job-sa
+
+gcloud run jobs update ace-job \
+  --region=$REGION \
+  --service-account=ace-job-sa@$PROJECT_ID.iam.gserviceaccount.com
 ```
 
 ---
 
-# 5. Tasks
+# 4. Testes e falhas propositais
 
-Um job pode executar múltiplas tasks.
+- Use comando `exit 1` numa nova versão do job e observe execution FAILED.
+- Service account de runtime define identidade do job para APIs Google.
+- Job não precisa ficar ouvindo porta HTTP.
 
-```text
-Job Execution
-   │
-   ├── Task 1
-   ├── Task 2
-   └── Task 3
-```
-
-Tasks podem ser paralelas, dependendo da configuração.
-
----
-
-# 6. Service Account de runtime
-
-Modelo:
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Cloud Run
-   │
-   │ runs as
-   ▼
-Service Account
-   │
-   ▼
-Google Cloud APIs
-```
-
-Conceda somente as roles necessárias.
-
----
-
-# 7. Exemplo
-
-Cloud Run precisa ler BigQuery:
-
-```text
-Service Account
-      +
-roles/bigquery.dataViewer
-```
-
-Evite:
-
-```text
-roles/editor
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 8. Atualizar Service Account
+# 5. Troubleshooting
+
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
 
 ```bash
-gcloud run services update ace-web \
-  --region=southamerica-east1 \
-  --service-account=ace-runtime-sa@$PROJECT_ID.iam.gserviceaccount.com
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 9. Logs
+# 6. Pegadinhas ACE
 
-Listar logs:
-
-```bash
-gcloud run services logs read ace-web \
-  --region=southamerica-east1
-```
-
-Logs também aparecem no Cloud Logging.
+- Service ≠ Job.
+- Invoker executa/chama; runtime SA define o que workload pode acessar.
+- Falha de job: olhar execution + logs.
 
 ---
 
-# 10. Secrets
+# 7. Questões estilo ACE
 
-Não coloque senha diretamente em variável versionada.
+- Processo batch diário containerizado? → Cloud Run Job.
+- Endpoint HTTP escalável? → Cloud Run Service.
 
-Prefira:
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Secret Manager
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
-Modelo:
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-```text
-Cloud Run
-   │
-   ▼
-Secret Manager
-```
-
----
-
-# 11. Troubleshooting
-
-Se o serviço falhar:
-
-```text
-1. Image existe?
-2. Porta correta?
-3. Container inicia?
-4. IAM correto?
-5. Service Account tem role?
-6. Environment vars?
-7. Logs?
-8. Quotas?
-```
-
----
-
-# 12. Service x Job — decisão
-
-| Cenário | Serviço |
-|---|---|
-| API HTTP | Cloud Run Service |
-| Site web containerizado | Cloud Run Service |
-| Batch diário | Cloud Run Job |
-| Script finito | Cloud Run Job |
-
----
-
-# 13. Questões Estilo ACE
-
-## Questão 1
-
-Processamento noturno deve iniciar, executar e terminar.
-
-**Resposta:** Cloud Run Job.
-
-## Questão 2
-
-API precisa acessar BigQuery.
-
-**Resposta:** Service Account com role mínima necessária.
-
-## Questão 3
-
-Container falha ao iniciar.
-
-**Resposta:** verificar logs, image, porta e configuração.
-
----
-
-# 14. Checklist
-
-- [ ] Entendo Cloud Run Job
-- [ ] Sei diferenciar Service e Job
-- [ ] Entendo Service Account de runtime
-- [ ] Entendo least privilege
-- [ ] Sei consultar logs
-- [ ] Sei o papel do Secret Manager

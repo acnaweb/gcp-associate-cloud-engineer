@@ -4,253 +4,174 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Cloud Logging;
-- Consultar logs;
-- Entender structured logs;
-- Entender log-based metrics;
-- Correlacionar logs com Monitoring;
-- Seguir um fluxo de troubleshooting.
+- Usar Logs Explorer/gcloud logging;
+- Filtrar logs;
+- Criar falha e localizar causa;
+- Entender log-based metric;
 
 ---
 
-# 1. Cloud Logging
-
-Cloud Logging centraliza logs de serviços e aplicações.
+# 1. Modelo mental
 
 ```text
-Applications
-Compute Engine
-Cloud Run
-GKE
-Cloud SQL
-...
-   │
-   ▼
-Cloud Logging
+Workload ── logs ──> Cloud Logging
+                      ├─ query
+                      ├─ sinks
+                      └─ log-based metrics
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. Logs Explorer
+# 3. Laboratório principal
 
-Ferramenta principal para consulta de logs.
+Gere logs com uma VM:
+```bash
+gcloud compute instances create ace-log-vm \
+  --zone=us-central1-a \
+  --machine-type=e2-micro \
+  --image-family=debian-12 --image-project=debian-cloud
+```
 
-Você pode filtrar por:
+Leia audit logs recentes:
+```bash
+gcloud logging read \
+  'resource.type="gce_instance"' \
+  --limit=20 \
+  --format="table(timestamp,severity,logName)"
+```
 
-- Resource type;
-- Severity;
-- Service;
-- Project;
-- Text;
-- Labels;
-- Timestamp.
+Filtre erro:
+```bash
+gcloud logging read \
+  'severity>=ERROR' \
+  --limit=20
+```
 
----
-
-# 3. Exemplo de filtro
-
-Conceitualmente:
-
+No Logs Explorer pratique:
 ```text
 resource.type="gce_instance"
 severity>=ERROR
 ```
 
-Objetivo:
-
-> encontrar erros em VMs.
+Crie uma operação inválida/erro controlado e compare timestamp + principal + recurso nos Audit Logs.
 
 ---
 
-# 4. Severity
+# 4. Testes e falhas propositais
 
-Níveis comuns:
+- Filtro muito amplo pode gerar ruído/custo/tempo.
+- Logs de auditoria ajudam a responder 'quem fez o quê'.
+- Log-based metric transforma ocorrência em métrica para alerting.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-DEBUG
-INFO
-NOTICE
-WARNING
-ERROR
-CRITICAL
-ALERT
-EMERGENCY
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 5. Structured Logging
+# 5. Troubleshooting
 
-Logs estruturados usam campos.
-
-Exemplo:
-
-```json
-{
-  "severity": "ERROR",
-  "message": "Database connection failed",
-  "service": "orders-api",
-  "request_id": "abc123"
-}
-```
-
-Isso facilita filtros e correlação.
-
----
-
-# 6. Log-based Metrics
-
-Você pode transformar padrões de logs em métricas.
-
-Exemplo:
+Use este fluxo:
 
 ```text
-Log contains "ERROR"
-       │
-       ▼
-Log-based Metric
-       │
-       ▼
-Alerting Policy
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
----
-
-# 7. Monitoring + Logging
-
-Fluxo operacional:
-
-```text
-Monitoring detects anomaly
-        ↓
-Alert opens incident
-        ↓
-Engineer checks logs
-        ↓
-Root cause
-        ↓
-Correction
-```
-
----
-
-# 8. Troubleshooting de Cloud Run
-
-```text
-Service failed
-   ↓
-Cloud Run logs
-   ↓
-Check:
-- container start
-- port
-- IAM
-- env vars
-- dependency
-```
-
----
-
-# 9. Troubleshooting de Compute Engine
-
-```text
-VM issue
-  ↓
-Instance status
-  ↓
-Serial output
-  ↓
-System logs
-  ↓
-Network/firewall
-```
-
----
-
-# 10. Troubleshooting de GKE
-
-```text
-kubectl get pods
-      ↓
-kubectl describe pod
-      ↓
-kubectl logs
-      ↓
-Cloud Logging
-```
-
----
-
-# 11. Comandos úteis
-
-Cloud Run:
+Comandos-base:
 
 ```bash
-gcloud run services logs read SERVICE_NAME \
-  --region=REGION
-```
-
-Compute Engine serial output:
-
-```bash
-gcloud compute instances get-serial-port-output VM_NAME \
-  --zone=ZONE
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 12. Fluxo geral de troubleshooting
+# 6. Pegadinhas ACE
+
+- Logging = eventos/registros; Monitoring = métricas/time series.
+- Audit logs são essenciais em IAM/troubleshooting.
+- Sink exporta logs para destinos suportados.
+
+---
+
+# 7. Questões estilo ACE
+
+- Quem deletou VM? → Audit Logs.
+- Contar ocorrências de mensagem ERROR e alertar? → log-based metric + alert.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-1. What changed?
-2. Is resource healthy?
-3. Check metrics
-4. Check logs
-5. Check IAM
-6. Check network
-7. Check quota
-8. Check dependencies
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 13. Questões Estilo ACE
-
-## Questão 1
-
-CPU está normal, mas aplicação retorna HTTP 500.
-
-**Resposta:** consultar logs da aplicação.
-
-## Questão 2
-
-Você quer gerar alerta sempre que logs contiverem padrão específico.
-
-**Resposta:** log-based metric + alerting policy.
-
-## Questão 3
-
-VM não completa boot.
-
-**Resposta:** verificar serial output/logs de inicialização.
-
----
-
-# 14. Pegadinhas ACE
-
-- Logs detalham eventos; métricas mostram comportamento agregado.
-- Um erro de aplicação nem sempre aparece como problema de infraestrutura.
-- IAM, rede e quota são causas comuns.
-- Sempre correlacione mudança recente com o início do incidente.
-
----
-
-# 15. Checklist
-
-- [ ] Entendo Cloud Logging
-- [ ] Sei usar Logs Explorer
-- [ ] Entendo severity
-- [ ] Entendo structured logging
-- [ ] Entendo log-based metrics
-- [ ] Sei correlacionar logs e metrics
-- [ ] Sei seguir troubleshooting

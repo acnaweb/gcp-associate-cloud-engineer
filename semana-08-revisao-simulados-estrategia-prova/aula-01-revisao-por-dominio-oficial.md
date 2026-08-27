@@ -4,238 +4,181 @@
 
 Ao final desta aula, você deverá:
 
-- Revisar os quatro domínios oficiais do ACE;
-- Identificar pontos fracos;
-- Reforçar os modelos mentais mais importantes;
-- Consolidar decisões entre serviços.
+- Revisar domínios ACE por ação prática;
+- Detectar lacunas;
+- Executar comandos-chave sem consulta;
 
 ---
 
-# 1. Domínios oficiais
-
-O exame ACE avalia quatro grandes capacidades:
+# 1. Modelo mental
 
 ```text
-1. Configurar um ambiente de solução de nuvem
-2. Planejar e implementar uma solução de nuvem
-3. Garantir a operação de uma solução de nuvem
-4. Configurar o acesso e a segurança
+ACE
+ ├─ Set up cloud solution environment
+ ├─ Plan/configure cloud solution
+ ├─ Deploy/implement
+ └─ Ensure successful operation
 ```
 
----
-
-# 2. Configurar um ambiente de solução de nuvem
-
-Revise:
-
-```text
-Organization
-Folder
-Project
-Billing
-IAM
-APIs
-gcloud
-Regions
-Zones
-```
-
-Perguntas que você precisa responder:
-
-- Qual projeto está ativo?
-- Qual região/zone está configurada?
-- A API necessária está habilitada?
-- A Billing Account está associada?
-- O principal correto recebeu a role correta?
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 3. Planejar e implementar uma solução
+# 2. Regra de estudo da aula
 
-Revise:
+Use sempre este ciclo:
 
 ```text
-Compute Engine
-Cloud Run
-GKE
-Cloud Storage
-Cloud SQL
-AlloyDB
-Spanner
-Firestore
-Bigtable
-BigQuery
-VPC
-Load Balancing
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 4. Modelo de decisão de compute
+# 3. Laboratório principal
 
+Faça um circuito de 45–60 minutos:
+
+```bash
+# contexto
+gcloud config list
+
+# IAM
+gcloud projects get-iam-policy $(gcloud config get-value project)
+
+# compute
+gcloud compute instances list
+
+# networking
+gcloud compute networks list
+gcloud compute firewall-rules list
+gcloud compute routes list
+
+# storage
+gcloud storage buckets list
+
+# Cloud Run/GKE
+gcloud run services list --region=us-central1
+gcloud container clusters list
+
+# operations
+gcloud logging read 'severity>=ERROR' --limit=5
+
+# quotas
+gcloud compute project-info describe --format='yaml(quotas)'
+```
+
+Para cada domínio, escreva:
 ```text
-Precisa controlar SO?
-  → Compute Engine
-
-Precisa Kubernetes?
-  → GKE
-
-Container stateless sem cluster?
-  → Cloud Run
+Consigo fazer sem consultar?
+Consigo diagnosticar?
+Consigo explicar por que escolhi o serviço?
 ```
 
 ---
 
-# 5. Modelo de decisão de banco
+# 4. Testes e falhas propositais
+
+- Não revise apenas definições: pratique decisões.
+- Marque erros por categoria e volte à aula correspondente.
+- Uma questão pode misturar IAM + rede + operação.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Relacional tradicional
-  → Cloud SQL
-
-PostgreSQL enterprise/performance
-  → AlloyDB
-
-SQL distribuído/global
-  → Spanner
-
-Documentos
-  → Firestore
-
-Wide-column/time series
-  → Bigtable
-
-Analytics
-  → BigQuery
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 6. Modelo de decisão de Storage
+# 5. Troubleshooting
+
+Use este fluxo:
 
 ```text
-Acesso frequente
-  → Standard
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
 
-Mensal
-  → Nearline
+Comandos-base:
 
-Trimestral
-  → Coldline
-
-Muito raro
-  → Archive
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 7. Operação
+# 6. Pegadinhas ACE
 
-Revise:
-
-```text
-Monitoring
-Logging
-Alerting
-Uptime Checks
-Quotas
-Billing
-Troubleshooting
-Terraform
-```
+- A prova cobra execução e julgamento operacional.
+- Prefira solução gerenciada e mínima que atende requisito.
+- Leia verbos: create, grant, troubleshoot, migrate, monitor.
 
 ---
 
-# 8. Segurança
+# 7. Questões estilo ACE
 
-Revise:
-
-```text
-Principal
-Role
-Resource
-Condition
-Service Account
-Impersonation
-Least Privilege
-Workload Identity
-Audit Logs
-```
+- Cenário pede ação mais simples e segura: elimine opções amplas/manuais sem necessidade.
+- Erro de permissão não é resolvido com mudança de rede.
 
 ---
 
-# 9. Networking
+# 8. Checklist
 
-Memorize:
-
-```text
-VPC     → Global
-Subnet  → Regional
-VM      → Zonal
-```
-
-E diferencie:
-
-```text
-Route
-  → para onde o tráfego vai
-
-Firewall
-  → se o tráfego é permitido
-```
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
 
 ---
 
-# 10. Alta disponibilidade
+# 9. O que memorizar
 
-Compute:
-
-```text
-Load Balancer
-      +
-Regional MIG
-      +
-Health Checks
-      +
-Autoscaling
-```
-
-Database:
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-HA configuration
-Backups
-Read replicas where appropriate
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 11. Identidade
-
-Regra de ouro:
-
-```text
-Managed identity
-+
-Least privilege
-+
-Specific scope
-+
-Short-lived credentials
-```
-
----
-
-# 12. Checklist da Revisão
-
-- [ ] Organization/Folder/Project
-- [ ] Regions/Zones
-- [ ] IAM
-- [ ] Compute Engine
-- [ ] VPC
-- [ ] Cloud Storage
-- [ ] Databases
-- [ ] Cloud Run
-- [ ] GKE
-- [ ] Monitoring/Logging
-- [ ] Billing/Quotas
-- [ ] Terraform

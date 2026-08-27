@@ -4,254 +4,174 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Cloud Run Services;
-- Implantar um container;
-- Entender revisions;
-- Entender traffic splitting;
-- Entender autoscaling;
-- Configurar minimum e maximum instances;
-- Entender concurrency.
+- Deploy Cloud Run;
+- Criar revisions;
+- Dividir tráfego;
+- Testar scaling e auth;
 
 ---
 
-# 1. Cloud Run
-
-Cloud Run executa containers com infraestrutura gerenciada.
+# 1. Modelo mental
 
 ```text
-Container Image
-      │
-      ▼
- Cloud Run Service
-      │
-      ├── HTTPS
-      ├── Scaling
-      ├── Revisions
-      └── IAM
+Artifact Registry ──> Cloud Run Service
+                       ├─ revision v1
+                       ├─ revision v2
+                       └─ traffic split
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. Quando usar
+# 3. Laboratório principal
 
-Bom para:
-
-- APIs;
-- Microsserviços;
-- Web apps;
-- Backends HTTP;
-- Event-driven workloads;
-- Containers stateless.
-
----
-
-# 3. Deploy
-
+Use uma imagem pública simples:
 ```bash
-PROJECT_ID=$(gcloud config get-value project)
+export REGION=us-central1
+gcloud services enable run.googleapis.com
 
 gcloud run deploy ace-web \
-  --image=southamerica-east1-docker.pkg.dev/$PROJECT_ID/ace-containers/ace-web:v1 \
-  --region=southamerica-east1
+  --image=us-docker.pkg.dev/cloudrun/container/hello \
+  --region=$REGION \
+  --allow-unauthenticated
+
+gcloud run services describe ace-web --region=$REGION
+gcloud run revisions list --service=ace-web --region=$REGION
 ```
 
----
-
-# 4. Público x autenticado
-
-Por padrão, acesso pode exigir autenticação.
-
-Para serviço público, conforme política:
-
-```bash
-gcloud run services add-iam-policy-binding ace-web \
-  --region=southamerica-east1 \
-  --member="allUsers" \
-  --role="roles/run.invoker"
-```
-
-Em ambientes corporativos, prefira autenticação quando possível.
-
----
-
-# 5. Revisions
-
-Cada deploy ou alteração de configuração cria uma revisão imutável.
-
-```text
-Service: ace-web
-   │
-   ├── Revision v1
-   ├── Revision v2
-   └── Revision v3
-```
-
-Uma revisão não é editada depois de criada.
-
----
-
-# 6. Traffic Splitting
-
-Você pode dividir tráfego entre revisões.
-
-Exemplo:
-
-```text
-100% traffic
-     │
-     ├── 90% → revision-v2
-     └── 10% → revision-v3
-```
-
-Útil para:
-
-- Canary;
-- Gradual rollout;
-- Testes controlados.
-
----
-
-# 7. Listar revisões
-
-```bash
-gcloud run revisions list \
-  --service=ace-web \
-  --region=southamerica-east1
-```
-
----
-
-# 8. Autoscaling
-
-Cloud Run escala automaticamente por padrão.
-
-Modelo:
-
-```text
-Requests ↑
-    │
-    ▼
-More instances
-```
-
-Quando não há tráfego, pode escalar para zero, salvo configurações como minimum instances.
-
----
-
-# 9. Minimum Instances
-
-Use para manter instâncias aquecidas.
-
-```text
-min-instances = 1
-```
-
-Benefício:
-
-- Redução de cold start.
-
-Trade-off:
-
-- Custo maior.
-
----
-
-# 10. Maximum Instances
-
-Limita escalabilidade.
-
-Bom para:
-
-- Controlar custo;
-- Proteger banco downstream;
-- Evitar excesso de conexões.
-
----
-
-# 11. Configurar scaling
-
+Nova revision alterando env:
 ```bash
 gcloud run services update ace-web \
-  --region=southamerica-east1 \
-  --min=1 \
-  --max=10
+  --region=$REGION \
+  --set-env-vars=VERSAO=v2
 ```
 
----
-
-# 12. Concurrency
-
-Concurrency define quantas requisições uma instância pode processar simultaneamente.
-
-```text
-Instance
-  ├── Request 1
-  ├── Request 2
-  ├── Request 3
-  └── ...
-```
-
----
-
-# 13. Environment Variables
-
+Scaling:
 ```bash
 gcloud run services update ace-web \
-  --region=southamerica-east1 \
-  --set-env-vars=ENVIRONMENT=dev
+  --region=$REGION \
+  --min=0 --max=3
 ```
 
-Alterar configuração gera nova revision.
+Inspecione URL e revisions.
 
 ---
 
-# 14. Rollback
+# 4. Testes e falhas propositais
 
-Como revisões anteriores existem, você pode redirecionar tráfego novamente.
+- Remova `--allow-unauthenticated` em um serviço de teste e observe 403 sem identidade.
+- Revision é imutável; mudança de configuração gera nova revision.
+- Min instances pode gerar custo mesmo sem tráfego.
 
-Modelo:
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-revision-v3 problematic
-       ↓
-traffic → revision-v2
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 15. Questões Estilo ACE
+# 5. Troubleshooting
 
-## Questão 1
+Use este fluxo:
 
-Você quer executar API containerizada sem administrar servidores.
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
 
-**Resposta:** Cloud Run.
+Comandos-base:
 
-## Questão 2
-
-Uma versão nova deve receber apenas 10% do tráfego.
-
-**Resposta:** traffic splitting entre revisions.
-
-## Questão 3
-
-Você quer reduzir cold start.
-
-**Resposta:** minimum instances.
-
-## Questão 4
-
-Você quer proteger o banco contra quantidade excessiva de instâncias.
-
-**Resposta:** maximum instances.
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
+```
 
 ---
 
-# 16. Checklist
+# 6. Pegadinhas ACE
 
-- [ ] Entendo Cloud Run Service
-- [ ] Sei fazer deploy
-- [ ] Entendo revisions
-- [ ] Entendo traffic splitting
-- [ ] Entendo min/max instances
-- [ ] Entendo concurrency
+- Cloud Run Service é request-driven.
+- Revision guarda snapshot de código+configuração.
+- Traffic splitting permite rollout/canary.
+- Scaling to zero é característica importante.
+
+---
+
+# 7. Questões estilo ACE
+
+- API HTTP containerizada sem gerenciar cluster? → Cloud Run.
+- Precisa execução batch sem endpoint? → Cloud Run Job.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

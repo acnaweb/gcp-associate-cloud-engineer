@@ -4,538 +4,183 @@
 
 Ao final desta aula, você deverá:
 
-- Entender o modelo de IAM do Google Cloud;
-- Diferenciar Principal, Role, Permission e Resource;
-- Diferenciar Basic, Predefined e Custom Roles;
-- Aplicar o princípio do menor privilégio;
-- Entender Service Accounts;
-- Criar Service Accounts via `gcloud`;
-- Conceder roles;
-- Visualizar IAM Policies;
-- Reconhecer conceitos de herança.
+- Entender Principal, Role, Permission e Resource;
+- Criar Service Account;
+- Conceder e remover role;
+- Testar least privilege;
 
 ---
 
-# 1. Modelo Mental do IAM
+# 1. Modelo mental
 
 ```text
-WHO
- │
- ▼
-Principal
+Principal ── role ──> Resource
+                 │
+                 └─ permissions
 
-CAN DO WHAT
- │
- ▼
-Role
-
-ON WHAT
- │
- ▼
-Resource
+VM/Cloud Run ── usa ──> Service Account
 ```
 
-Portanto:
-
-```text
-Principal
-   +
-Role
-   +
-Resource
-   =
-IAM
-```
-
-Exemplo:
-
-```text
-usuario@empresa.com
-        +
-roles/storage.objectViewer
-        +
-bucket
-```
-
-Significa:
-
-> O usuário pode visualizar objetos no bucket.
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Principal
+# 2. Regra de estudo da aula
 
-Um **Principal** representa a identidade que recebe acesso.
-
-Pode ser:
-
-- usuário;
-- grupo;
-- Service Account;
-- domínio;
-- identidade federada.
-
-Exemplo:
+Use sempre este ciclo:
 
 ```text
-user:usuario@empresa.com
-```
-
-ou:
-
-```text
-serviceAccount:app@project.iam.gserviceaccount.com
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 3. Permission
-
-Uma **Permission** representa uma ação individual.
-
-Exemplo:
-
-```text
-storage.objects.get
-```
-
-Outro exemplo:
-
-```text
-compute.instances.start
-```
-
----
-
-# 4. Role
-
-Um **Role** é um conjunto de permissions.
-
-Exemplo:
-
-```text
-roles/storage.objectViewer
-     │
-     ├── storage.objects.get
-     └── storage.objects.list
-```
-
-Na prática, normalmente concedemos **roles**, não permissions isoladas.
-
----
-
-# 5. Tipos de Roles
-
-## Basic Roles
-
-```text
-Viewer
-Editor
-Owner
-```
-
-Exemplos:
-
-```text
-roles/viewer
-roles/editor
-roles/owner
-```
-
-São amplas e devem ser usadas com cautela.
-
----
-
-## Predefined Roles
-
-São roles específicas mantidas pelo Google.
-
-Exemplos:
-
-```text
-roles/storage.objectViewer
-roles/bigquery.dataViewer
-roles/compute.instanceAdmin.v1
-```
-
----
-
-## Custom Roles
-
-São criadas pela organização.
-
-```text
-Custom Role
-     │
-     ├── permission A
-     ├── permission B
-     └── permission C
-```
-
-Úteis quando nenhuma predefined role atende exatamente ao requisito.
-
----
-
-# 6. Least Privilege
-
-O princípio do menor privilégio determina:
-
-> Uma identidade deve receber somente as permissões necessárias.
-
-Exemplo ruim:
-
-```text
-Aplicação precisa ler BigQuery
-             │
-             ▼
-          Editor
-```
-
-Melhor:
-
-```text
-Aplicação precisa ler BigQuery
-             │
-             ▼
-roles/bigquery.dataViewer
-```
-
----
-
-# 7. Herança de IAM
-
-As políticas podem ser herdadas pela hierarquia.
-
-```text
-Organization
-      │
-      ▼
-    Folder
-      │
-      ▼
-   Project
-      │
-      ▼
-  Resource
-```
-
-Uma permissão concedida em nível superior pode se aplicar aos recursos abaixo.
-
-Para o ACE, lembre:
-
-> IAM é cumulativo ao longo da hierarquia.
-
----
-
-# 8. Visualizar IAM do Projeto
+# 3. Laboratório principal
 
 ```bash
-gcloud projects get-iam-policy \
-  $(gcloud config get-value project)
-```
+export PROJECT_ID=$(gcloud config get-value project)
+export SA_NAME=ace-lab-sa
+export SA_EMAIL=$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com
 
-Saída típica:
-
-```yaml
-bindings:
-- members:
-  - user:usuario@email.com
-  role: roles/owner
-
-- members:
-  - serviceAccount:app@project.iam.gserviceaccount.com
-  role: roles/storage.objectViewer
-```
-
-Modelo:
-
-```text
-Role
- │
- └── Members
-```
-
----
-
-# 9. Service Accounts
-
-Uma **Service Account** é uma identidade normalmente utilizada por workloads.
-
-Exemplo:
-
-```text
-Cloud Run
-    │
-    │ executa como
-    ▼
-Service Account
-    │
-    │ possui role
-    ▼
-BigQuery
-```
-
-Isso permite que aplicações acessem recursos sem utilizar credenciais pessoais de usuários.
-
----
-
-# 10. Usuário x Service Account
-
-| Tipo | Uso |
-|---|---|
-| User Account | Pessoa |
-| Service Account | Aplicação, workload ou serviço |
-| Group | Conjunto de usuários |
-| Domain | Usuários de um domínio |
-
----
-
-# 11. Laboratório — Criar Service Account
-
-```bash
-gcloud iam service-accounts create ace-lab-sa \
+gcloud iam service-accounts create $SA_NAME \
   --display-name="ACE Lab Service Account"
-```
 
-Liste:
-
-```bash
 gcloud iam service-accounts list
 ```
 
-Formato:
-
-```text
-ace-lab-sa@PROJECT_ID.iam.gserviceaccount.com
-```
-
----
-
-# 12. Conceder Role à Service Account
-
-Primeiro:
-
+Crie um bucket e tente desenhar o acesso:
 ```bash
-PROJECT_ID=$(gcloud config get-value project)
+export BUCKET=gs://$PROJECT_ID-ace-iam-lab
+gcloud storage buckets create $BUCKET --location=us-central1
 ```
 
-Depois:
-
+Conceda somente leitura de objetos ao principal:
 ```bash
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:ace-lab-sa@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/storage.objectViewer"
-```
-
----
-
-# 13. Validar a Role
-
-```bash
-gcloud projects get-iam-policy "$PROJECT_ID" \
-  --flatten="bindings[].members" \
-  --filter="bindings.members:ace-lab-sa@$PROJECT_ID.iam.gserviceaccount.com"
-```
-
----
-
-# 14. Service Account por Workload
-
-Imagine duas aplicações:
-
-```text
-Application A
-     │
-     ▼
-Service Account A
-     │
-     ▼
-BigQuery
-```
-
-```text
-Application B
-     │
-     ▼
-Service Account B
-     │
-     ▼
-Cloud Storage
-```
-
-Essa separação facilita:
-
-- menor privilégio;
-- auditoria;
-- troubleshooting;
-- revogação;
-- governança.
-
----
-
-# 15. Evite Roles Muito Amplas
-
-Exemplo ruim:
-
-```text
-Service Account
-      │
-      ▼
-roles/editor
-```
-
-Melhor:
-
-```text
-Service Account
-      │
-      ├── roles/storage.objectViewer
-      └── roles/bigquery.dataViewer
-```
-
-conforme a necessidade real.
-
----
-
-# 16. Conceitos Importantes para as Próximas Aulas
-
-Você deverá aprofundar depois:
-
-```text
-IAM inheritance
-Predefined Roles
-Custom Roles
-Service Account User
-Service Account Token Creator
-Impersonation
-IAM Conditions
-Policy Troubleshooter
-```
-
----
-
-# 17. Questões Estilo ACE
-
-## Questão 1
-
-Uma aplicação precisa apenas ler objetos do Cloud Storage.
-
-Qual role é mais adequada?
-
-A. `roles/owner`  
-B. `roles/editor`  
-C. `roles/storage.objectViewer`  
-D. `roles/viewer`
-
-**Resposta: C**
-
----
-
-## Questão 2
-
-Duas aplicações possuem necessidades de acesso diferentes.
-
-Qual abordagem é melhor?
-
-A. Compartilhar a mesma Service Account  
-B. Criar uma Service Account para cada workload  
-C. Usar a conta pessoal do desenvolvedor  
-D. Conceder Owner às duas
-
-**Resposta: B**
-
----
-
-## Questão 3
-
-Uma identidade recebeu acesso em nível de Folder.
-
-Projetos dentro desse Folder podem herdar o acesso?
-
-A. Não  
-B. Sim  
-C. Apenas VMs  
-D. Apenas Cloud Storage
-
-**Resposta: B**
-
----
-
-## Questão 4
-
-Uma aplicação precisa apenas consultar dados do BigQuery.
-
-Qual princípio deve orientar a escolha da role?
-
-A. Highest privilege  
-B. Shared credentials  
-C. Least privilege  
-D. Owner by default
-
-**Resposta: C**
-
----
-
-# 18. Exercício Prático
-
-```bash
-# Obter projeto atual
-PROJECT_ID=$(gcloud config get-value project)
-
-# Visualizar IAM Policy
-gcloud projects get-iam-policy "$PROJECT_ID"
-
-# Criar Service Account
-gcloud iam service-accounts create ace-lab-sa \
-  --display-name="ACE Lab"
-
-# Listar Service Accounts
-gcloud iam service-accounts list
-
-# Conceder role de leitura no Storage
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:ace-lab-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+gcloud storage buckets add-iam-policy-binding $BUCKET \
+  --member="serviceAccount:$SA_EMAIL" \
   --role="roles/storage.objectViewer"
 
-# Validar
-gcloud projects get-iam-policy "$PROJECT_ID" \
-  --flatten="bindings[].members" \
-  --filter="bindings.members:ace-lab-sa@$PROJECT_ID.iam.gserviceaccount.com"
+gcloud storage buckets get-iam-policy $BUCKET
+```
+
+Inspecione IAM do projeto:
+```bash
+gcloud projects get-iam-policy $PROJECT_ID \
+  --format="table(bindings.role,bindings.members)"
+```
+
+Compare papéis:
+```bash
+gcloud iam roles describe roles/storage.objectViewer
+gcloud iam roles describe roles/storage.objectAdmin
 ```
 
 ---
 
-# 19. O que Memorizar
+# 4. Testes e falhas propositais
+
+- Remova o binding e observe como o principal perde o acesso.
+- Compare objectViewer x objectAdmin antes de escolher a role.
+- Não crie chave persistente de SA para este lab: a prova favorece credenciais de curta duração quando possível.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Principal + Role + Resource
-              =
-             IAM
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
-
-```text
-Permission
-   ↓
-Role
-   ↓
-Principal recebe o Role
-```
-
-E principalmente:
-
-> Prefira sempre o menor privilégio necessário.
 
 ---
 
-# 20. Checklist
+# 5. Troubleshooting
 
-- [ ] Entendo Principal
-- [ ] Entendo Permission
-- [ ] Entendo Role
-- [ ] Sei diferenciar Basic, Predefined e Custom Roles
-- [ ] Entendo Least Privilege
-- [ ] Sei visualizar IAM Policy de um projeto
-- [ ] Sei criar Service Accounts
-- [ ] Sei conceder roles
-- [ ] Entendo herança de IAM
-- [ ] Entendo por que workloads diferentes devem ter identidades distintas
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
+```
+
+---
+
+# 6. Pegadinhas ACE
+
+- Roles contêm permissions.
+- Bindings associam principals a roles.
+- Service Account é identidade de workload, não 'usuário técnico genérico'.
+- Owner/Editor são amplos; prefira predefined roles específicas.
+
+---
+
+# 7. Questões estilo ACE
+
+- Uma aplicação só precisa ler objetos. Qual role é mais adequada? → Storage Object Viewer.
+- Você precisa permitir que uma VM aja como uma SA. Qual conceito aparece? → Service Account User/attach SA.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

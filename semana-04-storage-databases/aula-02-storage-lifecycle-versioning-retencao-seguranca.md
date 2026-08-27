@@ -4,225 +4,180 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Object Lifecycle Management;
-- Entender Versioning;
-- Entender retenção;
-- Entender IAM em buckets;
-- Entender signed URLs;
-- Reconhecer boas práticas de segurança.
+- Habilitar versioning;
+- Criar lifecycle rule;
+- Entender retention policy;
+- Praticar IAM no bucket;
 
 ---
 
-# 1. Object Lifecycle Management
-
-Lifecycle Management automatiza ações sobre objetos.
-
-Exemplo:
+# 1. Modelo mental
 
 ```text
-Object created
+Objeto
+ ├─ versões
+ ├─ lifecycle
+ ├─ retention policy
+ └─ IAM
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
    ↓
-30 days
+Criar
    ↓
-Nearline
+Inspecionar
    ↓
-90 days
+Testar
    ↓
-Coldline
+Quebrar propositalmente
    ↓
-365 days
+Diagnosticar
    ↓
-Delete
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. Casos de uso
-
-Você pode:
-
-- Alterar storage class;
-- Excluir objetos antigos;
-- Gerenciar versões não atuais;
-- Automatizar retenção técnica.
-
----
-
-# 3. Exemplo de regra
-
-Arquivo `lifecycle.json`:
-
-```json
-{
-  "rule": [
-    {
-      "action": {
-        "type": "SetStorageClass",
-        "storageClass": "COLDLINE"
-      },
-      "condition": {
-        "age": 90
-      }
-    }
-  ]
-}
-```
-
-Aplicar:
+# 3. Laboratório principal
 
 ```bash
-gcloud storage buckets update \
-  gs://SEU_BUCKET \
+export PROJECT_ID=$(gcloud config get-value project)
+export BUCKET=gs://$PROJECT_ID-ace-storage-sec-$RANDOM
+gcloud storage buckets create $BUCKET --location=us-central1
+
+gcloud storage buckets update $BUCKET --versioning
+echo v1 > dado.txt
+gcloud storage cp dado.txt $BUCKET/dado.txt
+echo v2 > dado.txt
+gcloud storage cp dado.txt $BUCKET/dado.txt
+
+gcloud storage ls --all-versions $BUCKET
+```
+
+Lifecycle:
+```bash
+cat > lifecycle.json <<'EOF'
+{
+  "rule": [{
+    "action": {"type": "Delete"},
+    "condition": {"age": 30}
+  }]
+}
+EOF
+
+gcloud storage buckets update $BUCKET \
   --lifecycle-file=lifecycle.json
 ```
 
----
-
-# 4. Versioning
-
-Quando versioning está habilitado, substituições/exclusões podem manter versões anteriores.
-
-```text
-clientes.csv
-   ├── generation 1
-   ├── generation 2
-   └── generation 3
+Retention:
+```bash
+gcloud storage buckets update $BUCKET \
+  --retention-period=86400
+gcloud storage buckets describe $BUCKET
 ```
 
-Bom para:
+---
 
-- Recuperação de sobrescrita acidental;
-- Histórico;
-- Proteção operacional.
+# 4. Testes e falhas propositais
+
+- Tente deletar um objeto ainda protegido por retention policy e observe bloqueio.
+- Versioning não é o mesmo que retention.
+- Lifecycle automatiza ações; não é backup por si só.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
+
+```text
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
+```
 
 ---
 
-# 5. Habilitar Versioning
+# 5. Troubleshooting
+
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
 
 ```bash
-gcloud storage buckets update \
-  gs://SEU_BUCKET \
-  --versioning
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 6. Retention Policy
+# 6. Pegadinhas ACE
 
-Retention policy impede exclusão/modificação de objetos antes de determinado período.
+- Retention pode impedir exclusão até prazo.
+- Lock de retention é decisão séria/irreversível em certos contextos: não faça no lab.
+- Uniform bucket-level access simplifica IAM ao nível do bucket.
+
+---
+
+# 7. Questões estilo ACE
+
+- Precisa impedir exclusão antes de 7 anos? → retention policy.
+- Quer apagar objetos antigos automaticamente? → lifecycle management.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Object
-   │
-Retention Period
-   │
-No delete before expiry
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
-Importante para compliance.
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
----
-
-# 7. IAM em Cloud Storage
-
-Exemplos de roles:
-
-```text
-roles/storage.objectViewer
-roles/storage.objectCreator
-roles/storage.objectAdmin
-```
-
-Use sempre menor privilégio.
-
----
-
-# 8. Uniform Bucket-Level Access
-
-Esse modelo centraliza controle via IAM no nível do bucket, evitando ACLs por objeto.
-
-Para o ACE, lembre:
-
-> Prefira IAM consistente e simples em vez de misturar mecanismos desnecessariamente.
-
----
-
-# 9. Signed URLs
-
-Signed URL fornece acesso temporário a um objeto.
-
-```text
-User
-  │
-Signed URL
-  │
-  ▼
-Cloud Storage Object
-```
-
-Bom para:
-
-- Download temporário;
-- Upload controlado;
-- Compartilhamento sem tornar bucket público.
-
----
-
-# 10. Autoclass
-
-Autoclass pode gerenciar automaticamente transições de storage class com base em padrões de acesso.
-
-Para a prova, entenda o conceito:
-
-> O serviço pode ajustar a classe automaticamente, reduzindo gestão manual.
-
----
-
-# 11. Segurança
-
-Evite:
-
-```text
-Bucket público sem necessidade
-```
-
-Prefira:
-
-- IAM;
-- Signed URLs;
-- Service Accounts;
-- Least privilege;
-- Retention quando necessário.
-
----
-
-# 12. Questões Estilo ACE
-
-## Questão 1
-
-Objetos com mais de 90 dias devem migrar automaticamente para Coldline.
-
-**Resposta:** Lifecycle Management.
-
-## Questão 2
-
-Usuário precisa baixar um arquivo por 10 minutos sem acesso permanente.
-
-**Resposta:** Signed URL.
-
-## Questão 3
-
-Empresa precisa impedir exclusão antes de 7 anos.
-
-**Resposta:** Retention Policy.
-
----
-
-# 13. Checklist
-
-- [ ] Entendo Lifecycle
-- [ ] Entendo Versioning
-- [ ] Entendo Retention Policy
-- [ ] Entendo IAM em Storage
-- [ ] Entendo Signed URLs
-- [ ] Entendo Autoclass em nível conceitual

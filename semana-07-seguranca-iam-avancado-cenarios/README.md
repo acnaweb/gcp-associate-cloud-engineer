@@ -1,22 +1,12 @@
 # Semana 7 — Segurança, IAM Avançado e Cenários Integrados
 
-## Objetivo da Semana
+## Método desta versão
 
-Ao final desta semana, você deverá dominar:
+Todas as aulas foram reorganizadas para privilegiar prática e raciocínio operacional:
 
-- Herança de IAM;
-- Basic, Predefined e Custom Roles;
-- Service Accounts em profundidade;
-- Service Account User;
-- Service Account Token Creator;
-- Impersonation;
-- Application Default Credentials em nível conceitual;
-- IAM Conditions;
-- Workload Identity Federation em nível ACE;
-- Boas práticas com chaves de Service Account;
-- Policy Troubleshooter em nível conceitual;
-- Cenários integrados de segurança;
-- Raciocínio de prova para least privilege.
+```text
+Conceito → Criar → Inspecionar → Testar → Quebrar → Diagnosticar → Corrigir → Cleanup
+```
 
 ## Aulas
 
@@ -26,18 +16,13 @@ Ao final desta semana, você deverá dominar:
 4. [Aula 4 — Segurança de Workloads e Troubleshooting de Acesso](./aula-04-seguranca-workloads-troubleshooting-acesso.md)
 5. [Aula 5 — Cenários Integrados e Questões Estilo ACE](./aula-05-cenarios-integrados-questoes-ace.md)
 
-## Checklist da Semana
+## Checklist da semana
 
-- [ ] Entendo herança de IAM
-- [ ] Entendo que permissões são cumulativas
-- [ ] Sei diferenciar Basic, Predefined e Custom Roles
-- [ ] Sei quando usar Service Account User
-- [ ] Sei quando usar Service Account Token Creator
-- [ ] Entendo impersonation
-- [ ] Sei por que impersonation é preferível a chaves persistentes quando possível
-- [ ] Entendo IAM Conditions
-- [ ] Entendo Application Default Credentials em nível conceitual
-- [ ] Entendo Workload Identity Federation em nível conceitual
-- [ ] Entendo boas práticas com Service Account Keys
-- [ ] Sei investigar erros de permission denied
-- [ ] Consigo aplicar least privilege em cenários
+- [ ] Executei os laboratórios aplicáveis;
+- [ ] Consigo explicar os recursos sem decorar comandos;
+- [ ] Provoquei e diagnostiquei falhas;
+- [ ] Consigo distinguir IAM, rede, quota, aplicação e configuração;
+- [ ] Consigo justificar a escolha de serviço em cenários ACE;
+- [ ] Removi recursos com custo ao terminar.
+
+> Alguns recursos corporativos exigem Organization, billing permissions, provedores externos ou infraestrutura física. Nesses casos, a aula usa laboratório de inspeção/arquitetura/decisão em vez de simular provisionamento irreal.

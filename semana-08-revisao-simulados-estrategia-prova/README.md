@@ -1,16 +1,12 @@
 # Semana 8 — Revisão Final, Simulados e Estratégia de Prova
 
-## Objetivo da Semana
+## Método desta versão
 
-Ao final desta semana, você deverá:
+Todas as aulas foram reorganizadas para privilegiar prática e raciocínio operacional:
 
-- Revisar os quatro domínios oficiais do ACE;
-- Consolidar decisões entre serviços;
-- Resolver cenários integrados;
-- Praticar questões de múltipla escolha e múltipla seleção;
-- Identificar lacunas;
-- Aplicar estratégia de tempo;
-- Estar pronto para o exame.
+```text
+Conceito → Criar → Inspecionar → Testar → Quebrar → Diagnosticar → Corrigir → Cleanup
+```
 
 ## Aulas
 
@@ -20,28 +16,13 @@ Ao final desta semana, você deverá:
 4. [Aula 4 — Estratégia de Prova e Gestão do Tempo](./aula-04-estrategia-prova-gestao-tempo.md)
 5. [Aula 5 — Checklist Final e Plano Pré-Prova](./aula-05-checklist-final-plano-pre-prova.md)
 
-## Formato Oficial Atual do Exame
+## Checklist da semana
 
-- Duração: 2 horas
-- Formato: 50–60 questões
-- Tipos: múltipla escolha e múltipla seleção
-- Idiomas: inglês, japonês, espanhol e português
-- Pré-requisitos: nenhum
-- Experiência recomendada: 6+ meses hands-on com Google Cloud
+- [ ] Executei os laboratórios aplicáveis;
+- [ ] Consigo explicar os recursos sem decorar comandos;
+- [ ] Provoquei e diagnostiquei falhas;
+- [ ] Consigo distinguir IAM, rede, quota, aplicação e configuração;
+- [ ] Consigo justificar a escolha de serviço em cenários ACE;
+- [ ] Removi recursos com custo ao terminar.
 
-## Checklist da Semana
-
-- [ ] Revisei os quatro domínios
-- [ ] Fiz pelo menos dois simulados
-- [ ] Analisei todos os erros
-- [ ] Revisei IAM
-- [ ] Revisei Compute Engine
-- [ ] Revisei Networking
-- [ ] Revisei Storage e Databases
-- [ ] Revisei Cloud Run e GKE
-- [ ] Revisei Monitoring e Logging
-- [ ] Revisei Billing e Quotas
-- [ ] Revisei Terraform
-- [ ] Consigo aplicar least privilege
-- [ ] Consigo escolher serviços por requisito
-- [ ] Consigo distinguir erro de IAM, rede, quota e aplicação
+> Alguns recursos corporativos exigem Organization, billing permissions, provedores externos ou infraestrutura física. Nesses casos, a aula usa laboratório de inspeção/arquitetura/decisão em vez de simular provisionamento irreal.

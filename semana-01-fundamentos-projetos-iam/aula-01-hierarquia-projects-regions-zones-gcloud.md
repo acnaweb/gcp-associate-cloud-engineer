@@ -4,500 +4,191 @@
 
 Ao final desta aula, você deverá:
 
-- Entender a hierarquia de recursos do Google Cloud;
-- Diferenciar Organization, Folder, Project e Resource;
+- Navegar pela hierarquia de recursos;
 - Diferenciar Project ID e Project Number;
-- Entender Regions e Zones;
-- Reconhecer escopos globais, regionais e zonais;
-- Configurar o `gcloud`;
-- Listar e habilitar APIs;
-- Utilizar o Cloud Shell.
+- Criar e alternar gcloud configurations;
+- Habilitar APIs e inspecionar regions/zones;
 
 ---
 
-# 1. Hierarquia de Recursos
-
-O modelo mental principal do Google Cloud é:
+# 1. Modelo mental
 
 ```text
-Organization
-    │
-    ├── Folder
-    │     ├── Project DEV
-    │     ├── Project HML
-    │     └── Project PRD
-    │
-    └── Project Shared
+Organization (quando existir)
+  └─ Folder
+      └─ Project
+          └─ Resources
+
+gcloud configuration
+  ├─ account
+  ├─ project
+  ├─ region
+  └─ zone
 ```
 
-Um **Project** é uma unidade fundamental no GCP.
-
-Recursos como:
-
-- VMs;
-- buckets;
-- bancos de dados;
-- datasets;
-- APIs;
-- permissões;
-
-normalmente pertencem a um projeto.
-
-A hierarquia é especialmente importante para:
-
-```text
-IAM
-Policies
-Billing
-Organization Policies
-Governança
-```
-
-Uma política definida em nível superior pode ser herdada pelos níveis inferiores.
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Organization x Folder x Project
+# 2. Regra de estudo da aula
 
-| Recurso | Função |
-|---|---|
-| **Organization** | Representa a organização ou empresa |
-| **Folder** | Agrupa projetos de forma lógica |
-| **Project** | Unidade onde os recursos GCP são criados |
-| **Resource** | VM, bucket, banco, dataset etc. |
-
-Exemplo corporativo:
+Use sempre este ciclo:
 
 ```text
-Organization: empresa.com
-        │
-        ├── Folder: Produção
-        │      ├── prj-app-prd
-        │      └── prj-data-prd
-        │
-        ├── Folder: Homologação
-        │      ├── prj-app-hml
-        │      └── prj-data-hml
-        │
-        └── Folder: Desenvolvimento
-               ├── prj-app-dev
-               └── prj-data-dev
-```
-
-## Para a prova
-
-Memorize:
-
-> Organization → Folder → Project → Resource
-
----
-
-# 3. Project ID x Project Number
-
-## Project ID
-
-Exemplo:
-
-```text
-study-gcp-398200
-```
-
-É um identificador textual usado frequentemente em comandos e APIs.
-
-## Project Number
-
-Exemplo:
-
-```text
-123456789012
-```
-
-É um identificador numérico interno.
-
-### Atenção
-
-`Project ID` e `Project Number` não são a mesma coisa.
-
----
-
-# 4. Regions e Zones
-
-Uma **Region** representa uma área geográfica.
-
-Exemplo:
-
-```text
-southamerica-east1
-```
-
-São Paulo.
-
-Uma **Zone** é uma subdivisão de uma região:
-
-```text
-southamerica-east1-a
-southamerica-east1-b
-southamerica-east1-c
-```
-
-Modelo:
-
-```text
-Region: southamerica-east1
-       │
-       ├── Zone A
-       ├── Zone B
-       └── Zone C
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 5. Disponibilidade
+# 3. Laboratório principal
 
-Se duas VMs estiverem na mesma zone:
-
-```text
-southamerica-east1-a
-   ├── VM1
-   └── VM2
-```
-
-uma indisponibilidade zonal pode afetar ambas.
-
-Uma estratégia melhor:
-
-```text
-VM1 → southamerica-east1-a
-VM2 → southamerica-east1-b
-```
-
----
-
-# 6. Escopo Global, Regional e Zonal
-
-| Recurso | Escopo típico |
-|---|---|
-| Compute Engine VM | Zonal |
-| Persistent Disk | Zonal ou Regional |
-| Subnet | Regional |
-| VPC | Global |
-| Cloud Storage Bucket | Regional ou multirregional |
-| Load Balancing | Depende do tipo |
-| Project | Global/lógico |
-
-Pegadinha clássica:
-
-> **VPC é global e subnet é regional.**
-
----
-
-# 7. Cloud Shell
-
-Para o ACE, é altamente recomendável usar o **Cloud Shell**.
-
-Ele já oferece:
-
-```text
-gcloud
-kubectl
-terraform
-git
-python
-bash
-```
-
----
-
-# 8. Laboratório — Verificar o Ambiente
-
+### 1. Identifique sua conta e projeto
 ```bash
 gcloud auth list
-```
-
-Veja a configuração atual:
-
-```bash
-gcloud config list
-```
-
-Liste projetos:
-
-```bash
 gcloud projects list
-```
-
-Identifique:
-
-```text
-ACCOUNT
-PROJECT_ID
-PROJECT_NAME
-PROJECT_NUMBER
-```
-
----
-
-# 9. Configurar Projeto Padrão
-
-```bash
-gcloud config set project SEU_PROJECT_ID
-```
-
-Exemplo:
-
-```bash
-gcloud config set project study-gcp-398200
-```
-
-Confira:
-
-```bash
 gcloud config get-value project
+gcloud projects describe $(gcloud config get-value project)
 ```
 
----
-
-# 10. Configurar Região e Zona
-
+### 2. Crie uma configuration isolada
 ```bash
-gcloud config set compute/region southamerica-east1
-```
+export PROJECT_ID=$(gcloud config get-value project)
 
-```bash
-gcloud config set compute/zone southamerica-east1-a
-```
-
-Confira:
-
-```bash
+gcloud config configurations create ace-fundamentos-lab
+gcloud config configurations activate ace-fundamentos-lab
+gcloud config set project $PROJECT_ID
+gcloud config set compute/region us-central1
+gcloud config set compute/zone us-central1-a
 gcloud config list
 ```
 
-Resultado conceitual:
-
-```text
-project = study-gcp-398200
-region  = southamerica-east1
-zone    = southamerica-east1-a
-```
-
----
-
-# 11. Configurations do gcloud
-
-Liste configurações:
-
+### 3. Compare ID e Number
 ```bash
-gcloud config configurations list
+gcloud projects describe $PROJECT_ID \
+  --format="table(projectId,projectNumber,name)"
 ```
 
-Exemplo:
-
-```text
-dev
-hml
-prd
-```
-
-Criar:
-
-```bash
-gcloud config configurations create dev
-```
-
-Definir projeto:
-
-```bash
-gcloud config set project projeto-dev
-```
-
-Ativar outra configuração:
-
-```bash
-gcloud config configurations activate prd
-```
-
----
-
-# 12. Laboratório — Regions e Zones
-
-Liste regiões:
-
+### 4. Explore regiões e zonas
 ```bash
 gcloud compute regions list
+gcloud compute zones list --filter="region:us-central1"
 ```
 
-Liste zonas:
-
-```bash
-gcloud compute zones list
-```
-
-Filtre São Paulo:
-
-```bash
-gcloud compute zones list \
-  --filter="region:southamerica-east1"
-```
-
-Resultado esperado:
-
-```text
-southamerica-east1-a
-southamerica-east1-b
-southamerica-east1-c
-```
-
----
-
-# 13. APIs e Services
-
-Vários serviços precisam ser habilitados no projeto.
-
-Exemplo:
-
-```text
-Project
-   │
-   ├── Compute Engine API
-   ├── Cloud Run API
-   ├── BigQuery API
-   └── Kubernetes Engine API
-```
-
-Listar:
-
-```bash
-gcloud services list
-```
-
-Somente habilitados:
-
+### 5. APIs
 ```bash
 gcloud services list --enabled
-```
-
-Habilitar Compute Engine:
-
-```bash
 gcloud services enable compute.googleapis.com
+gcloud services list --enabled --filter="NAME:compute.googleapis.com"
 ```
 
-Habilitar Cloud Run:
+> API desabilitada = recurso pode existir no catálogo do Google Cloud, mas o projeto não pode usar aquela API até habilitá-la.
 
-```bash
-gcloud services enable run.googleapis.com
+---
+
+# 4. Testes e falhas propositais
+
+- Ative uma configuration sem projeto e execute um comando para observar o erro/contexto faltante.
+- Defina uma zona inválida e compare com `gcloud compute zones list`.
+- Desabilitar APIs pode afetar recursos existentes; não faça isso em projeto compartilhado.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
+
+```text
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 14. Questões Estilo ACE
+# 5. Troubleshooting
 
-## Questão 1
+Use este fluxo:
 
-Qual estrutura representa corretamente a hierarquia?
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
 
-A. Folder → Organization → Project  
-B. Project → Organization → Folder  
-C. Organization → Folder → Project  
-D. Region → Organization → Project
-
-**Resposta: C**
-
----
-
-## Questão 2
-
-Qual afirmação está correta?
-
-A. VPC e subnet são zonais  
-B. VPC é global e subnet é regional  
-C. VPC é regional e subnet é global  
-D. Ambos são globais
-
-**Resposta: B**
-
----
-
-## Questão 3
-
-Duas VMs precisam permanecer disponíveis mesmo em caso de falha de uma zone.
-
-Qual abordagem é melhor?
-
-A. Criar as duas na mesma zone  
-B. Usar duas zones diferentes na mesma região  
-C. Usar o mesmo IP externo  
-D. Criar dois projetos
-
-**Resposta: B**
-
----
-
-# 15. Exercício Prático
+Comandos-base:
 
 ```bash
-# Ver conta
-gcloud auth list
-
-# Ver projeto
-gcloud config get-value project
-
-# Configurar região
-gcloud config set compute/region southamerica-east1
-
-# Configurar zona
-gcloud config set compute/zone southamerica-east1-a
-
-# Ver configuração
 gcloud config list
-
-# Listar regiões
-gcloud compute regions list
-
-# Listar zonas da região de São Paulo
-gcloud compute zones list \
-  --filter="region:southamerica-east1"
-
-# Listar APIs habilitadas
-gcloud services list --enabled
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 16. O que Memorizar
+# 6. Pegadinhas ACE
 
-```text
-Organization
-    ↓
-Folder
-    ↓
-Project
-    ↓
-Resource
-```
-
-```text
-VPC       → Global
-Subnet    → Regional
-VM        → Zonal
-```
-
-E:
-
-> Project ID e Project Number são identificadores diferentes.
+- Configuration não é Project.
+- Project ID é string globalmente única; Project Number é numérico.
+- Region contém zones; subnet é regional e VM geralmente zonal.
+- Habilitar uma API não cria automaticamente recursos.
 
 ---
 
-# 17. Checklist
+# 7. Questões estilo ACE
 
-- [ ] Entendo Organization, Folder, Project e Resource
-- [ ] Sei diferenciar Project ID e Project Number
-- [ ] Sei diferenciar Region e Zone
-- [ ] Sei que VPC é global
-- [ ] Sei que subnet é regional
-- [ ] Sei que Compute Engine VM é normalmente zonal
-- [ ] Sei configurar projeto, região e zona com `gcloud`
-- [ ] Sei listar Regions e Zones
-- [ ] Sei listar e habilitar APIs
-- [ ] Sei usar o Cloud Shell
+- Você precisa manter contexts dev e lab no mesmo computador. Qual recurso do gcloud ajuda? → configurations.
+- Uma VM deve ficar próxima de usuários de determinada localidade. O primeiro critério é escolher region/zone adequadas.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

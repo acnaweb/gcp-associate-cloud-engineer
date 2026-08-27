@@ -4,190 +4,176 @@
 
 Ao final desta aula, você deverá:
 
-- Entender herança de IAM;
-- Entender políticas cumulativas;
-- Diferenciar roles básicas, predefinidas e customizadas;
-- Entender escopo;
-- Aplicar least privilege.
+- Entender herança;
+- Comparar basic/predefined/custom;
+- Inspecionar policies;
+- Praticar role customizada em projeto;
 
 ---
 
-# 1. Hierarquia
+# 1. Modelo mental
 
 ```text
 Organization
-    ↓
+  ↓ policy herdada
 Folder
-    ↓
+  ↓
 Project
-    ↓
+  ↓
 Resource
+
+Permissões efetivas = grants aplicáveis + herança
 ```
 
-Uma política concedida em nível superior pode ser herdada pelos recursos abaixo.
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Exemplo de Herança
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
 
 ```text
-Organization
-  roles/viewer → grupo-a
-       │
-       ▼
-Folder
-       │
-       ▼
-Project
-       │
-       ▼
-VM
-```
-
-O grupo pode herdar acesso de visualização aos recursos abaixo.
-
----
-
-# 3. IAM é cumulativo
-
-Modelo mental:
-
-```text
-Access from Organization
-        +
-Access from Folder
-        +
-Access from Project
-        +
-Access from Resource
-        =
-Effective Permissions
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 4. Basic Roles
+# 3. Laboratório principal
 
-```text
-roles/viewer
-roles/editor
-roles/owner
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+gcloud projects get-iam-policy $PROJECT_ID
+gcloud iam roles list --filter="name:storage"
 ```
 
-São amplas.
+Crie role customizada de laboratório:
+```bash
+cat > role.yaml <<'EOF'
+title: "ACE Bucket Metadata Reader"
+description: "Lab role"
+stage: "GA"
+includedPermissions:
+- storage.buckets.get
+- storage.buckets.list
+EOF
 
-Para a prova:
+gcloud iam roles create aceBucketMetadataReader \
+  --project=$PROJECT_ID \
+  --file=role.yaml
 
-> Evite basic roles quando uma predefined role mais específica atender.
+gcloud iam roles describe aceBucketMetadataReader \
+  --project=$PROJECT_ID
+```
+
+> Custom role exige permissões administrativas adequadas.
 
 ---
 
-# 5. Predefined Roles
+# 4. Testes e falhas propositais
 
-Exemplos:
+- Conceder role no projeto pode afetar todos os recursos do projeto compatíveis.
+- IAM grants são cumulativos; uma role restrita não 'nega' uma role ampla já concedida.
+- Custom role deve ser usada quando predefined não atende.
 
-```text
-roles/storage.objectViewer
-roles/bigquery.dataViewer
-roles/compute.instanceAdmin.v1
-roles/run.invoker
-```
-
-São mantidas pelo Google e normalmente preferíveis.
-
----
-
-# 6. Custom Roles
-
-Use quando nenhuma predefined role atende exatamente.
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Custom Role
-   ├── permission A
-   ├── permission B
-   └── permission C
-```
-
-Trade-offs:
-
-- Mais controle;
-- Mais manutenção;
-- Necessidade de governança.
-
----
-
-# 7. Least Privilege
-
-Exemplo ruim:
-
-```text
-Application needs read-only Storage
-        ↓
-roles/editor
-```
-
-Melhor:
-
-```text
-roles/storage.objectViewer
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 8. Escopo do Binding
+# 5. Troubleshooting
 
-Pense sempre em:
-
-```text
-WHO
- +
-ROLE
- +
-WHERE
-```
-
-Exemplo:
+Use este fluxo:
 
 ```text
-serviceAccount:app@...
-+
-roles/storage.objectViewer
-+
-bucket específico
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
-Melhor que conceder no projeto inteiro quando o requisito é restrito.
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
+```
 
 ---
 
-# 9. Questões Estilo ACE
+# 6. Pegadinhas ACE
 
-## Questão 1
-
-Usuário precisa apenas iniciar/parar VMs, sem administrar todo o projeto.
-
-**Resposta:** role predefinida apropriada, evitando Editor/Owner.
-
-## Questão 2
-
-Nenhuma role pronta possui exatamente as permissões necessárias.
-
-**Resposta:** considerar Custom Role.
-
-## Questão 3
-
-Um role binding foi feito no Folder.
-
-Projetos abaixo podem herdar?
-
-**Resposta:** sim.
+- Basic roles são amplas.
+- Predefined roles são preferidas.
+- Herança flui da hierarquia para baixo.
+- IAM tradicional é allow-based; deny policies são mecanismo separado.
 
 ---
 
-# 10. Checklist
+# 7. Questões estilo ACE
 
-- [ ] Entendo herança
-- [ ] Entendo permissões efetivas
-- [ ] Sei diferenciar tipos de role
-- [ ] Entendo escopo
-- [ ] Aplico least privilege
+- Precisa conjunto exato não coberto por predefined? → custom role.
+- Usuário já é Editor e recebeu Viewer: continua com privilégios de Editor.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

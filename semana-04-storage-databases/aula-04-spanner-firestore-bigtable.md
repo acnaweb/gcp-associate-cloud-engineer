@@ -4,160 +4,174 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Spanner;
-- Entender Firestore;
-- Entender Bigtable;
-- Saber diferenciar relacional distribuído, documentos e wide-column;
-- Escolher o serviço adequado por cenário.
+- Diferenciar Spanner, Firestore e Bigtable;
+- Executar hands-on leve com Firestore quando possível;
+- Relacionar padrões de dados aos serviços;
 
 ---
 
-# 1. Spanner
-
-Spanner é um banco relacional distribuído, horizontalmente escalável.
-
-Modelo:
+# 1. Modelo mental
 
 ```text
-Application
-    │
-    ▼
-Spanner
-    │
-    ├── SQL
-    ├── Transactions
-    └── Horizontal Scale
+Relacional global/consistente → Spanner
+Documentos serverless       → Firestore
+Wide-column baixa latência  → Bigtable
 ```
 
-Use quando precisa de:
-
-- Escala horizontal relacional;
-- Alta disponibilidade;
-- Distribuição regional/global;
-- Consistência forte;
-- SQL.
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Quando Spanner não é necessário
+# 2. Regra de estudo da aula
 
-Evite escolher Spanner apenas porque "é o banco mais poderoso".
-
-Se um Cloud SQL atende ao requisito, ele pode ser mais simples.
-
-A prova valoriza:
-
-> Solução adequada, não a mais sofisticada.
-
----
-
-# 3. Firestore
-
-Firestore é um banco NoSQL orientado a documentos e serverless.
-
-Modelo:
+Use sempre este ciclo:
 
 ```text
-Collection
-   │
-   ├── Document
-   ├── Document
-   └── Document
-```
-
-Bom para:
-
-- Apps web/mobile;
-- Estruturas flexíveis;
-- Serverless;
-- Documentos JSON-like.
-
----
-
-# 4. Bigtable
-
-Bigtable é um banco wide-column distribuído para grande escala e baixa latência.
-
-```text
-Row Key
-   │
-Column Families
-   │
-Huge Scale
-```
-
-Bom para:
-
-- Time series;
-- IoT;
-- Telemetria;
-- AdTech;
-- Grandes volumes;
-- Baixa latência.
-
----
-
-# 5. Spanner x Firestore x Bigtable
-
-| Requisito | Serviço |
-|---|---|
-| SQL relacional distribuído | Spanner |
-| Documentos serverless | Firestore |
-| Wide-column / time series | Bigtable |
-
----
-
-# 6. Cenários
-
-## Sistema financeiro global
-
-```text
-Transactions + SQL + scale
-→ Spanner
-```
-
-## Aplicação mobile
-
-```text
-Documents + serverless
-→ Firestore
-```
-
-## Telemetria de milhões de dispositivos
-
-```text
-Wide-column + high throughput
-→ Bigtable
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 7. Questões Estilo ACE
+# 3. Laboratório principal
 
-## Questão 1
+### Laboratório de decisão (sem custos altos)
+Crie uma matriz:
+```text
+Cenário                         Serviço
+Banco relacional global         Spanner
+App mobile/web documentos       Firestore
+Telemetria por chave/tempo       Bigtable
+```
 
-Banco relacional precisa escalar horizontalmente globalmente.
+### Firestore (se o projeto ainda não tiver database)
+No Console: Firestore → Create database → Native mode.
 
-**Resposta:** Spanner.
+Com `gcloud`:
+```bash
+gcloud firestore databases list
+```
 
-## Questão 2
+Use o console para criar uma collection `clientes` e documentos simples.
 
-App mobile precisa de documentos serverless.
+### Spanner: inspeção
+```bash
+gcloud spanner instances list
+gcloud spanner databases list --instance=INSTANCE_ID 2>/dev/null || true
+```
 
-**Resposta:** Firestore.
+### Bigtable: inspeção
+```bash
+gcloud bigtable instances list
+```
 
-## Questão 3
+> Spanner/Bigtable podem gerar custo relevante; para ACE, a decisão correta de serviço é mais importante que provisionar clusters caros.
 
-Milhões de eventos de telemetria precisam de leitura/escrita de baixa latência.
+---
 
-**Resposta:** Bigtable.
+# 4. Testes e falhas propositais
+
+- Escolha errada proposital: tente modelar consultas ad hoc analíticas em Bigtable e explique por que BigQuery é melhor.
+- Firestore não é relacional.
+- Spanner é relacional distribuído; não é simplesmente 'Cloud SQL maior'.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
+
+```text
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
+```
+
+---
+
+# 5. Troubleshooting
+
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
+```
+
+---
+
+# 6. Pegadinhas ACE
+
+- Spanner: SQL + consistência + escala horizontal/global.
+- Firestore: documentos e aplicações serverless.
+- Bigtable: enorme throughput por chave, séries temporais/IoT.
+
+---
+
+# 7. Questões estilo ACE
+
+- Milhões de eventos por device_id/time com baixa latência? → Bigtable.
+- Banco relacional global horizontal? → Spanner.
+- Documentos de app mobile? → Firestore.
 
 ---
 
 # 8. Checklist
 
-- [ ] Entendo Spanner
-- [ ] Entendo Firestore
-- [ ] Entendo Bigtable
-- [ ] Sei diferenciar os três
-- [ ] Sei escolher por requisito
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

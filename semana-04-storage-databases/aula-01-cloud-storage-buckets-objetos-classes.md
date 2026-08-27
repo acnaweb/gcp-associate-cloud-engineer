@@ -4,237 +4,169 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Cloud Storage;
-- Diferenciar bucket e objeto;
-- Criar buckets e enviar arquivos;
-- Entender classes de armazenamento;
-- Escolher a classe adequada para frequência de acesso.
+- Criar buckets e objetos;
+- Entender localização e classes;
+- Copiar/listar/remover objetos;
+- Escolher classe por padrão de acesso;
 
 ---
 
-# 1. O que é Cloud Storage?
-
-Cloud Storage é o serviço de armazenamento de objetos do Google Cloud.
+# 1. Modelo mental
 
 ```text
-Bucket
-  │
-  ├── arquivo.csv
-  ├── imagem.jpg
-  ├── backup.zip
-  └── logs.json
+Cloud Storage
+  └─ Bucket (location)
+      ├─ objeto A
+      └─ objeto B
+           └─ storage class
 ```
 
-Ele não é um filesystem tradicional nem um banco de dados.
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Bucket x Object
+# 2. Regra de estudo da aula
 
-## Bucket
-
-É o contêiner lógico onde os objetos são armazenados.
-
-## Object
-
-É o conteúdo armazenado dentro do bucket.
-
-Exemplo:
+Use sempre este ciclo:
 
 ```text
-gs://ace-lab-storage/dados/clientes.csv
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
-Onde:
+---
+
+# 3. Laboratório principal
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+export BUCKET=gs://$PROJECT_ID-ace-storage-$RANDOM
+
+gcloud storage buckets create $BUCKET \
+  --location=us-central1 \
+  --default-storage-class=STANDARD
+
+echo "ACE Storage Lab" > exemplo.txt
+gcloud storage cp exemplo.txt $BUCKET/
+gcloud storage ls -L $BUCKET
+gcloud storage cat $BUCKET/exemplo.txt
+```
+
+Mude classe de um objeto:
+```bash
+gcloud storage objects update $BUCKET/exemplo.txt \
+  --storage-class=NEARLINE
+gcloud storage ls -L $BUCKET/exemplo.txt
+```
+
+Compare conceitualmente:
+- Standard: acesso frequente
+- Nearline/Coldline/Archive: acesso progressivamente menos frequente, com regras/custos associados
+
+---
+
+# 4. Testes e falhas propositais
+
+- Tente criar outro bucket com o mesmo nome global para entender namespace global.
+- Remova localmente o arquivo e prove que o objeto permanece no bucket.
+- Classe não define autorização: IAM é separado.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-ace-lab-storage → bucket
-dados/clientes.csv → nome do objeto
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 3. Localização do Bucket
+# 5. Troubleshooting
 
-Buckets podem ser criados em diferentes tipos de localização.
-
-Para o ACE, entenda principalmente:
-
-- Region;
-- Dual-region;
-- Multi-region.
-
----
-
-# 4. Classes de armazenamento
-
-As classes principais são:
+Use este fluxo:
 
 ```text
-Standard
-Nearline
-Coldline
-Archive
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
-Resumo:
-
-| Classe | Acesso típico | Duração mínima |
-|---|---|---:|
-| Standard | Frequente | Nenhuma |
-| Nearline | Aproximadamente mensal ou menos | 30 dias |
-| Coldline | Aproximadamente trimestral ou menos | 90 dias |
-| Archive | Raramente / arquivamento | 365 dias |
-
----
-
-# 5. Standard
-
-Use para dados acessados frequentemente.
-
-Exemplos:
-
-- Conteúdo ativo;
-- Aplicações;
-- Analytics;
-- Dados recentes.
-
----
-
-# 6. Nearline
-
-Boa opção para dados acessados aproximadamente uma vez ao mês ou menos.
-
-Exemplos:
-
-- Backup mensal;
-- Dados históricos;
-- Conteúdo menos acessado.
-
----
-
-# 7. Coldline
-
-Use quando o acesso for ainda menos frequente.
-
-Exemplos:
-
-- Backup trimestral;
-- Disaster recovery;
-- Arquivos históricos.
-
----
-
-# 8. Archive
-
-Use para retenção de longo prazo e acesso raro.
-
-Exemplos:
-
-- Arquivamento;
-- Compliance;
-- Backup de longo prazo.
-
----
-
-# 9. Laboratório — Criar Bucket
+Comandos-base:
 
 ```bash
-PROJECT_ID=$(gcloud config get-value project)
-
-gcloud storage buckets create gs://$PROJECT_ID-ace-storage \
-  --location=southamerica-east1
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 10. Enviar arquivo
+# 6. Pegadinhas ACE
 
-```bash
-echo "id,nome" > clientes.csv
-echo "1,Ana" >> clientes.csv
-```
-
-Upload:
-
-```bash
-gcloud storage cp clientes.csv \
-  gs://$PROJECT_ID-ace-storage/
-```
+- Bucket name é globalmente único.
+- Bucket location e storage class são decisões diferentes.
+- Cloud Storage é object storage, não filesystem POSIX tradicional.
 
 ---
 
-# 11. Listar
+# 7. Questões estilo ACE
 
-```bash
-gcloud storage ls \
-  gs://$PROJECT_ID-ace-storage/
-```
+- Objeto acessado várias vezes ao dia? → Standard.
+- Backup raramente acessado? → classe fria conforme requisito de retenção/acesso.
 
 ---
 
-# 12. Download
+# 8. Checklist
 
-```bash
-gcloud storage cp \
-  gs://$PROJECT_ID-ace-storage/clientes.csv \
-  ./clientes-download.csv
-```
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
 
 ---
 
-# 13. Trocar classe de objeto
+# 9. O que memorizar
 
-Conceitualmente, um objeto pode mudar de classe manualmente ou via Lifecycle Management.
-
-No ACE, o mais importante é entender:
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Acesso frequente   → Standard
-Mensal             → Nearline
-Trimestral         → Coldline
-Muito raro         → Archive
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 14. Pegadinhas ACE
-
-- Cloud Storage é object storage.
-- Bucket não é diretório.
-- "Pastas" são parte do nome do objeto.
-- Nearline, Coldline e Archive possuem duração mínima.
-- Classes frias custam menos para armazenar, mas podem ter custos de recuperação e exclusão antecipada.
-
----
-
-# 15. Questões Estilo ACE
-
-## Questão 1
-
-Dados são acessados várias vezes por dia.
-
-**Resposta:** Standard.
-
-## Questão 2
-
-Backup é acessado aproximadamente uma vez por trimestre.
-
-**Resposta:** Coldline.
-
-## Questão 3
-
-Dados precisam ser arquivados por anos e quase nunca são lidos.
-
-**Resposta:** Archive.
-
----
-
-# 16. Checklist
-
-- [ ] Entendo bucket
-- [ ] Entendo object
-- [ ] Sei criar bucket
-- [ ] Sei fazer upload/download
-- [ ] Sei diferenciar classes
-- [ ] Entendo duração mínima

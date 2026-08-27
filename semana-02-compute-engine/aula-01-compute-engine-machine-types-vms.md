@@ -4,371 +4,173 @@
 
 Ao final desta aula, você deverá:
 
-- Entender o papel do Compute Engine;
-- Saber quando escolher VMs;
-- Diferenciar machine family, series e machine type;
-- Criar e operar VMs pelo `gcloud`;
-- Entender IP interno e externo;
-- Reconhecer o escopo zonal das VMs.
+- Criar e operar VMs;
+- Comparar machine types;
+- Praticar stop/start/reset;
+- Inspecionar metadados e rede;
 
 ---
 
-# 1. O que é Compute Engine?
-
-O **Compute Engine** é o serviço IaaS do Google Cloud para execução de máquinas virtuais.
+# 1. Modelo mental
 
 ```text
-Application
-    │
-    ▼
-Virtual Machine
-    │
-    ├── vCPU
-    ├── RAM
-    ├── Disk
-    ├── Network
-    └── Operating System
-```
-
-Você controla o sistema operacional, pacotes, runtime, aplicação, discos e boa parte da configuração da VM.
-
----
-
-# 2. Quando usar?
-
-Use Compute Engine quando precisar de:
-
-- Controle do sistema operacional;
-- Aplicações legadas;
-- Instalação de agentes, drivers ou pacotes específicos;
-- Lift-and-shift;
-- Configuração específica de CPU/RAM;
-- Workloads não containerizados.
-
-Exemplo:
-
-```text
-Sistema legado
-     │
-     ▼
-Linux VM
-     │
-     ▼
 Compute Engine
+  └─ VM (zonal)
+      ├─ vCPU/RAM
+      ├─ boot disk
+      ├─ NIC
+      └─ service account
 ```
 
----
-
-# 3. Compute Engine x Cloud Run x GKE
-
-| Necessidade | Serviço |
-|---|---|
-| Controle da VM/SO | Compute Engine |
-| Container serverless | Cloud Run |
-| Kubernetes | GKE |
-| PaaS tradicional | App Engine |
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 4. Anatomia de uma VM
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
 
 ```text
-Compute Engine VM
-        │
-        ├── Machine Type
-        │     ├── vCPU
-        │     └── RAM
-        ├── Boot Disk
-        ├── Network Interface
-        ├── Internal IP
-        ├── External IP (opcional)
-        ├── Service Account
-        └── Metadata
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 5. Machine Family, Series e Machine Type
-
-```text
-Machine Family
-      ↓
-Machine Series
-      ↓
-Machine Type
-```
-
-Exemplo:
-
-```text
-General Purpose
-      ↓
-      N2
-      ↓
-n2-standard-4
-```
-
----
-
-# 6. Tipos de workload
-
-## General Purpose
-
-Uso geral:
-
-- Web;
-- APIs;
-- Aplicações corporativas;
-- Desenvolvimento.
-
-## Compute Optimized
-
-- HPC;
-- Simulações;
-- Processamento CPU-intensive.
-
-## Memory Optimized
-
-- Grandes bancos;
-- SAP HANA;
-- Workloads in-memory.
-
-## Accelerator Optimized
-
-- GPU;
-- ML/AI;
-- HPC.
-
-Para o ACE, General Purpose é o mais importante.
-
----
-
-# 7. Standard, Highmem e Highcpu
-
-```text
-standard → equilíbrio
-highmem  → mais RAM proporcionalmente
-highcpu  → mais CPU proporcionalmente
-```
-
----
-
-# 8. Tipos predefinidos x customizados
-
-Predefinido:
-
-```text
-n2-standard-4
-```
-
-Customizado:
-
-```text
-vCPU = X
-RAM  = Y
-```
-
-Considere custom machine type quando os tipos predefinidos desperdiçarem recursos.
-
----
-
-# 9. Laboratório — preparar ambiente
+# 3. Laboratório principal
 
 ```bash
-gcloud config list
-gcloud config get-value project
-
-gcloud config set compute/region southamerica-east1
-gcloud config set compute/zone southamerica-east1-a
-
+export ZONE=us-central1-a
 gcloud services enable compute.googleapis.com
-```
 
----
-
-# 10. Listar Machine Types
-
-```bash
-gcloud compute machine-types list
-```
-
-Filtrar região/zone:
-
-```bash
 gcloud compute machine-types list \
-  --zones=southamerica-east1-a
+  --zones=$ZONE \
+  --filter="name:e2-"
+
+gcloud compute instances create ace-vm \
+  --zone=$ZONE \
+  --machine-type=e2-micro \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+
+gcloud compute instances describe ace-vm --zone=$ZONE
+gcloud compute instances stop ace-vm --zone=$ZONE
+gcloud compute instances start ace-vm --zone=$ZONE
+gcloud compute instances reset ace-vm --zone=$ZONE
 ```
 
----
-
-# 11. Criar VM
-
-```bash
-gcloud compute instances create ace-vm-01 \
-  --zone=southamerica-east1-a \
-  --machine-type=e2-medium
-```
-
----
-
-# 12. Listar e descrever
-
+Observe status:
 ```bash
 gcloud compute instances list
 ```
 
-```bash
-gcloud compute instances describe ace-vm-01 \
-  --zone=southamerica-east1-a
-```
+> `stop/start` altera o estado da VM. `reset` equivale a um hard reset e não é um shutdown gracioso do SO.
 
 ---
 
-# 13. SSH
+# 4. Testes e falhas propositais
 
-```bash
-gcloud compute ssh ace-vm-01 \
-  --zone=southamerica-east1-a
-```
+- Pare a VM e tente SSH.
+- Compare IP externo antes/depois de stop/start quando ele é efêmero.
+- Use `describe` para conferir zone, machine type e disks antes de troubleshooting.
 
-Dentro da VM:
-
-```bash
-hostname
-uname -a
-free -h
-nproc
-lsblk
-ip addr
-```
-
----
-
-# 14. Operar a VM
-
-Parar:
-
-```bash
-gcloud compute instances stop ace-vm-01 \
-  --zone=southamerica-east1-a
-```
-
-Iniciar:
-
-```bash
-gcloud compute instances start ace-vm-01 \
-  --zone=southamerica-east1-a
-```
-
-Reset:
-
-```bash
-gcloud compute instances reset ace-vm-01 \
-  --zone=southamerica-east1-a
-```
-
----
-
-# 15. Alterar Machine Type
-
-Fluxo:
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-RUNNING
-   ↓
-STOP
-   ↓
-CHANGE MACHINE TYPE
-   ↓
-START
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
+
+---
+
+# 5. Troubleshooting
+
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
 
 ```bash
-gcloud compute instances stop ace-vm-01 \
-  --zone=southamerica-east1-a
-
-gcloud compute instances set-machine-type ace-vm-01 \
-  --zone=southamerica-east1-a \
-  --machine-type=e2-standard-2
-
-gcloud compute instances start ace-vm-01 \
-  --zone=southamerica-east1-a
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 16. IP interno x externo
+# 6. Pegadinhas ACE
+
+- VM é normalmente zonal.
+- Machine family/series/type não são sinônimos.
+- Reset não é stop+start gracioso.
+- Pare VMs de laboratório para reduzir custo, mas discos persistentes continuam existindo.
+
+---
+
+# 7. Questões estilo ACE
+
+- Você precisa de controle do SO e software legado. Serviço? → Compute Engine.
+- Qual operação é semelhante a power-cycle sem shutdown gracioso? → reset.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Internet
-   │
-External IP
-   ▼
-  VM
-   │
-Internal IP
-   ▼
-  VPC
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
-Em arquiteturas mais seguras, VMs privadas podem acessar a internet usando Cloud NAT.
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
----
-
-# 17. Escopo zonal
-
-Uma VM pertence a uma zone:
-
-```text
-Region: southamerica-east1
-        │
-        ├── southamerica-east1-a
-        │       └── ace-vm-01
-        ├── southamerica-east1-b
-        └── southamerica-east1-c
-```
-
----
-
-# 18. Pegadinhas ACE
-
-- Compute Engine é indicado quando você precisa controlar o SO.
-- VM é normalmente um recurso zonal.
-- Alta disponibilidade exige distribuição entre zones.
-- Machine type define CPU/RAM.
-- Alterações relevantes de machine type normalmente exigem a VM parada.
-
----
-
-# 19. Questões Estilo ACE
-
-## Questão 1
-
-Um software exige drivers específicos no SO.
-
-**Resposta:** Compute Engine.
-
-## Questão 2
-
-Uma VM está em `southamerica-east1-a`.
-
-**Resposta:** recurso zonal.
-
-## Questão 3
-
-Nenhum machine type predefinido atende bem à relação CPU/RAM.
-
-**Resposta:** considerar custom machine type.
-
----
-
-# 20. Checklist
-
-- [ ] Sei quando usar Compute Engine
-- [ ] Sei criar VMs
-- [ ] Sei listar e descrever VMs
-- [ ] Sei usar SSH
-- [ ] Sei parar e iniciar VMs
-- [ ] Entendo machine types
-- [ ] Entendo IP interno e externo
-- [ ] Sei que VM é zonal

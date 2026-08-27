@@ -4,300 +4,185 @@
 
 Ao final desta aula, você deverá:
 
-- Integrar Monitoring, Logging, Billing e Terraform;
-- Resolver cenários de operação;
-- Revisar decisões típicas do ACE;
-- Trabalhar com diagnóstico orientado por sintomas.
+- Praticar fluxo operacional completo;
+- Classificar falha IAM/rede/quota/app;
+- Usar describe/logging/monitoring;
+- Treinar decisão ACE;
 
 ---
 
-# 1. Operação não é só deployment
-
-Uma solução em produção precisa de:
+# 1. Modelo mental
 
 ```text
-Provision
+Sintoma
+  ↓
+Recurso/status
+  ↓
+IAM
+  ↓
+rede
+  ↓
+quota
+  ↓
+logs/metrics
+  ↓
+ação corretiva
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
    ↓
-Monitor
+Criar
    ↓
-Detect
+Inspecionar
    ↓
-Troubleshoot
+Testar
    ↓
-Recover
+Quebrar propositalmente
    ↓
-Optimize
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. Arquitetura operacional
+# 3. Laboratório principal
 
+### Caso integrado
+Crie VM:
+```bash
+gcloud compute instances create ace-ops-vm \
+  --zone=us-central1-a --machine-type=e2-micro \
+  --image-family=debian-12 --image-project=debian-cloud
+```
+
+Checklist operacional:
+```bash
+gcloud compute instances describe ace-ops-vm --zone=us-central1-a
+gcloud compute firewall-rules list
+gcloud compute routes list
+gcloud logging read 'resource.type="gce_instance"' --limit=10
+gcloud compute project-info describe --format="yaml(quotas)"
+```
+
+Agora provoque uma falha por vez:
+1. VM STOPPED.
+2. firewall ausente.
+3. serviço nginx parado.
+4. principal sem role.
+5. quota hipotética/real atingida.
+
+Para cada falha, registre:
 ```text
-Application
-   │
-   ├── Metrics → Monitoring
-   ├── Logs    → Logging
-   ├── Cost    → Billing
-   └── IaC     → Terraform
+Sintoma
+Hipótese
+Comando de evidência
+Correção
+Prevenção
 ```
 
 ---
 
-# 3. Cenário 1 — API lenta
+# 4. Testes e falhas propositais
 
+- Não altere três coisas ao mesmo tempo.
+- Leia mensagem de erro antes de escalar privilégio.
+- 403 → IAM/auth; timeout → rede/serviço; RESOURCE_EXHAUSTED → quota/capacidade.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
+
+```text
 Sintoma:
-
-```text
-Latency increased
-```
-
-Fluxo:
-
-```text
-Monitoring
-   ↓
-Check latency metric
-   ↓
-CPU / memory / request count
-   ↓
-Logging
-   ↓
-Backend dependency
-   ↓
-Root cause
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 4. Cenário 2 — VM não cria
+# 5. Troubleshooting
 
-Erro:
-
-```text
-Quota exceeded
-```
-
-Resposta:
+Use este fluxo:
 
 ```text
-Check regional quota
-↓
-Request increase or reduce demand
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
-Não confunda com budget.
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
+```
 
 ---
 
-# 5. Cenário 3 — custo disparou
+# 6. Pegadinhas ACE
 
-Fluxo:
+- Troubleshooting ACE é seleção da ação mínima correta.
+- Least privilege também vale em incidentes.
+- Logs + metrics + resource describe formam triângulo operacional útil.
+
+---
+
+# 7. Questões estilo ACE
+
+- 403 ao acessar bucket: primeiro verificar IAM, não firewall.
+- VM sem resposta externa: status, IP/rota/firewall/serviço.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Billing reports
+Requisito
    ↓
-Project/service
+Serviço/recurso correto
    ↓
-Labels
+Escopo correto
    ↓
-Identify resource
+Permissão correta
    ↓
-Resize/delete/optimize
-```
-
----
-
-# 6. Cenário 4 — endpoint fora do ar
-
-```text
-Uptime Check
-    ↓
-Alert
-    ↓
-Incident
-    ↓
-Logs
-    ↓
-Fix
-```
-
----
-
-# 7. Cenário 5 — mudança precisa ser reproduzível
-
-```text
-Manual configuration
-      ↓
-Risk
-```
-
-Melhor:
-
-```text
-Terraform
+Operação correta
    ↓
-Git
-   ↓
-Review
-   ↓
-Apply
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 8. Método ACE para troubleshooting
-
-Use esta ordem mental:
-
-```text
-1. Scope
-   What resource/project/region?
-
-2. State
-   Is resource running?
-
-3. Monitoring
-   What metric changed?
-
-4. Logging
-   What error happened?
-
-5. Network
-   Route/firewall/DNS/NAT?
-
-6. IAM
-   Permission denied?
-
-7. Quota
-   Limit reached?
-
-8. Change
-   What changed recently?
-```
-
----
-
-# 9. Monitorar x Alertar
-
-```text
-Monitor
-→ observe
-
-Alert
-→ notify when condition happens
-```
-
----
-
-# 10. Budget x Quota
-
-```text
-Budget → dinheiro
-Quota  → capacidade técnica
-```
-
----
-
-# 11. Logging x Monitoring
-
-```text
-Logging
-→ detailed events
-
-Monitoring
-→ aggregated behavior
-```
-
----
-
-# 12. Terraform x gcloud
-
-```text
-gcloud
-→ operational command
-→ imperative
-
-Terraform
-→ desired infrastructure
-→ declarative
-```
-
----
-
-# 13. Questões Estilo ACE
-
-## Questão 1
-
-API está indisponível e você quer aviso automático.
-
-**Resposta:** uptime check + alerting policy.
-
-## Questão 2
-
-Você recebeu "permission denied".
-
-**Resposta:** revisar IAM, principal e role.
-
-## Questão 3
-
-Você recebeu "quota exceeded".
-
-**Resposta:** revisar quota apropriada.
-
-## Questão 4
-
-Precisa reproduzir a mesma VPC em vários ambientes.
-
-**Resposta:** Terraform/IaC.
-
-## Questão 5
-
-Quer saber exatamente qual erro ocorreu às 14:31.
-
-**Resposta:** Cloud Logging.
-
----
-
-# 14. Revisão Visual
-
-```text
-OPERATIONS
-│
-├── Monitoring
-│   ├── Metrics
-│   ├── Dashboards
-│   ├── Alerts
-│   └── Uptime Checks
-│
-├── Logging
-│   ├── Logs Explorer
-│   ├── Severity
-│   └── Log-based Metrics
-│
-├── Billing
-│   ├── Budgets
-│   ├── Alerts
-│   ├── Quotas
-│   └── Labels
-│
-└── Terraform
-    ├── init
-    ├── plan
-    ├── apply
-    └── destroy
-```
-
----
-
-# 15. Checklist Final
-
-- [ ] Sei identificar métrica adequada
-- [ ] Sei identificar log adequado
-- [ ] Sei criar raciocínio de alerting
-- [ ] Entendo uptime checks
-- [ ] Sei investigar erros
-- [ ] Sei diferenciar budget e quota
-- [ ] Entendo FinOps básico
-- [ ] Entendo Terraform
-- [ ] Consigo combinar ferramentas na operação

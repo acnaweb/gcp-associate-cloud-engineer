@@ -5,199 +5,180 @@
 Ao final desta aula, você deverá:
 
 - Entender IAM Conditions;
-- Entender acesso baseado em atributos;
-- Entender ADC em nível conceitual;
-- Entender Workload Identity Federation;
-- Saber escolher métodos de autenticação.
+- Entender ADC;
+- Praticar credenciais locais sem key;
+- Compreender Workload Identity Federation;
 
 ---
 
-# 1. IAM Conditions
-
-IAM Conditions adiciona condição a um role binding.
+# 1. Modelo mental
 
 ```text
-Principal
-  +
-Role
-  +
-Condition
+IAM Binding + Condition
+ADC → procura credenciais padrão
+External identity → WIF → short-lived Google credentials
 ```
 
-Exemplo:
-
-```text
-Grant access only until date X
-```
-
-ou:
-
-```text
-Grant access only to resources matching attribute
-```
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Modelo
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
 
 ```text
-Role Binding
-   │
-   ├── Principal
-   ├── Role
-   └── Condition
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 3. Acesso Temporário
+# 3. Laboratório principal
 
-Exemplo conceitual:
-
-```text
-roles/storage.objectViewer
-until
-2026-12-31
+### IAM Condition (exemplo conceitual)
+```bash
+gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
+  --member="user:SEU_EMAIL" \
+  --role="roles/viewer" \
+  --condition="expression=request.time < timestamp('2027-01-01T00:00:00Z'),title=temporary-viewer"
 ```
 
----
+> Use apenas com uma identidade de laboratório e remova depois.
 
-# 4. Limitação importante
-
-Conditions não são aplicáveis a todos os tipos de binding.
-
-Para a prova, lembre que basic roles legadas como:
-
-```text
-Owner
-Editor
-Viewer
-```
-
-não são o cenário ideal para Conditions.
-
----
-
-# 5. ADC — Application Default Credentials
-
-ADC é um mecanismo usado por bibliotecas e ferramentas Google para localizar credenciais automaticamente.
-
-Modelo:
-
-```text
-Application
-   │
-   ▼
-ADC
-   │
-   ▼
-Available Identity
-```
-
----
-
-# 6. ADC em desenvolvimento
-
-Em desenvolvimento local:
-
+### ADC
 ```bash
 gcloud auth application-default login
+gcloud auth application-default print-access-token | head -c 20
+echo
 ```
 
-ou use impersonation quando a aplicação precisa agir como Service Account.
+Explique a diferença:
+```text
+gcloud auth login
+→ identidade para CLI
+
+gcloud auth application-default login
+→ credenciais para bibliotecas que usam ADC
+```
+
+### Workload Identity Federation
+Laboratório de arquitetura:
+```text
+AWS/Azure/GitHub/OIDC
+       ↓
+Workload Identity Pool/Provider
+       ↓
+credencial curta
+       ↓
+Google Cloud API
+```
+Evite criar key JSON apenas para demonstrar acesso externo.
 
 ---
 
-# 7. Workload Identity Federation
+# 4. Testes e falhas propositais
 
-Permite que workloads externos autentiquem sem usar chaves persistentes de Service Account.
+- Condition com expressão errada pode bloquear acesso esperado.
+- ADC não significa 'uma conta fixa': é estratégia de descoberta de credenciais.
+- WIF remove necessidade de key persistente para identidades externas compatíveis.
 
-Modelo:
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-External Workload
-      │
-External Identity
-      │
-      ▼
-Workload Identity Federation
-      │
-      ▼
-Google Cloud
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 8. Casos de uso
+# 5. Troubleshooting
 
-- AWS workload acessando GCP;
-- Azure workload acessando GCP;
-- On-premises;
-- CI/CD externo;
-- GitHub/OIDC compatível.
-
----
-
-# 9. GKE
-
-Para GKE, existe integração de identidade para workloads Kubernetes.
-
-Modelo:
+Use este fluxo:
 
 ```text
-Kubernetes Pod
-      │
-      ▼
-Workload Identity
-      │
-      ▼
-Google Cloud IAM
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 10. Escolha de autenticação
+# 6. Pegadinhas ACE
+
+- IAM Conditions adicionam contexto ao binding.
+- ADC é mecanismo de descoberta.
+- WIF é federação sem SA key de longa duração.
+
+---
+
+# 7. Questões estilo ACE
+
+- GitHub Actions precisa acessar GCP sem JSON key. Melhor padrão? → Workload Identity Federation.
+- App local usa client library: ADC é padrão comum.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Running on Google Cloud?
-   │
-   ├── Yes → attached identity / workload identity
-   │
-   └── No
-        │
-        ├── Federation possible? → use federation
-        │
-        └── Otherwise → key only if necessary
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 11. Questões Estilo ACE
-
-## Questão 1
-
-Acesso deve expirar automaticamente após determinada data.
-
-**Resposta:** IAM Conditions.
-
-## Questão 2
-
-Workload em outra cloud precisa acessar GCP sem JSON key.
-
-**Resposta:** Workload Identity Federation.
-
-## Questão 3
-
-Biblioteca cliente precisa descobrir credenciais padrão.
-
-**Resposta:** Application Default Credentials.
-
----
-
-# 12. Checklist
-
-- [ ] Entendo IAM Conditions
-- [ ] Entendo acesso temporário
-- [ ] Entendo ADC
-- [ ] Entendo Workload Identity Federation
-- [ ] Entendo identidade de workload em GKE

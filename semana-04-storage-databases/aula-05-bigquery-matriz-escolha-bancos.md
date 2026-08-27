@@ -4,221 +4,173 @@
 
 Ao final desta aula, você deverá:
 
-- Entender BigQuery em nível ACE;
-- Diferenciar BigQuery de bancos transacionais;
-- Revisar todos os serviços;
-- Tomar decisões por requisito.
+- Criar dataset/tabela BigQuery;
+- Carregar CSV e consultar;
+- Entender warehouse analítico serverless;
+- Escolher banco por requisito;
 
 ---
 
-# 1. BigQuery
-
-BigQuery é o data warehouse analítico serverless do Google Cloud.
+# 1. Modelo mental
 
 ```text
-Data
-  │
-  ▼
-BigQuery
-  │
-  ├── SQL
-  ├── Analytics
-  ├── Large Scale
-  └── Serverless
+CSV/GCS ──> BigQuery
+             ├─ dataset
+             ├─ tables
+             └─ SQL analytics
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. Estrutura
+# 3. Laboratório principal
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+bq mk --dataset --location=US $PROJECT_ID:ace_analytics
+
+cat > vendas.csv <<'EOF'
+id,estado,valor
+1,SP,100
+2,RJ,200
+3,SP,150
+EOF
+
+bq load --source_format=CSV --skip_leading_rows=1 \
+  ace_analytics.vendas \
+  vendas.csv \
+  id:INTEGER,estado:STRING,valor:NUMERIC
+
+bq query --use_legacy_sql=false \
+'SELECT estado, SUM(valor) receita
+ FROM `'"$PROJECT_ID"'.ace_analytics.vendas`
+ GROUP BY estado ORDER BY receita DESC'
+```
+
+Matriz de decisão:
+- OLTP relacional tradicional → Cloud SQL
+- PostgreSQL-compatible high performance → AlloyDB
+- relacional horizontal/global → Spanner
+- documentos → Firestore
+- wide-column → Bigtable
+- analytics/warehouse → BigQuery
+
+---
+
+# 4. Testes e falhas propositais
+
+- Execute `SELECT *` e discuta bytes processados em tabelas grandes.
+- BigQuery não é escolha padrão para transação OLTP.
+- Particionamento/clustering ajudam performance/custo analítico.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Project
-   │
-   ▼
-Dataset
-   │
-   ▼
-Table
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 3. Casos de uso
+# 5. Troubleshooting
 
-- BI;
-- Analytics;
-- Data warehouse;
-- Grandes volumes;
-- SQL analítico;
-- Data lakehouse/analytics.
-
----
-
-# 4. BigQuery não é OLTP
-
-Não escolha BigQuery para:
-
-- CRUD transacional;
-- Sistemas operacionais de baixa latência por linha;
-- Workloads relacionais transacionais tradicionais.
-
----
-
-# 5. Matriz principal
-
-| Necessidade | Serviço |
-|---|---|
-| MySQL/PostgreSQL/SQL Server tradicional | Cloud SQL |
-| PostgreSQL enterprise/performance | AlloyDB |
-| SQL distribuído/global | Spanner |
-| Documentos serverless | Firestore |
-| Wide-column / time series | Bigtable |
-| Analytics / DW | BigQuery |
-
----
-
-# 6. Heurística de decisão
-
-Pergunte:
+Use este fluxo:
 
 ```text
-1. É transacional ou analítico?
-2. Precisa SQL?
-3. Precisa escala horizontal?
-4. Precisa distribuição global?
-5. É documento?
-6. É wide-column/time series?
-7. É PostgreSQL especificamente?
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 7. Exemplos
+# 6. Pegadinhas ACE
 
-## E-commerce tradicional
-
-```text
-PostgreSQL
-→ Cloud SQL
-```
-
-## Plataforma PostgreSQL enterprise
-
-```text
-PostgreSQL + performance
-→ AlloyDB
-```
-
-## Ledger global
-
-```text
-SQL + transactions + horizontal scale
-→ Spanner
-```
-
-## App mobile
-
-```text
-Documents
-→ Firestore
-```
-
-## Telemetria
-
-```text
-High volume + low latency + wide-column
-→ Bigtable
-```
-
-## BI corporativo
-
-```text
-Analytics
-→ BigQuery
-```
+- BigQuery separa armazenamento/compute e é serverless para analytics.
+- Escolha banco por padrão de acesso, consistência, escala e modelo, não por popularidade.
+- Export/backup operacional e queries analíticas são problemas diferentes.
 
 ---
 
-# 8. Armadilhas comuns
+# 7. Questões estilo ACE
 
-## Escolher Spanner para tudo
-
-Errado.
-
-## Escolher BigQuery para OLTP
-
-Errado.
-
-## Escolher Firestore para SQL relacional
-
-Errado.
-
-## Escolher Cloud SQL para volume massivo de telemetria
-
-Provavelmente inadequado.
+- BI sobre terabytes/petabytes? → BigQuery.
+- CRUD transacional PostgreSQL pequeno/médio? → Cloud SQL.
 
 ---
 
-# 9. Questões Estilo ACE
+# 8. Checklist
 
-## Questão 1
-
-Equipe de BI precisa consultar dezenas de TB com SQL.
-
-**Resposta:** BigQuery.
-
-## Questão 2
-
-Aplicação CRUD PostgreSQL tradicional.
-
-**Resposta:** Cloud SQL.
-
-## Questão 3
-
-Banco SQL precisa escalar globalmente.
-
-**Resposta:** Spanner.
-
-## Questão 4
-
-App mobile usa documentos.
-
-**Resposta:** Firestore.
-
-## Questão 5
-
-Telemetria massiva.
-
-**Resposta:** Bigtable.
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
 
 ---
 
-# 10. Revisão Final
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Storage
-  └── Cloud Storage
-
-Relational
-  ├── Cloud SQL
-  ├── AlloyDB
-  └── Spanner
-
-NoSQL
-  ├── Firestore
-  └── Bigtable
-
-Analytics
-  └── BigQuery
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 11. Checklist
-
-- [ ] Entendo BigQuery em nível ACE
-- [ ] Sei que BigQuery é analítico
-- [ ] Sei diferenciar OLTP e OLAP
-- [ ] Sei comparar Cloud SQL, AlloyDB e Spanner
-- [ ] Sei comparar Firestore e Bigtable
-- [ ] Consigo escolher serviço por requisito

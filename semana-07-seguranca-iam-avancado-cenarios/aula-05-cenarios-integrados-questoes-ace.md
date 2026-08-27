@@ -4,243 +4,179 @@
 
 Ao final desta aula, você deverá:
 
-- Resolver cenários combinando IAM, compute, network e data;
-- Escolher a solução com menor privilégio;
-- Interpretar perguntas de prova;
-- Evitar respostas excessivamente amplas.
+- Resolver cenários least privilege;
+- Combinar IAM, rede e runtime identity;
+- Treinar troubleshooting de acesso;
 
 ---
 
-# 1. Método de resolução
+# 1. Modelo mental
 
+```text
+Usuário/Workload
+  ↓ identity
+IAM binding/condition
+  ↓
+Resource
+  ↕
+Network path (quando aplicável)
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
+```
+
+---
+
+# 3. Laboratório principal
+
+### Caso 1 — VM lê bucket
+Desenhe:
+```text
+VM
+ └─ Service Account
+      └─ roles/storage.objectViewer
+           └─ Bucket
+```
 Pergunte:
+- Quem é o principal?
+- Em qual escopo conceder?
+- A VM precisa de key JSON? Não.
 
+### Caso 2 — CI/CD externo
 ```text
-1. Qual é o objetivo?
-2. Quem precisa acessar?
-3. Qual recurso?
-4. Qual permissão mínima?
-5. Em qual escopo?
-6. Precisa credencial persistente?
-7. Existe opção gerenciada?
+GitHub OIDC
+   ↓ WIF
+Google identity
+   ↓ impersonation/permissions
+Deploy Cloud Run
+```
+
+### Caso 3 — usuário temporário
+Use IAM Condition com expiração em vez de lembrar de remover manualmente quando o caso comportar.
+
+### Checklist de comandos
+```bash
+gcloud auth list
+gcloud projects get-iam-policy PROJECT_ID
+gcloud iam service-accounts list
+gcloud iam roles describe ROLE
+gcloud logging read 'protoPayload.status.code=7' --limit=20
 ```
 
 ---
 
-# 2. Cenário — Cloud Run + BigQuery
+# 4. Testes e falhas propositais
+
+- Conceder role no nível errado aumenta blast radius.
+- Key SA é último recurso, não default.
+- Rede pode estar perfeita e IAM negar; IAM pode estar perfeito e rede falhar.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-Cloud Run
-   │
-Runtime SA
-   │
-roles/bigquery.dataViewer
-   ▼
-BigQuery
-```
-
-Não use:
-
-```text
-Owner
-Editor
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 3. Cenário — VM privada + Storage
+# 5. Troubleshooting
+
+Use este fluxo:
 
 ```text
-Private VM
-   │
-Service Account
-   │
-Storage role
-   ▼
-Cloud Storage
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
-Se também precisa internet:
+Comandos-base:
 
-```text
-Cloud NAT
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
-
-IAM e rede são problemas diferentes.
 
 ---
 
-# 4. Cenário — Administrador temporário
+# 6. Pegadinhas ACE
 
-Usuário precisa privilégio elevado por período curto.
-
-Melhores ideias:
-
-```text
-Temporary conditional access
-or
-Service Account impersonation
-```
-
-Evite criar chave permanente.
+- Identidade + escopo + role + condição.
+- Escolha mínima que resolve requisito.
+- Use logs/audit para evidência.
 
 ---
 
-# 5. Cenário — CI/CD externo
+# 7. Questões estilo ACE
 
-Pipeline fora do Google Cloud precisa deploy.
+- Cloud Run precisa ler um bucket específico: runtime SA + role mínima no bucket.
+- Fornecedor externo sem conta Google precisa acesso temporário: federação/WIF quando compatível.
 
-Prefira:
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-External identity
+Requisito
    ↓
-Workload Identity Federation
+Serviço/recurso correto
    ↓
-Service Account / IAM
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
----
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-# 6. Cenário — GKE workload
-
-Pod precisa acessar API Google.
-
-Prefira identidade de workload em vez de distribuir chave JSON.
-
----
-
-# 7. Cenário — acesso a bucket específico
-
-Necessidade:
-
-> Ler somente um bucket.
-
-Melhor:
-
-```text
-roles/storage.objectViewer
-on specific bucket
-```
-
-em vez de no projeto inteiro.
-
----
-
-# 8. Questões Estilo ACE
-
-## Questão 1
-
-Um usuário precisa executar comandos como uma Service Account durante troubleshooting, sem armazenar uma chave localmente.
-
-A. Criar JSON key  
-B. Tornar usuário Owner  
-C. Usar Service Account Impersonation  
-D. Tornar SA pública
-
-**Resposta: C**
-
----
-
-## Questão 2
-
-Aplicação no Cloud Run precisa apenas ler objetos de um bucket.
-
-A. Editor no projeto  
-B. Owner no bucket  
-C. Storage Object Viewer no bucket  
-D. Viewer na organização
-
-**Resposta: C**
-
----
-
-## Questão 3
-
-Workload em AWS precisa acessar APIs Google sem usar chave estática.
-
-A. Basic Role  
-B. Workload Identity Federation  
-C. Public bucket  
-D. Editor
-
-**Resposta: B**
-
----
-
-## Questão 4
-
-Usuário deve ter acesso apenas até sexta-feira.
-
-A. Owner  
-B. IAM Condition  
-C. Static key  
-D. Shared account
-
-**Resposta: B**
-
----
-
-## Questão 5
-
-A aplicação retorna timeout ao acessar outro servidor.
-
-A. Adicionar Editor  
-B. Adicionar Owner  
-C. Verificar rota/firewall/DNS  
-D. Criar Service Account Key
-
-**Resposta: C**
-
----
-
-# 9. Regra de Ouro
-
-Quando houver duas respostas possíveis, prefira a que:
-
-```text
-Uses managed identity
-+
-Uses least privilege
-+
-Avoids long-lived credentials
-+
-Restricts scope
-```
-
----
-
-# 10. Revisão Visual
-
-```text
-IAM
-│
-├── Principal
-├── Role
-├── Resource
-├── Condition
-│
-├── Service Accounts
-│   ├── User
-│   ├── Token Creator
-│   └── Impersonation
-│
-├── Federation
-│
-└── Troubleshooting
-    ├── Policy
-    ├── Credential
-    ├── Scope
-    └── Audit
-```
-
----
-
-# 11. Checklist Final
-
-- [ ] Resolvo cenários de least privilege
-- [ ] Sei quando usar impersonation
-- [ ] Sei quando usar IAM Conditions
-- [ ] Sei quando usar federation
-- [ ] Sei separar IAM, rede e quota
-- [ ] Evito respostas com Owner/Editor sem necessidade

@@ -4,199 +4,171 @@
 
 Ao final desta aula, você deverá:
 
-- Entender segurança de identidade para workloads;
-- Aplicar least privilege;
-- Troubleshootar `permission denied`;
-- Entender Policy Troubleshooter em nível conceitual;
-- Analisar IAM, rede e autenticação separadamente.
+- Investigar PermissionDenied;
+- Usar Policy Troubleshooter quando disponível;
+- Validar SA de runtime;
+- Distinguir authn/authz;
 
 ---
 
-# 1. Segurança de Workload
-
-Modelo recomendado:
+# 1. Modelo mental
 
 ```text
-Workload
-   │
-Dedicated Service Account
-   │
-Minimal Roles
-   │
-Specific Resources
+Request
+  ↓ authentication: quem é?
+  ↓ authorization: pode?
+  ↓ resource policy / IAM condition
+  ↓ allow/deny
+```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+
+---
+
+# 2. Regra de estudo da aula
+
+Use sempre este ciclo:
+
+```text
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 2. Evite identidade compartilhada
+# 3. Laboratório principal
 
-Ruim:
-
-```text
-Multiple apps
-    ↓
-Same Service Account
-    ↓
-roles/editor
+Crie SA sem acesso:
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+gcloud iam service-accounts create ace-noaccess
 ```
 
-Melhor:
-
-```text
-App A → SA-A → specific roles
-App B → SA-B → specific roles
+Crie bucket:
+```bash
+export BUCKET=gs://$PROJECT_ID-ace-sec-$RANDOM
+gcloud storage buckets create $BUCKET --location=us-central1
+echo secret > arquivo.txt
+gcloud storage cp arquivo.txt $BUCKET/
 ```
 
----
-
-# 3. `Permission denied`
-
-Fluxo:
-
-```text
-Who is calling?
-      ↓
-Which credential?
-      ↓
-Which principal?
-      ↓
-Which resource?
-      ↓
-Which permission is required?
-      ↓
-Which role grants it?
-      ↓
-At which scope?
-```
-
----
-
-# 4. Ver identidade ativa
-
+Roteiro de diagnóstico de 403:
 ```bash
 gcloud auth list
+gcloud config get-value account
+gcloud projects get-iam-policy $PROJECT_ID
+gcloud storage buckets get-iam-policy $BUCKET
+gcloud iam service-accounts get-iam-policy \
+  ace-noaccess@$PROJECT_ID.iam.gserviceaccount.com
+```
+
+No Console: IAM & Admin → Policy Troubleshooter.
+Teste principal + permission + resource para explicar por que acesso é permitido/negado.
+
+---
+
+# 4. Testes e falhas propositais
+
+- Não resolva 403 concedendo Owner.
+- Cheque principal efetivo (especialmente com impersonation).
+- IAM Conditions e deny policies podem alterar resultado.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
+
+```text
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 5. Ver projeto
+# 5. Troubleshooting
+
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
 
 ```bash
-gcloud config get-value project
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 6. Ver IAM Policy
+# 6. Pegadinhas ACE
 
-```bash
-gcloud projects get-iam-policy PROJECT_ID
-```
-
----
-
-# 7. Impersonation Troubleshooting
-
-Verifique:
-
-- Service Account Credentials API;
-- Token Creator;
-- Nome correto da Service Account;
-- Recurso alvo;
-- Role efetiva da Service Account.
+- 401 costuma apontar autenticação/token; 403 autorização.
+- Policy Troubleshooter ajuda explicar decisão.
+- Least privilege é correção preferida.
 
 ---
 
-# 8. Policy Troubleshooter
+# 7. Questões estilo ACE
 
-Ferramenta conceitualmente usada para responder:
-
-> Por que esse principal tem ou não tem acesso?
-
-Ela considera:
-
-- Principal;
-- Permission;
-- Resource;
-- Policies aplicáveis.
+- 403 em Storage: verificar principal, role/binding, condition, resource.
+- Workload usa SA errada: corrigir runtime identity antes de aumentar permissões.
 
 ---
 
-# 9. IAM x Network
+# 8. Checklist
 
-Não confunda:
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
 
 ```text
-Permission denied
-→ IAM/authentication
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
 ```
 
-com:
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
 
-```text
-Connection timed out
-→ network/firewall/DNS/application
-```
-
----
-
-# 10. IAM x Quota
-
-```text
-403 permission denied
-→ IAM likely
-```
-
-```text
-quota exceeded
-→ quota/capacity
-```
-
----
-
-# 11. Logs de Auditoria
-
-Cloud Audit Logs ajudam a investigar ações administrativas e acessos compatíveis.
-
-Modelo:
-
-```text
-Who
-What
-When
-Where
-```
-
----
-
-# 12. Questões Estilo ACE
-
-## Questão 1
-
-Cloud Run recebe 403 ao acessar BigQuery.
-
-Verifique:
-
-**Resposta:** Service Account de runtime + role correta no BigQuery.
-
-## Questão 2
-
-VM não alcança endpoint TCP.
-
-**Resposta:** não assumir IAM; verificar rede/firewall/rota.
-
-## Questão 3
-
-Usuário consegue impersonar SA, mas SA não acessa bucket.
-
-**Resposta:** a própria Service Account precisa da role adequada no bucket.
-
----
-
-# 13. Checklist
-
-- [ ] Entendo identidade dedicada por workload
-- [ ] Sei investigar permission denied
-- [ ] Sei separar IAM de rede
-- [ ] Entendo Policy Troubleshooter
-- [ ] Entendo Audit Logs

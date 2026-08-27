@@ -2,240 +2,185 @@
 
 ## Instruções
 
-Este simulado usa mais cenários integrados.
+- Faça sem consultar o gabarito.
+- Marque o motivo de cada escolha.
+- Depois classifique seus erros por domínio.
 
----
+## Questão 1
 
-# Questões
+Uma VM privada precisa acessar pacotes na internet sem IP externo. Melhor serviço?
 
-## 1
+A. Cloud NAT
+B. VPC Peering
+C. Cloud DNS
+D. Cloud Armor
 
-Uma empresa quer alta disponibilidade para um frontend em Compute Engine, tolerando falha de uma zone.
+## Questão 2
 
-A. Duas VMs na mesma zone  
-B. Regional MIG + Load Balancer  
-C. Uma VM maior  
-D. Spot VM única
+Uma aplicação HTTP containerizada stateless precisa escalar a zero sem cluster.
 
-## 2
+A. GKE Standard
+B. Cloud Run
+C. Compute Engine sole-tenant
+D. Bigtable
 
-Uma nova versão do Cloud Run deve receber 5% do tráfego.
+## Questão 3
 
-A. Snapshot  
-B. Traffic splitting entre revisions  
-C. Regional disk  
-D. Firewall route
+Usuário precisa apenas ler objetos de um bucket.
 
-## 3
+A. Owner
+B. Storage Object Viewer
+C. Editor
+D. Storage Admin
 
-Uma aplicação no Cloud Run recebe `403` ao consultar BigQuery.
+## Questão 4
 
-Primeiro verifique:
+Duas subnets em regiões diferentes estão na mesma VPC. Precisam peering?
 
-A. Storage Class  
-B. Runtime Service Account e IAM  
-C. Cloud NAT obrigatoriamente  
-D. Snapshot
+A. Sim
+B. Não
+C. Só se CIDR /24
+D. Só com Cloud Router
 
-## 4
+## Questão 5
 
-Uma VM não consegue alcançar outro host e recebe timeout.
+Banco relacional global com escala horizontal.
 
-A. Adicionar Owner  
-B. Verificar rota, firewall e DNS  
-C. Criar Service Account key  
-D. Trocar para Archive
+A. Cloud SQL
+B. Firestore
+C. Spanner
+D. Bigtable
 
-## 5
+## Questão 6
 
-Equipe quer centralizar VPC e compartilhar subnets entre projetos.
+Consultas analíticas sobre TB/PB.
 
-A. VPC Peering  
-B. Shared VPC  
-C. Cloud NAT  
-D. Cloud DNS
+A. BigQuery
+B. Cloud SQL
+C. Firestore
+D. Memorystore
 
-## 6
+## Questão 7
 
-Datacenter precisa de conectividade dedicada de alta capacidade.
+MIG deve aumentar VMs por CPU.
 
-A. Cloud Interconnect  
-B. Signed URL  
-C. Cloud Run Job  
-D. Firestore
+A. Health check
+B. Autoscaler
+C. Cloud NAT
+D. URL map
 
-## 7
+## Questão 8
 
-Workload PostgreSQL enterprise exige alta performance.
+Backend HTTP morreu mas VM existe. LB deve parar de enviar tráfego.
 
-A. AlloyDB  
-B. Bigtable  
-C. Firestore  
-D. Archive
+A. Health check
+B. Snapshot
+C. Route
+D. Budget
 
-## 8
+## Questão 9
 
-Aplicação de BI consulta dezenas de TB com SQL.
+Quem troca rotas dinamicamente com BGP no GCP?
 
-A. Cloud SQL  
-B. BigQuery  
-C. Firestore  
-D. Cloud Run
+A. Cloud DNS
+B. Cloud Router
+C. Cloud NAT
+D. Cloud Scheduler
 
-## 9
+## Questão 10
 
-Usuário deve ter acesso somente até determinada data.
+Budget atingiu 100%. O que ocorre automaticamente por padrão?
 
-A. Owner  
-B. IAM Condition  
-C. Static Key  
-D. Editor
+A. Projeto desliga
+B. Gasto bloqueia
+C. Somente alertas configurados podem ocorrer
+D. VMs param
 
-## 10
+## Questão 11
 
-Você quer reduzir cold start no Cloud Run.
+Terraform: comando para visualizar mudanças previstas?
 
-A. Maximum instances = 0  
-B. Minimum instances > 0  
-C. Archive Storage  
-D. Cloud VPN
+A. apply
+B. init
+C. plan
+D. destroy
 
-## 11
+## Questão 12
 
-Pods precisam aumentar quando CPU sobe.
+Kubernetes: objeto que mantém quantidade desejada de Pods?
 
-A. Cluster Autoscaler  
-B. HPA  
-C. MIG Autohealing  
+A. Service
+B. Deployment
+C. ConfigMap
+D. Ingress only
+
+## Questão 13
+
+Cloud Storage: apagar automaticamente objetos antigos.
+
+A. Lifecycle rule
+B. Snapshot schedule
+C. Cloud Router
+D. Quota
+
+## Questão 14
+
+External CI/CD sem chave JSON longa.
+
+A. Basic role Owner
+B. Workload Identity Federation
+C. Static external IP
 D. Cloud NAT
 
-## 12
+## Questão 15
 
-Nodes precisam aumentar porque não há capacidade para novos Pods.
+403 ao acessar recurso indica primeiro investigar:
 
-A. HPA  
-B. Cluster Autoscaler  
-C. Signed URL  
-D. Bucket Lifecycle
+A. IAM/autorização
+B. CPU
+C. CIDR sempre
+D. disk type
 
-## 13
+# Gabarito comentado
 
-Você quer identificar erro exato às 14:31.
+**1. A — Cloud NAT**
 
-A. Cloud Logging  
-B. Budget  
-C. IAM Condition  
-D. Snapshot Schedule
+**2. B — Cloud Run**
 
-## 14
+**3. B — Storage Object Viewer**
 
-Você quer reproduzir uma VPC em dev/hml/prod.
+**4. B — Não**
 
-A. Terraform  
-B. Manual Console  
-C. Screenshot  
-D. DNS only
+**5. C — Spanner**
 
-## 15
+**6. A — BigQuery**
 
-Qual comando mostra mudanças Terraform antes da aplicação?
+**7. B — Autoscaler**
 
-A. terraform init  
-B. terraform plan  
-C. terraform destroy  
-D. terraform state rm
+**8. A — Health check**
 
-## 16
+**9. B — Cloud Router**
 
-Uma aplicação precisa baixar arquivo por URL temporária sem tornar bucket público.
+**10. C — Somente alertas configurados podem ocorrer**
 
-A. Signed URL  
-B. Owner  
-C. VPC Peering  
-D. Archive
+**11. C — plan**
 
-## 17
+**12. B — Deployment**
 
-Um objeto deve migrar automaticamente para Coldline após 90 dias.
+**13. A — Lifecycle rule**
 
-A. Lifecycle Management  
-B. Snapshot  
-C. IAM Condition  
-D. MIG
+**14. B — Workload Identity Federation**
 
-## 18
+**15. A — IAM/autorização**
 
-Duas VPCs independentes precisam comunicação privada e direta.
-
-A. VPC Network Peering  
-B. Cloud Storage  
-C. Budget Alert  
-D. GKE HPA
-
-## 19
-
-Peering A↔B e B↔C implica A↔C?
-
-A. Sempre  
-B. Não, peering não é transitivo  
-C. Apenas com Archive  
-D. Apenas com Cloud Run
-
-## 20
-
-Qual abordagem é geralmente preferível para autenticação de workload?
-
-A. JSON key persistente  
-B. Managed identity / federation / impersonation  
-C. Shared admin account  
-D. Owner
-
----
-
-# Gabarito
-
-1. B  
-2. B  
-3. B  
-4. B  
-5. B  
-6. A  
-7. A  
-8. B  
-9. B  
-10. B  
-11. B  
-12. B  
-13. A  
-14. A  
-15. B  
-16. A  
-17. A  
-18. A  
-19. B  
-20. B
-
----
-
-# Revisão após o simulado
+## Análise pós-simulado
 
 Para cada erro, registre:
 
 ```text
 Questão:
-Resposta marcada:
-Resposta correta:
-Tema:
-Motivo do erro:
-Regra correta:
-```
-
-Exemplo:
-
-```text
-Tema: GKE
-Erro: confundi HPA com Cluster Autoscaler
-Regra:
-HPA → Pods
-Cluster Autoscaler → Nodes
+Domínio:
+Conceito que faltou:
+Por que minha opção estava errada:
+Comando/lab que vou repetir:
 ```

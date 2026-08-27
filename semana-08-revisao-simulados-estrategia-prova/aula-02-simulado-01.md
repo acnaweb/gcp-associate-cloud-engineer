@@ -2,241 +2,185 @@
 
 ## Instruções
 
-- Resolva sem consultar material.
-- Marque as respostas.
-- Só depois confira o gabarito.
-- Analise o motivo do erro.
+- Faça sem consultar o gabarito.
+- Marque o motivo de cada escolha.
+- Depois classifique seus erros por domínio.
 
----
+## Questão 1
 
-# Questões
+Uma VM privada precisa acessar pacotes na internet sem IP externo. Melhor serviço?
 
-## 1
-
-Uma aplicação precisa executar software legado com acesso ao sistema operacional.
-
-A. Cloud Run  
-B. Compute Engine  
-C. BigQuery  
-D. Firestore
-
-## 2
-
-Uma subnet em `southamerica-east1` possui qual escopo?
-
-A. Global  
-B. Multirregional  
-C. Regional  
-D. Zonal
-
-## 3
-
-Uma VM privada precisa acessar a internet sem IP externo.
-
-A. Cloud DNS  
-B. Cloud NAT  
-C. VPC Peering  
+A. Cloud NAT
+B. VPC Peering
+C. Cloud DNS
 D. Cloud Armor
 
-## 4
+## Questão 2
 
-Aplicação precisa somente ler objetos de um bucket.
+Uma aplicação HTTP containerizada stateless precisa escalar a zero sem cluster.
 
-A. Owner  
-B. Editor  
-C. Storage Object Viewer  
-D. Compute Admin
+A. GKE Standard
+B. Cloud Run
+C. Compute Engine sole-tenant
+D. Bigtable
 
-## 5
+## Questão 3
 
-Banco PostgreSQL tradicional gerenciado.
+Usuário precisa apenas ler objetos de um bucket.
 
-A. Cloud SQL  
-B. Bigtable  
-C. Firestore  
-D. BigQuery
+A. Owner
+B. Storage Object Viewer
+C. Editor
+D. Storage Admin
 
-## 6
+## Questão 4
 
-SQL relacional distribuído globalmente.
+Duas subnets em regiões diferentes estão na mesma VPC. Precisam peering?
 
-A. Cloud SQL  
-B. Spanner  
-C. Firestore  
+A. Sim
+B. Não
+C. Só se CIDR /24
+D. Só com Cloud Router
+
+## Questão 5
+
+Banco relacional global com escala horizontal.
+
+A. Cloud SQL
+B. Firestore
+C. Spanner
+D. Bigtable
+
+## Questão 6
+
+Consultas analíticas sobre TB/PB.
+
+A. BigQuery
+B. Cloud SQL
+C. Firestore
 D. Memorystore
 
-## 7
+## Questão 7
 
-Processamento batch containerizado deve executar e terminar.
+MIG deve aumentar VMs por CPU.
 
-A. Cloud Run Service  
-B. Cloud Run Job  
-C. GKE Service  
-D. Cloud DNS
+A. Health check
+B. Autoscaler
+C. Cloud NAT
+D. URL map
 
-## 8
+## Questão 8
 
-Você quer Kubernetes com menos administração de nodes.
+Backend HTTP morreu mas VM existe. LB deve parar de enviar tráfego.
 
-A. Compute Engine  
-B. GKE Autopilot  
-C. GKE Standard obrigatório  
-D. App Engine Flexible
+A. Health check
+B. Snapshot
+C. Route
+D. Budget
 
-## 9
+## Questão 9
 
-Qual ferramenta mostra eventos detalhados de uma aplicação?
+Quem troca rotas dinamicamente com BGP no GCP?
 
-A. Cloud Logging  
-B. Billing  
-C. Quotas  
-D. Cloud DNS
+A. Cloud DNS
+B. Cloud Router
+C. Cloud NAT
+D. Cloud Scheduler
 
-## 10
+## Questão 10
 
-Você quer ser avisado quando CPU ficar acima de 80%.
+Budget atingiu 100%. O que ocorre automaticamente por padrão?
 
-A. Snapshot  
-B. Alerting Policy  
-C. Bucket Lifecycle  
-D. IAM Condition
+A. Projeto desliga
+B. Gasto bloqueia
+C. Somente alertas configurados podem ocorrer
+D. VMs param
 
-## 11
+## Questão 11
 
-Você quer backup point-in-time de um Persistent Disk.
+Terraform: comando para visualizar mudanças previstas?
 
-A. Image  
-B. Snapshot  
-C. Template  
-D. Route
+A. apply
+B. init
+C. plan
+D. destroy
 
-## 12
+## Questão 12
 
-Múltiplas VMs precisam ter a mesma configuração.
+Kubernetes: objeto que mantém quantidade desejada de Pods?
 
-A. Instance Template  
-B. Snapshot apenas  
-C. DNS zone  
-D. Firewall tag
+A. Service
+B. Deployment
+C. ConfigMap
+D. Ingress only
 
-## 13
+## Questão 13
 
-Uma VM falha health check dentro de um MIG.
+Cloud Storage: apagar automaticamente objetos antigos.
 
-A. Autoscaling  
-B. Autohealing  
-C. Budget Alert  
+A. Lifecycle rule
+B. Snapshot schedule
+C. Cloud Router
+D. Quota
+
+## Questão 14
+
+External CI/CD sem chave JSON longa.
+
+A. Basic role Owner
+B. Workload Identity Federation
+C. Static external IP
 D. Cloud NAT
 
-## 14
+## Questão 15
 
-Qual é o efeito de um Budget?
+403 ao acessar recurso indica primeiro investigar:
 
-A. Bloqueia gasto automaticamente  
-B. Monitora e alerta  
-C. Limita número de CPUs  
-D. Bloqueia APIs
+A. IAM/autorização
+B. CPU
+C. CIDR sempre
+D. disk type
 
-## 15
+# Gabarito comentado
 
-Erro `quota exceeded` durante criação de VMs.
+**1. A — Cloud NAT**
 
-A. IAM  
-B. Quota  
-C. DNS  
-D. Storage Class
+**2. B — Cloud Run**
 
-## 16
+**3. B — Storage Object Viewer**
 
-Pipeline externo precisa autenticar sem chave JSON.
+**4. B — Não**
 
-A. Workload Identity Federation  
-B. Owner  
-C. Basic Auth  
-D. Public bucket
+**5. C — Spanner**
 
-## 17
+**6. A — BigQuery**
 
-Usuário precisa executar comandos como uma Service Account sem baixar chave.
+**7. B — Autoscaler**
 
-A. Impersonation  
-B. Editor  
-C. Shared Account  
-D. External IP
+**8. A — Health check**
 
-## 18
+**9. B — Cloud Router**
 
-Objetos quase nunca acessados e mantidos por anos.
+**10. C — Somente alertas configurados podem ocorrer**
 
-A. Standard  
-B. Nearline  
-C. Coldline  
-D. Archive
+**11. C — plan**
 
-## 19
+**12. B — Deployment**
 
-App mobile usa documentos JSON-like.
+**13. A — Lifecycle rule**
 
-A. Firestore  
-B. Spanner  
-C. Bigtable  
-D. Cloud SQL
+**14. B — Workload Identity Federation**
 
-## 20
+**15. A — IAM/autorização**
 
-Milhões de eventos de telemetria com baixa latência.
+## Análise pós-simulado
 
-A. Bigtable  
-B. Cloud SQL  
-C. BigQuery para OLTP  
-D. Firestore obrigatório
-
----
-
-# Gabarito
-
-1. B  
-2. C  
-3. B  
-4. C  
-5. A  
-6. B  
-7. B  
-8. B  
-9. A  
-10. B  
-11. B  
-12. A  
-13. B  
-14. B  
-15. B  
-16. A  
-17. A  
-18. D  
-19. A  
-20. A
-
----
-
-# Interpretação
+Para cada erro, registre:
 
 ```text
-18–20 acertos → excelente
-16–17        → muito bom
-14–15        → revise lacunas
-<14          → volte aos tópicos com erro
-```
-
-Não use apenas a pontuação.
-
-O principal é:
-
-```text
-Erro
- ↓
-Classificar causa
- ↓
-Revisar conceito
- ↓
-Refazer questão
+Questão:
+Domínio:
+Conceito que faltou:
+Por que minha opção estava errada:
+Comando/lab que vou repetir:
 ```

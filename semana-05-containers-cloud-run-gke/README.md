@@ -1,22 +1,12 @@
 # Semana 5 — Containers, Cloud Run e GKE
 
-## Objetivo da Semana
+## Método desta versão
 
-Ao final desta semana, você deverá dominar:
+Todas as aulas foram reorganizadas para privilegiar prática e raciocínio operacional:
 
-- Fundamentos de containers;
-- Imagens e registries;
-- Artifact Registry;
-- Cloud Run Services;
-- Cloud Run Jobs;
-- Revisions, traffic splitting e scaling;
-- IAM e Service Accounts no Cloud Run;
-- Fundamentos de Kubernetes;
-- GKE Standard e Autopilot;
-- Pods, Deployments, Services e namespaces;
-- Node pools e autoscaling;
-- Troubleshooting básico;
-- Escolha entre Compute Engine, Cloud Run e GKE.
+```text
+Conceito → Criar → Inspecionar → Testar → Quebrar → Diagnosticar → Corrigir → Cleanup
+```
 
 ## Aulas
 
@@ -26,19 +16,13 @@ Ao final desta semana, você deverá dominar:
 4. [Aula 4 — Kubernetes e GKE: Pods, Deployments e Services](./aula-04-kubernetes-gke-pods-deployments-services.md)
 5. [Aula 5 — GKE Autopilot, Standard, Autoscaling e Troubleshooting](./aula-05-gke-autopilot-standard-autoscaling-troubleshooting.md)
 
-## Checklist da Semana
+## Checklist da semana
 
-- [ ] Entendo container e image
-- [ ] Sei o papel do Artifact Registry
-- [ ] Sei implantar um serviço no Cloud Run
-- [ ] Entendo revisions
-- [ ] Entendo traffic splitting
-- [ ] Entendo min/max instances
-- [ ] Entendo Cloud Run Jobs
-- [ ] Entendo Service Account de runtime
-- [ ] Entendo Pod, Deployment e Service
-- [ ] Sei usar `kubectl`
-- [ ] Sei diferenciar GKE Standard e Autopilot
-- [ ] Entendo node pools
-- [ ] Entendo autoscaling
-- [ ] Sei escolher Compute Engine, Cloud Run ou GKE
+- [ ] Executei os laboratórios aplicáveis;
+- [ ] Consigo explicar os recursos sem decorar comandos;
+- [ ] Provoquei e diagnostiquei falhas;
+- [ ] Consigo distinguir IAM, rede, quota, aplicação e configuração;
+- [ ] Consigo justificar a escolha de serviço em cenários ACE;
+- [ ] Removi recursos com custo ao terminar.
+
+> Alguns recursos corporativos exigem Organization, billing permissions, provedores externos ou infraestrutura física. Nesses casos, a aula usa laboratório de inspeção/arquitetura/decisão em vez de simular provisionamento irreal.

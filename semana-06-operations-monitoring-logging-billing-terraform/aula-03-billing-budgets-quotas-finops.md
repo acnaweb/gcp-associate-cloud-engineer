@@ -4,230 +4,175 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Billing Account;
-- Entender vínculo entre projeto e billing;
-- Entender budgets;
-- Entender alertas de orçamento;
-- Entender quotas;
-- Diferenciar budget de quota;
-- Entender labels para organização.
+- Entender billing account;
+- Criar/inspecionar budget quando permitido;
+- Diferenciar budget e quota;
+- Usar labels para custo;
 
 ---
 
-# 1. Billing Account
-
-Billing Account é a conta de faturamento.
+# 1. Modelo mental
 
 ```text
 Billing Account
-      │
-      ├── Project A
-      ├── Project B
-      └── Project C
+ └─ Project
+    ├─ resources
+    └─ labels
+
+Budget → alerta
+Quota  → limite técnico/consumo de recurso
 ```
 
----
-
-# 2. Project e Billing
-
-Para consumir recursos pagos, um projeto normalmente precisa estar associado a uma Billing Account ativa.
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 3. Budget
+# 2. Regra de estudo da aula
 
-Budget define um valor de referência para monitoramento de custo.
-
-Exemplo:
+Use sempre este ciclo:
 
 ```text
-Monthly Budget = US$ 1,000
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
-Alertas podem ser configurados para percentuais como:
+---
+
+# 3. Laboratório principal
+
+Inspecione billing:
+```bash
+gcloud billing accounts list
+gcloud billing projects describe $(gcloud config get-value project)
+```
+
+Quotas:
+```bash
+gcloud compute project-info describe \
+  --format="yaml(quotas)"
+```
+
+Crie recurso com labels:
+```bash
+gcloud compute instances create ace-finops-vm \
+  --zone=us-central1-a \
+  --machine-type=e2-micro \
+  --labels=environment=lab,owner=ace \
+  --image-family=debian-12 --image-project=debian-cloud
+```
+
+Budget (se tiver permissão na Billing Account):
+```bash
+gcloud billing budgets list \
+  --billing-account=BILLING_ACCOUNT_ID
+```
+
+No Console: Billing → Budgets & alerts → crie um budget pequeno de laboratório sem esperar que ele bloqueie gastos.
+
+---
+
+# 4. Testes e falhas propositais
+
+- Budget alerta; não interrompe gasto automaticamente.
+- Quota pode impedir criação mesmo com orçamento disponível.
+- Labels ajudam alocação, mas não substituem estrutura de billing/projects.
+
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
 ```text
-50%
-90%
-100%
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
 ```
 
 ---
 
-# 4. Atenção: Budget não bloqueia gastos
+# 5. Troubleshooting
 
-Ponto importante:
-
-> Um budget, por si só, não interrompe automaticamente o consumo quando o limite é atingido.
-
-Ele serve principalmente para acompanhamento e alertas.
-
----
-
-# 5. Budget Alert
-
-Modelo:
+Use este fluxo:
 
 ```text
-Spend
-  ↓
-50%
-  ↓
-Notification
-
-90%
-  ↓
-Notification
-
-100%
-  ↓
-Notification
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
 ```
 
----
-
-# 6. Quota
-
-Quota limita consumo técnico de recursos ou APIs.
-
-Exemplos:
-
-```text
-vCPU quota
-API requests
-IP addresses
-resources per region
-```
-
----
-
-# 7. Budget x Quota
-
-```text
-Budget
-→ financial monitoring
-
-Quota
-→ technical usage limit
-```
-
----
-
-# 8. Exemplo
-
-Uma equipe tenta criar mais 100 VMs e recebe erro.
-
-Possível causa:
-
-```text
-CPU quota exceeded
-```
-
-Não necessariamente falta de budget.
-
----
-
-# 9. Labels
-
-Labels ajudam a organizar recursos.
-
-Exemplo:
-
-```text
-environment=prod
-team=data
-cost-center=1234
-application=orders
-```
-
-São úteis para:
-
-- Inventário;
-- Busca;
-- Análise de custo;
-- Governança.
-
----
-
-# 10. FinOps básico
-
-Perguntas que você deve saber fazer:
-
-```text
-Quem está gastando?
-Em qual projeto?
-Em qual serviço?
-Qual ambiente?
-Existe recurso ocioso?
-Existe quota inadequada?
-```
-
----
-
-# 11. Comandos úteis
-
-Ver projeto atual:
+Comandos-base:
 
 ```bash
-gcloud config get-value project
-```
-
-Ver quotas de Compute Engine por região:
-
-```bash
-gcloud compute regions describe southamerica-east1
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
 ```
 
 ---
 
-# 12. Boas práticas
+# 6. Pegadinhas ACE
 
-- Definir budgets;
-- Criar alertas;
-- Usar labels;
-- Revisar recursos ociosos;
-- Evitar overprovisioning;
-- Revisar quotas antes de grandes deployments.
+- Budget ≠ quota.
+- Billing account financia projetos vinculados.
+- Cost controls combinam budgets, labels, rightsizing, schedules e arquitetura.
 
 ---
 
-# 13. Questões Estilo ACE
+# 7. Questões estilo ACE
 
-## Questão 1
-
-Você quer receber aviso quando o gasto mensal chegar a 90%.
-
-**Resposta:** Budget Alert.
-
-## Questão 2
-
-Deployment falha porque limite de CPUs regionais foi atingido.
-
-**Resposta:** Quota.
-
-## Questão 3
-
-Você quer identificar custos por equipe.
-
-**Resposta:** Labels e organização adequada de projetos/faturamento.
+- Quer avisar ao atingir 80% do gasto? → budget alert.
+- Erro RESOURCE_EXHAUSTED ao criar CPU? → quota.
 
 ---
 
-# 14. Pegadinhas ACE
+# 8. Checklist
 
-- Budget não é hard limit automático.
-- Quota não representa valor financeiro.
-- Quota pode ser regional ou global dependendo do recurso.
-- Labels ajudam muito em FinOps, mas não substituem arquitetura de billing adequada.
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
 
 ---
 
-# 15. Checklist
+# 9. O que memorizar
 
-- [ ] Entendo Billing Account
-- [ ] Entendo Budget
-- [ ] Entendo Budget Alert
-- [ ] Sei que budget não bloqueia gasto automaticamente
-- [ ] Entendo quota
-- [ ] Sei diferenciar budget e quota
-- [ ] Entendo labels
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+

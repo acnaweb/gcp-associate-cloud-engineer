@@ -1,19 +1,12 @@
 # Semana 2 — Compute Engine
 
-## Objetivo da Semana
+## Método desta versão
 
-Ao final desta semana, você deverá dominar:
+Todas as aulas foram reorganizadas para privilegiar prática e raciocínio operacional:
 
-- Compute Engine e seus principais casos de uso;
-- Machine families, series e machine types;
-- Criação, operação e diagnóstico de VMs;
-- Persistent Disks, snapshots e images;
-- Metadata e startup scripts;
-- Instance Templates;
-- Managed Instance Groups (MIGs);
-- Autoscaling e autohealing;
-- Spot VMs;
-- Alta disponibilidade e troubleshooting.
+```text
+Conceito → Criar → Inspecionar → Testar → Quebrar → Diagnosticar → Corrigir → Cleanup
+```
 
 ## Aulas
 
@@ -23,32 +16,13 @@ Ao final desta semana, você deverá dominar:
 4. [Aula 4 — Instance Templates e Managed Instance Groups](./aula-04-instance-templates-managed-instance-groups.md)
 5. [Aula 5 — Autoscaling, Autohealing, Spot VMs e Troubleshooting](./aula-05-autoscaling-autohealing-spot-troubleshooting.md)
 
-## Estrutura de Estudo
+## Checklist da semana
 
-Cada aula contém:
+- [ ] Executei os laboratórios aplicáveis;
+- [ ] Consigo explicar os recursos sem decorar comandos;
+- [ ] Provoquei e diagnostiquei falhas;
+- [ ] Consigo distinguir IAM, rede, quota, aplicação e configuração;
+- [ ] Consigo justificar a escolha de serviço em cenários ACE;
+- [ ] Removi recursos com custo ao terminar.
 
-- Objetivos;
-- Teoria;
-- Diagramas;
-- Comparações;
-- Comandos `gcloud`;
-- Laboratórios;
-- Pegadinhas da certificação;
-- Questões estilo ACE;
-- Checklist;
-- Resumo para memorização.
-
-## Checklist da Semana
-
-- [ ] Sei quando escolher Compute Engine
-- [ ] Sei criar, parar, iniciar, reiniciar e descrever VMs
-- [ ] Sei diferenciar machine family, series e machine type
-- [ ] Sei trabalhar com Persistent Disks
-- [ ] Sei diferenciar disk, snapshot e image
-- [ ] Sei usar metadata e startup scripts
-- [ ] Sei criar Instance Templates
-- [ ] Entendo Managed Instance Groups
-- [ ] Sei diferenciar MIG zonal e regional
-- [ ] Entendo autoscaling e autohealing
-- [ ] Entendo Spot VMs
-- [ ] Sei interpretar problemas comuns de Compute Engine
+> Alguns recursos corporativos exigem Organization, billing permissions, provedores externos ou infraestrutura física. Nesses casos, a aula usa laboratório de inspeção/arquitetura/decisão em vez de simular provisionamento irreal.

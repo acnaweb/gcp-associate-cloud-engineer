@@ -4,207 +4,178 @@
 
 Ao final desta aula, você deverá:
 
-- Entender Service Accounts em profundidade;
-- Entender Service Account User;
-- Entender Service Account Token Creator;
-- Entender impersonation;
-- Saber por que evitar chaves persistentes.
+- Diferenciar Service Account User e Token Creator;
+- Praticar impersonation;
+- Evitar keys persistentes;
+- Entender attach x impersonate;
 
 ---
 
-# 1. Service Account
-
-Uma Service Account é uma identidade para workloads.
-
-```text
-Workload
-   │
-   ▼
-Service Account
-   │
-   ▼
-Google Cloud APIs
-```
-
----
-
-# 2. Service Account como Principal e Resource
-
-Uma Service Account pode ser:
-
-```text
-Principal
-→ recebe roles em outros recursos
-```
-
-e também:
-
-```text
-Resource
-→ outras identidades recebem roles sobre ela
-```
-
----
-
-# 3. Service Account User
-
-Role:
-
-```text
-roles/iam.serviceAccountUser
-```
-
-Concede capacidade de anexar/usar uma Service Account em determinados contextos suportados.
-
-Modelo:
+# 1. Modelo mental
 
 ```text
 User
-  │
-  │ Service Account User
-  ▼
-Service Account
-  │
-  ▼
-Workload
+ ├─ Service Account User → anexar/usar SA em recurso
+ └─ Token Creator → gerar credencial curta/impersonar
+                         ↓
+                    Service Account
+                         ↓
+                     API resource
 ```
+
+O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 4. Service Account Token Creator
+# 2. Regra de estudo da aula
 
-Role:
+Use sempre este ciclo:
 
 ```text
-roles/iam.serviceAccountTokenCreator
-```
-
-Permite gerar credenciais de curta duração da Service Account e é central para impersonation.
-
----
-
-# 5. Impersonation
-
-```text
-Authenticated User
-       │
-       │ impersonates
-       ▼
-Service Account
-       │
-       ▼
-Short-lived Credentials
-       │
-       ▼
-Google Cloud Resource
+Conceito
+   ↓
+Criar
+   ↓
+Inspecionar
+   ↓
+Testar
+   ↓
+Quebrar propositalmente
+   ↓
+Diagnosticar
+   ↓
+Corrigir
+   ↓
+Remover
 ```
 
 ---
 
-# 6. Por que usar Impersonation?
-
-Vantagens:
-
-- Credenciais temporárias;
-- Menor risco que chave persistente;
-- Auditoria;
-- Evita distribuir JSON keys;
-- Útil para desenvolvimento e tarefas administrativas.
-
----
-
-# 7. Habilitar API
+# 3. Laboratório principal
 
 ```bash
-gcloud services enable iamcredentials.googleapis.com
+export PROJECT_ID=$(gcloud config get-value project)
+export SA=ace-impersonation@$PROJECT_ID.iam.gserviceaccount.com
+
+gcloud iam service-accounts create ace-impersonation
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SA" \
+  --role="roles/viewer"
 ```
 
----
-
-# 8. Exemplo de Impersonation
-
+Conceda Token Creator ao seu usuário (somente em projeto de laboratório):
 ```bash
-gcloud storage buckets list \
-  --impersonate-service-account=ace-runtime-sa@PROJECT_ID.iam.gserviceaccount.com
-```
+export USER=$(gcloud config get-value account)
 
----
-
-# 9. Conceder Token Creator
-
-Exemplo conceitual:
-
-```bash
-gcloud iam service-accounts add-iam-policy-binding \
-  ace-runtime-sa@PROJECT_ID.iam.gserviceaccount.com \
-  --member="user:usuario@empresa.com" \
+gcloud iam service-accounts add-iam-policy-binding $SA \
+  --member="user:$USER" \
   --role="roles/iam.serviceAccountTokenCreator"
 ```
 
----
-
-# 10. Chaves de Service Account
-
-Evite quando possível:
-
-```text
-service-account-key.json
+Teste:
+```bash
+gcloud projects describe $PROJECT_ID \
+  --impersonate-service-account=$SA
 ```
 
-Problemas:
-
-- Persistente;
-- Pode ser copiada;
-- Pode vazar;
-- Difícil de controlar em escala.
-
----
-
-# 11. Ordem de preferência
-
-Modelo simplificado:
-
-```text
-Attached Service Account / Workload Identity
-        ↓
-Impersonation
-        ↓
-Federation
-        ↓
-Persistent Key only when necessary
+Compare:
+```bash
+gcloud auth print-access-token \
+  --impersonate-service-account=$SA | head -c 20
+echo
 ```
 
 ---
 
-# 12. Questões Estilo ACE
+# 4. Testes e falhas propositais
 
-## Questão 1
+- Remova Token Creator e repita impersonation.
+- Impersonation usa credenciais curtas; não exige baixar JSON key.
+- Service Account User não implica automaticamente Token Creator.
 
-Desenvolvedor precisa testar permissões de uma Service Account sem baixar chave.
+Para cada falha, não corrija imediatamente. Primeiro registre:
 
-**Resposta:** impersonation.
-
-## Questão 2
-
-Usuário precisa gerar access token temporário de uma Service Account.
-
-**Resposta:** Service Account Token Creator.
-
-## Questão 3
-
-Aplicação roda no Google Cloud.
-
-Melhor abordagem?
-
-**Resposta:** anexar identidade apropriada ao workload, evitando chave persistente.
+```text
+Sintoma:
+Hipótese:
+Comando/evidência:
+Causa:
+Correção:
+```
 
 ---
 
-# 13. Checklist
+# 5. Troubleshooting
 
-- [ ] Entendo Service Account como principal e recurso
-- [ ] Entendo Service Account User
-- [ ] Entendo Token Creator
-- [ ] Entendo impersonation
-- [ ] Sei usar `--impersonate-service-account`
-- [ ] Sei por que evitar JSON keys
+Use este fluxo:
+
+```text
+1. O recurso existe e está no estado esperado?
+2. O escopo (project/region/zone) está correto?
+3. A identidade/principal está correta?
+4. IAM permite a operação?
+5. Rede/rota/firewall permitem comunicação, quando aplicável?
+6. A aplicação/serviço está saudável?
+7. Há quota/capacidade suficiente?
+8. Logs e métricas confirmam a hipótese?
+```
+
+Comandos-base:
+
+```bash
+gcloud config list
+gcloud auth list
+gcloud projects describe $(gcloud config get-value project)
+gcloud logging read 'severity>=ERROR' --limit=10
+```
+
+---
+
+# 6. Pegadinhas ACE
+
+- Attach SA e impersonate SA são ações distintas.
+- Preferir impersonation/federation a chaves persistentes.
+- Runtime SA deve ter apenas roles necessárias.
+
+---
+
+# 7. Questões estilo ACE
+
+- Usuário precisa gerar token da SA? → Service Account Token Creator.
+- Usuário precisa anexar SA a uma VM? → Service Account User, além de permissões do recurso.
+
+---
+
+# 8. Checklist
+
+- [ ] Consigo explicar o modelo mental da aula;
+- [ ] Executei o laboratório;
+- [ ] Inspecionei os recursos com `describe/list`;
+- [ ] Provoquei ao menos uma falha;
+- [ ] Diagnostiquei antes de corrigir;
+- [ ] Consigo justificar a escolha do serviço;
+- [ ] Consigo explicar as pegadinhas ACE;
+- [ ] Fiz o cleanup.
+
+---
+
+# 9. O que memorizar
+
+Não memorize apenas comandos. Memorize a relação:
+
+```text
+Requisito
+   ↓
+Serviço/recurso correto
+   ↓
+Escopo correto
+   ↓
+Permissão correta
+   ↓
+Operação correta
+   ↓
+Troubleshooting com evidência
+```
+
+Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+
