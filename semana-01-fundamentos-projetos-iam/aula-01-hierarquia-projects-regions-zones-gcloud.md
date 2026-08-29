@@ -315,3 +315,50 @@ IAM            → autorização
 ```
 
 Se a criação falhar com `RESOURCE_EXHAUSTED`, confirme quota antes de alterar IAM ou firewall.
+
+
+---
+
+## Prática guiada — aplicar Organization Policy
+
+**Nível:** `P*` — depende de uma Organization e permissões de Organization Policy Administrator.
+
+O guia não pede apenas reconhecer Organization Policy; ele fala em **aplicar políticas organizacionais à hierarquia**.
+
+Em uma Organization de laboratório, primeiro inspecione constraints disponíveis:
+
+```bash
+gcloud org-policies list --organization=ORGANIZATION_ID
+```
+
+Escolha uma constraint apropriada para laboratório e leia o estado atual antes de alterar:
+
+```bash
+gcloud org-policies describe CONSTRAINT_NAME \
+  --organization=ORGANIZATION_ID
+```
+
+Use o Console em **IAM & Admin → Organization Policies** para:
+
+1. selecionar a Organization ou Folder de laboratório;
+2. abrir uma constraint;
+3. observar inherited policy;
+4. criar override somente se tiver autorização;
+5. salvar;
+6. verificar a effective policy.
+
+### Falha proposital
+
+Tente planejar a criação de um recurso que viole a constraint configurada.
+
+### Troubleshooting
+
+```text
+Sintoma: criação/configuração bloqueada
+Hipótese: Organization Policy efetiva impede a configuração
+Evidência: effective policy da constraint no escopo
+Causa: guardrail hierárquico, não falta de IAM role
+Correção: ajustar a configuração do recurso ou a policy, conforme governança
+```
+
+> Não altere políticas de uma Organization corporativa apenas para praticar.

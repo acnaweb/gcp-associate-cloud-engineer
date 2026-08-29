@@ -177,3 +177,116 @@ roles/compute.viewer
        ↓
 Project
 ```
+
+
+---
+
+## Práticas guiadas obrigatórias — Cloud Identity, Billing e Quotas
+
+### Cloud Identity — usuários e grupos
+
+**Nível:** `P*` — requer privilégios administrativos do domínio/Cloud Identity.
+
+No Admin Console de uma organização de laboratório:
+
+1. crie um usuário de laboratório;
+2. crie um grupo, por exemplo `ace-viewers`;
+3. adicione o usuário ao grupo;
+4. no Google Cloud IAM, conceda uma role de leitura ao **grupo**, não ao usuário individual;
+5. remova o usuário do grupo e observe que o modelo de autorização passa a depender da associação ao grupo.
+
+Modelo:
+
+```text
+Cloud Identity user
+      ↓ membership
+Cloud Identity group
+      ↓ IAM binding
+Project / Resource
+```
+
+Automação de provisionamento deve ser reconhecida como alternativa ao gerenciamento manual quando a organização utiliza integração/provisionamento de identidade.
+
+### Billing Account e vinculação de projeto
+
+**Nível:** `P*` — exige permissões de Billing Account.
+
+Inspecione:
+
+```bash
+gcloud billing accounts list
+gcloud billing projects describe "$PROJECT_ID"
+```
+
+Se possuir uma Billing Account de laboratório, pratique o fluxo no Console:
+
+```text
+Billing → Account management → My projects
+→ selecionar projeto
+→ Change billing
+→ escolher Billing Account autorizada
+```
+
+Não altere vínculo de billing de projeto corporativo.
+
+### Billing Export
+
+**Nível:** `P*`.
+
+No Console:
+
+```text
+Billing → Billing export → BigQuery export
+```
+
+Pratique:
+
+1. selecionar/criar dataset de laboratório;
+2. identificar export de uso/custos disponível;
+3. configurar o dataset quando tiver permissão;
+4. depois verificar as tabelas criadas no BigQuery.
+
+O objetivo é sair de:
+
+```text
+Billing export = “sei que existe”
+```
+
+para:
+
+```text
+Billing Account → BigQuery dataset → tabelas de custo → consulta SQL
+```
+
+### Solicitar aumento de quota
+
+**Nível:** `P*` — o pedido real pode exigir autorização e aprovação.
+
+Primeiro inspecione quotas:
+
+```bash
+gcloud compute project-info describe --format='yaml(quotas)'
+```
+
+No Console:
+
+```text
+IAM & Admin → Quotas & System Limits
+```
+
+Pratique o fluxo:
+
+1. filtre por serviço/métrica;
+2. selecione a quota;
+3. abra **Edit quotas**;
+4. observe limite atual e região/escopo;
+5. não envie aumento desnecessário em projeto corporativo.
+
+### Critério de prova
+
+```text
+Budget → alerta financeiro
+Quota → limite técnico
+Billing Export → análise detalhada de custo
+Cloud Identity Group → administração de acesso em escala
+```

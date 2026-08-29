@@ -152,3 +152,79 @@ Persistent Disk      → block storage para VMs
 ```
 
 Escolha pelo protocolo e workload, não apenas pela capacidade.
+
+
+---
+
+## Prática adicional — Dataflow Job e Storage Transfer
+
+### Dataflow — elevar de “listar jobs” para “executar e analisar job”
+
+**Custos:** Dataflow cria recursos de compute. Execute apenas em projeto de laboratório e faça cleanup.
+
+Crie um bucket temporário:
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+export DF_BUCKET="gs://$PROJECT_ID-ace-dataflow-$RANDOM"
+gcloud storage buckets create "$DF_BUCKET" --location=us-central1
+```
+
+Execute um template de exemplo suportado na região:
+
+```bash
+gcloud dataflow jobs run ace-wordcount \
+  --gcs-location=gs://dataflow-templates-us-central1/latest/Word_Count \
+  --region=us-central1 \
+  --staging-location="$DF_BUCKET/staging" \
+  --parameters inputFile=gs://dataflow-samples/shakespeare/kinglear.txt,output="$DF_BUCKET/output/result"
+```
+
+Inspecione:
+
+```bash
+gcloud dataflow jobs list --region=us-central1
+```
+
+Pegue o `JOB_ID` real e descreva:
+
+```bash
+gcloud dataflow jobs describe JOB_ID --region=us-central1
+```
+
+Agora “job status” deixou de ser apenas mencionado.
+
+### Falha proposital
+
+Use um `JOB_ID` inexistente em `describe` e confirme primeiro a lista real antes de investigar pipeline, Pub/Sub ou IAM.
+
+### Storage Transfer Service — prática guiada
+
+O guia exige uso do serviço. Para evitar transferência desnecessária de grande volume:
+
+1. crie dois buckets pequenos de laboratório;
+2. coloque um objeto no bucket origem;
+3. no Console abra **Storage Transfer → Create a transfer**;
+4. escolha origem Cloud Storage e destino Cloud Storage;
+5. execute transferência imediata;
+6. valide o objeto no destino;
+7. exclua o transfer job.
+
+Modelo:
+
+```text
+Source bucket
+    ↓ Storage Transfer Service
+Destination bucket
+```
+
+Não confunda `gcloud storage cp` (cópia direta pelo cliente) com Storage Transfer Service (serviço gerenciado de transferência).
+
+### Cleanup Dataflow
+
+Depois do job terminar:
+
+```bash
+gcloud storage rm --recursive "$DF_BUCKET/**" 2>/dev/null || true
+gcloud storage buckets delete "$DF_BUCKET" --quiet
+```

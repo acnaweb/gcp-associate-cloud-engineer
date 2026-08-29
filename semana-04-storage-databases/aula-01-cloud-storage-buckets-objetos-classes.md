@@ -1,5 +1,12 @@
 # Aula 1 — Cloud Storage: Buckets, Objetos e Classes
 
+## Nível de cobertura M/E/P
+
+```text
+Storage Classes e seleção: E; bucket/object/classes em laboratório: P
+```
+
+
 ## Objetivos
 
 Ao final, você deverá:

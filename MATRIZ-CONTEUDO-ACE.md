@@ -1,5 +1,9 @@
 # MATRIZ-CONTEUDO-ACE.md
 
+> Fonte de verdade: guia oficial anexado.
+>
+> A coluna binária `✅` não é mais usada como único critério de qualidade. Para saber se um tópico foi apenas citado, explicado ou realmente praticado, consulte **[MATRIZ-MEP-ACE.md](./MATRIZ-MEP-ACE.md)**.
+
 > Fonte de verdade desta matriz: **Associate Cloud Engineer — Guia do exame de certificação**, PDF oficial anexado pelo usuário.
 >
 > Esta matriz separa:

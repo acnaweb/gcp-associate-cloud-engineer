@@ -127,3 +127,54 @@ Para ACE, saiba distinguir:
 OS Login  → controle de login SSH por IAM
 VM Manager → gerenciamento operacional do sistema operacional
 ```
+
+
+---
+
+## Prática guiada — configurar VM Manager
+
+**Nível:** `P` quando executado em projeto de laboratório.
+
+Habilite a API do OS Config:
+
+```bash
+gcloud services enable osconfig.googleapis.com
+```
+
+Habilite OS Config via metadata de projeto para o laboratório:
+
+```bash
+gcloud compute project-info add-metadata \
+  --metadata=enable-osconfig=TRUE
+```
+
+Inspecione:
+
+```bash
+gcloud compute project-info describe \
+  --format='yaml(commonInstanceMetadata)'
+```
+
+No Console, abra:
+
+```text
+Compute Engine → VM Manager
+```
+
+Observe pelo menos:
+
+- inventário do SO;
+- patch management;
+- políticas/recursos disponíveis no projeto.
+
+### Falha proposital
+
+Se o inventário não aparecer, verifique primeiro:
+
+```text
+API osconfig habilitada?
+metadata enable-osconfig=TRUE?
+VM compatível e agente/configuração necessários presentes?
+```
+
+Não transforme uma falha do VM Manager em problema de firewall sem evidência.

@@ -322,3 +322,87 @@ Se criou o sink:
 ```bash
 gcloud logging sinks delete ace-bq-sink
 ```
+
+
+---
+
+## Laboratórios operacionais — Ops Agent, Log Router e Prometheus
+
+### Ops Agent
+
+Crie/ reutilize uma VM de laboratório e instale o agente pelo fluxo recomendado no Console ou script oficial exibido pela página **Monitoring → VM instances**.
+
+Depois valide na VM:
+
+```bash
+sudo systemctl status google-cloud-ops-agent --no-pager
+```
+
+Gere uma linha de syslog:
+
+```bash
+logger 'ACE OPS AGENT TEST'
+```
+
+No Logs Explorer, pesquise pela VM e pela mensagem.
+
+**Falha proposital:** pare o agent:
+
+```bash
+sudo systemctl stop google-cloud-ops-agent
+```
+
+Gere outra mensagem e compare ingestão. Antes de alterar IAM ou firewall, confirme:
+
+```bash
+sudo systemctl status google-cloud-ops-agent --no-pager
+```
+
+### Log Router + BigQuery sink
+
+Para tornar a exportação prática, primeiro crie um dataset:
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+bq mk --dataset --location=US "$PROJECT_ID:ace_logs"
+```
+
+Crie o sink:
+
+```bash
+gcloud logging sinks create ace-bq-sink \
+  "bigquery.googleapis.com/projects/$PROJECT_ID/datasets/ace_logs" \
+  --log-filter='severity>=ERROR'
+```
+
+Inspecione a identidade escritora:
+
+```bash
+gcloud logging sinks describe ace-bq-sink
+```
+
+Conceda ao writer identity a permissão necessária no dataset conforme o valor real retornado pelo `describe`.
+
+Gere um erro:
+
+```bash
+gcloud logging write ace-export-test 'ERRO EXPORTADO' --severity=ERROR
+```
+
+Depois valide a chegada quando o destino estiver configurado corretamente.
+
+### Managed Service for Prometheus
+
+**Nível:** `P*` se você não possuir cluster GKE de laboratório ativo.
+
+Em um cluster compatível, identifique/configure coleta gerenciada e confirme no Monitoring a existência de métricas Prometheus. O objetivo operacional é conseguir distinguir:
+
+```text
+Prometheus metric collection
+→ Managed Service for Prometheus
+
+VM logs/metrics agent
+→ Ops Agent
+```
+
+Não marque este tópico como `P` se você apenas leu a definição.

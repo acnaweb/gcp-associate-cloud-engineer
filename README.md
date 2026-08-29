@@ -58,3 +58,12 @@ Use este material junto ao **Associate Cloud Engineer Certification Exam Guide**
 - [Relatório de Compatibilidade com o Guia Anexado](./RELATORIO-COMPATIBILIDADE-GUIA-ANEXO.md)
 
 A matriz e a auditoria usam como fonte de verdade o guia oficial anexado ao projeto.
+
+
+---
+
+# Cobertura da Certificação
+
+- [Matriz de conteúdo](./MATRIZ-CONTEUDO-ACE.md)
+- [Matriz M/E/P — mencionado, explicado e praticado](./MATRIZ-MEP-ACE.md)
+- [Auditoria do Exam Guide](./AUDITORIA-EXAM-GUIDE.md)

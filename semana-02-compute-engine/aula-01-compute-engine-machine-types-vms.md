@@ -248,3 +248,60 @@ gcloud compute instances describe ace-vm \
 ```
 
 A seção `scheduling` ajuda a entender manutenção, reinício automático e comportamento de provisionamento.
+
+
+---
+
+## Prática obrigatória — custom machine type, Spot e availability policy
+
+O guia exige usar **Spot VMs** e **custom machine types**, não apenas reconhecê-los.
+
+### Custom Machine Type
+
+```bash
+gcloud compute instances create ace-custom-vm \
+  --zone=us-central1-a \
+  --custom-cpu=2 \
+  --custom-memory=4GB \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+
+gcloud compute instances describe ace-custom-vm \
+  --zone=us-central1-a \
+  --format='yaml(machineType,status)'
+```
+
+### Spot VM
+
+```bash
+gcloud compute instances create ace-spot-vm \
+  --zone=us-central1-a \
+  --machine-type=e2-micro \
+  --provisioning-model=SPOT \
+  --instance-termination-action=STOP \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+
+gcloud compute instances describe ace-spot-vm \
+  --zone=us-central1-a \
+  --format='yaml(scheduling.provisioningModel,scheduling.instanceTerminationAction,status)'
+```
+
+### Availability policy / scheduling
+
+Inspecione:
+
+```bash
+gcloud compute instances describe ace-custom-vm \
+  --zone=us-central1-a \
+  --format='yaml(scheduling)'
+```
+
+Saiba interpretar opções de manutenção/restart compatíveis com a VM.
+
+### Cleanup adicional
+
+```bash
+gcloud compute instances delete ace-custom-vm ace-spot-vm \
+  --zone=us-central1-a --quiet
+```

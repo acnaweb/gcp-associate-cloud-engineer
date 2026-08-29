@@ -283,3 +283,58 @@ Snapshot manual   → ação pontual
 Snapshot schedule → política automática recorrente
 Image             → base para criar boot disks/VMs
 ```
+
+
+---
+
+## Prática completa — Images e Snapshot Schedule
+
+### Criar, visualizar e excluir custom image
+
+Depois de ter um disco disponível:
+
+```bash
+gcloud compute images create ace-custom-image \
+  --source-disk=ace-data \
+  --source-disk-zone="$ZONE"
+
+gcloud compute images describe ace-custom-image
+gcloud compute images list --no-standard-images
+```
+
+Teste de uso:
+
+```bash
+gcloud compute instances create ace-from-image \
+  --zone="$ZONE" \
+  --machine-type=e2-micro \
+  --image=ace-custom-image
+```
+
+### Snapshot schedule completo
+
+```bash
+gcloud compute resource-policies create snapshot-schedule ace-daily-snapshot \
+  --region=us-central1 \
+  --daily-schedule \
+  --start-time=03:00
+
+gcloud compute disks add-resource-policies ace-data \
+  --zone="$ZONE" \
+  --resource-policies=ace-daily-snapshot
+
+gcloud compute resource-policies describe ace-daily-snapshot \
+  --region=us-central1
+```
+
+### Cleanup adicional
+
+```bash
+gcloud compute instances delete ace-from-image --zone="$ZONE" --quiet
+gcloud compute images delete ace-custom-image --quiet
+gcloud compute disks remove-resource-policies ace-data \
+  --zone="$ZONE" \
+  --resource-policies=ace-daily-snapshot 2>/dev/null || true
+gcloud compute resource-policies delete ace-daily-snapshot \
+  --region=us-central1 --quiet 2>/dev/null || true
+```

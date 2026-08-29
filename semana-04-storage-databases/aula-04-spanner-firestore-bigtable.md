@@ -213,3 +213,45 @@ Managed Kafka → ecossistema Kafka
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+
+---
+
+## Prática guiada obrigatória — backup e restore do Firestore
+
+O guia anexado exige **backup e restore do Firestore**. Apenas citar “backup/restore” não é cobertura suficiente.
+
+**Nível:** `P*` — depende do modo/database e das funcionalidades habilitadas na conta/projeto.
+
+No Console do projeto de laboratório:
+
+1. abra **Firestore**;
+2. identifique o database correto;
+3. localize a área de **Backups** disponível para o database;
+4. crie um backup de laboratório quando a opção estiver disponível;
+5. aguarde status de conclusão;
+6. inspecione o backup e seu timestamp;
+7. execute o fluxo de restore para um database de destino compatível, sem sobrescrever dados importantes;
+8. valide documentos após o restore.
+
+### Modelo mental
+
+```text
+Firestore database
+      ↓ backup
+Backup resource
+      ↓ restore
+Database restaurado
+```
+
+### Troubleshooting
+
+```text
+Sintoma: backup existe, mas restore não pode ser executado no alvo escolhido
+Hipótese: destino/configuração do database não atende aos requisitos do restore
+Evidência: propriedades do backup + database alvo
+Causa: incompatibilidade/configuração, não consulta de documentos
+Correção: selecionar destino compatível conforme o fluxo suportado
+```
+
+> Se a interface/feature não estiver disponível no seu projeto, marque como `P*` e faça a prática guiada sem inventar comandos não validados.

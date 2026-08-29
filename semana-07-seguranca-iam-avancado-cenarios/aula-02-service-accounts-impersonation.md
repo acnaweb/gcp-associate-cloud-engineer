@@ -244,3 +244,49 @@ roles/iam.serviceAccountUser
 roles/iam.serviceAccountTokenCreator
 → criar tokens/impersonar em cenários suportados
 ```
+
+
+---
+
+## Prática completa — atribuir SA a recurso e gerenciar IAM da própria SA
+
+### Atribuir Service Account a uma VM
+
+```bash
+gcloud compute instances create ace-sa-vm \
+  --zone=us-central1-a \
+  --service-account="$SA" \
+  --scopes=cloud-platform \
+  --machine-type=e2-micro \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+
+gcloud compute instances describe ace-sa-vm \
+  --zone=us-central1-a \
+  --format='yaml(serviceAccounts)'
+```
+
+### IAM DA Service Account
+
+```bash
+gcloud iam service-accounts get-iam-policy "$SA"
+```
+
+Isso responde **quem pode usar/impersonar/administrar essa identidade**.
+
+### IAM concedido À Service Account
+
+```bash
+gcloud projects get-iam-policy "$PROJECT_ID" \
+  --flatten='bindings[].members' \
+  --filter="bindings.members:serviceAccount:$SA"
+```
+
+Isso responde **o que essa identidade pode fazer em recursos**.
+
+### Cleanup adicional
+
+```bash
+gcloud compute instances delete ace-sa-vm \
+  --zone=us-central1-a --quiet
+```

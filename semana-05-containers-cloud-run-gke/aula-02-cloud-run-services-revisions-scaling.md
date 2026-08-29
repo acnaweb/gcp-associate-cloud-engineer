@@ -1,5 +1,12 @@
 # Aula 2 — Cloud Run Services, Revisions e Scaling
 
+## Nível de cobertura M/E/P
+
+```text
+Cloud Run deploy/revisions/traffic split/autoscaling: P
+```
+
+
 ## Objetivos
 
 Ao final, você deverá:
@@ -240,4 +247,136 @@ Traffic split
 
 Autoscaling
 → quantidade de instâncias
+```
+
+
+---
+
+## Laboratório completo — Autoscaling do Cloud Run
+
+Esta seção eleva o tópico de **mencionado/explicado** para **praticado**.
+
+### 1. Conceitos que influenciam scaling
+
+```text
+Requests
+   ↓
+Concurrency por instância
+   ↓
+necessidade de novas instâncias
+```
+
+Parâmetros essenciais:
+
+```text
+min instances
+→ capacidade mínima mantida pronta
+→ pode reduzir cold start
+→ pode gerar custo mesmo sem tráfego
+
+max instances
+→ limite de instâncias
+→ protege custo e dependências downstream
+
+concurrency
+→ quantas requisições simultâneas uma instância pode atender
+```
+
+### 2. Configurar
+
+```bash
+export REGION=us-central1
+
+gcloud run services update ace-web \
+  --region="$REGION" \
+  --min=1 \
+  --max=3 \
+  --concurrency=10
+```
+
+### 3. Inspecionar
+
+```bash
+gcloud run services describe ace-web \
+  --region="$REGION" \
+  --format='yaml(spec.template.metadata.annotations,spec.template.spec.containerConcurrency)'
+```
+
+No Console, abra:
+
+```text
+Cloud Run → ace-web → Edit & deploy new revision → Scaling
+```
+
+Confirme `min`, `max` e concurrency.
+
+### 4. Testar
+
+Faça várias requisições em paralelo:
+
+```bash
+URL=$(gcloud run services describe ace-web \
+  --region="$REGION" \
+  --format='value(status.url)')
+
+seq 1 30 | xargs -n1 -P10 -I{} curl -s -o /dev/null "$URL"
+```
+
+Depois inspecione métricas de request/instance no Cloud Monitoring/Cloud Run Metrics.
+
+> O número de instâncias observado depende de carga, duração da requisição e política de autoscaling; não espere exatamente 3 apenas porque `max=3`.
+
+### 5. Quebrar propositalmente
+
+Reduza `max` para 1:
+
+```bash
+gcloud run services update ace-web \
+  --region="$REGION" \
+  --max=1
+```
+
+Repita o teste paralelo.
+
+### 6. Troubleshooting
+
+```text
+Sintoma
+→ latência/espera aumenta sob concorrência
+
+Hipótese
+→ capacidade máxima do serviço foi limitada
+
+Evidência
+→ configuração max instances = 1
+→ métricas de requests/instances
+
+Causa
+→ limite imposto deliberadamente
+
+Correção
+→ ajustar max/concurrency de acordo com requisito e capacidade downstream
+```
+
+### 7. Corrigir
+
+```bash
+gcloud run services update ace-web \
+  --region="$REGION" \
+  --min=0 \
+  --max=3 \
+  --concurrency=10
+```
+
+### Pegadinha ACE
+
+```text
+max instances
+≠ quantidade fixa de instâncias
+
+min instances
+≠ requests mínimos
+
+traffic splitting
+≠ autoscaling
 ```

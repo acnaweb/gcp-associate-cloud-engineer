@@ -1,5 +1,12 @@
 # Aula 6 — Cloud Functions, Eventarc e Aplicações Orientadas a Eventos
 
+## Nível de cobertura M/E/P
+
+```text
+Cloud Functions + Pub/Sub event: P; Cloud Storage/Eventarc: E/P*
+```
+
+
 ## Cobertura no exam guide
 
 Exam Guide 2.1 e 3.3: escolher Cloud Run/Cloud Functions e implementar aplicações que recebem eventos Pub/Sub/Cloud Storage/Eventarc.
@@ -209,3 +216,112 @@ Cloud Run ou Cloud Functions
 **3.** O enunciado da prova, seguindo o guia anexado, menciona execução de Cloud Run integrada ao Anthos.
 
 **Resposta:** reconhecer **Cloud Run for Anthos** como a alternativa descrita pelo guia.
+
+
+---
+
+## Laboratório executável — Cloud Function acionada por Pub/Sub
+
+**Custos:** a função e serviços associados podem gerar pequena cobrança. Faça cleanup.
+
+### 1. Criar código
+
+```bash
+mkdir -p ~/ace-function && cd ~/ace-function
+
+cat > main.py <<'EOF'
+import base64
+
+def hello_pubsub(event, context):
+    data = event.get('data')
+    msg = base64.b64decode(data).decode('utf-8') if data else 'sem mensagem'
+    print(f'ACE recebeu: {msg}')
+EOF
+
+cat > requirements.txt <<'EOF'
+functions-framework==3.*
+EOF
+```
+
+### 2. Criar tópico e deploy
+
+```bash
+gcloud pubsub topics create ace-events 2>/dev/null || true
+
+gcloud functions deploy ace-pubsub-function \
+  --gen2 \
+  --runtime=python312 \
+  --region=us-central1 \
+  --source=. \
+  --entry-point=hello_pubsub \
+  --trigger-topic=ace-events
+```
+
+### 3. Inspecionar
+
+```bash
+gcloud functions describe ace-pubsub-function \
+  --gen2 \
+  --region=us-central1
+
+gcloud eventarc triggers list --location=us-central1
+```
+
+### 4. Testar
+
+```bash
+gcloud pubsub topics publish ace-events --message='evento ACE'
+```
+
+Leia logs:
+
+```bash
+gcloud functions logs read ace-pubsub-function \
+  --gen2 \
+  --region=us-central1 \
+  --limit=20
+```
+
+Procure `ACE recebeu: evento ACE`.
+
+### 5. Quebrar propositalmente
+
+Publique em outro tópico que não é o trigger:
+
+```bash
+gcloud pubsub topics create ace-outro-topic
+gcloud pubsub topics publish ace-outro-topic --message='nao deve acionar'
+```
+
+### 6. Troubleshooting
+
+```text
+Sintoma: função não executa para a mensagem
+Hipótese: evento foi enviado a uma fonte diferente do trigger
+Evidência: describe da função/Eventarc trigger + nomes dos tópicos
+Causa: ace-outro-topic não está associado ao trigger
+Correção: publicar em ace-events ou reconfigurar trigger
+```
+
+### 7. Cloud Storage + Eventarc
+
+O guia também cita eventos de alteração de objetos no Cloud Storage. Antes de criar outro recurso, identifique no Console/CLI quais triggers Eventarc estão disponíveis e reconheça o padrão:
+
+```text
+Cloud Storage object event
+        ↓
+Eventarc
+        ↓
+Cloud Run / Cloud Function
+```
+
+### Cleanup
+
+```bash
+gcloud functions delete ace-pubsub-function \
+  --gen2 --region=us-central1 --quiet
+
+gcloud pubsub topics delete ace-events --quiet
+gcloud pubsub topics delete ace-outro-topic --quiet
+rm -rf ~/ace-function
+```

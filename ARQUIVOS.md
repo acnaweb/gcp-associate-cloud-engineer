@@ -3,8 +3,10 @@
 - `ARQUIVOS.md`
 - `AUDITORIA-EXAM-GUIDE.md`
 - `MATRIZ-CONTEUDO-ACE.md`
+- `MATRIZ-MEP-ACE.md`
 - `README.md`
 - `RELATORIO-COMPATIBILIDADE-GUIA-ANEXO.md`
+- `RELATORIO-QUALIDADE-MEP.md`
 - `semana-01-fundamentos-projetos-iam/README.md`
 - `semana-01-fundamentos-projetos-iam/aula-01-hierarquia-projects-regions-zones-gcloud.md`
 - `semana-01-fundamentos-projetos-iam/aula-02-iam-service-accounts.md`

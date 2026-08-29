@@ -1,5 +1,12 @@
 # Aula 1 — Cloud Monitoring, Metrics, Dashboards e Alerts
 
+## Nível de cobertura M/E/P
+
+```text
+Alerts/resource metrics/custom log-based metric: P
+```
+
+
 ## Objetivos
 
 Ao final, você deverá:
@@ -226,3 +233,59 @@ Logging → Log-based Metrics
 ```
 
 Uma falha comum é criar alerta sobre uma métrica que não recebe pontos. Antes de mudar o threshold, valide se há dados no Metrics Explorer.
+
+
+---
+
+## Laboratório — criar e ingerir métrica personalizada a partir de logs
+
+O guia cita métricas personalizadas provenientes de **aplicações ou registros**. Um laboratório seguro é criar uma **log-based metric**.
+
+### 1. Gere entradas de log
+
+```bash
+gcloud logging write ace-app-log 'ACE_OK' --severity=INFO
+gcloud logging write ace-app-log 'ACE_ERROR' --severity=ERROR
+```
+
+### 2. Crie métrica baseada no log
+
+```bash
+gcloud logging metrics create ace_error_count \
+  --description='Contagem de erros ACE' \
+  --log-filter='logName:"ace-app-log" AND severity>=ERROR'
+```
+
+### 3. Inspecione
+
+```bash
+gcloud logging metrics describe ace_error_count
+```
+
+### 4. Ingira novos pontos
+
+```bash
+gcloud logging write ace-app-log 'ACE_ERROR_2' --severity=ERROR
+```
+
+Após a ingestão, procure no Metrics Explorer a métrica de logging correspondente.
+
+### 5. Falha proposital
+
+Altere temporariamente o filtro para uma condição que nunca corresponde ou simplesmente gere apenas `INFO` e observe ausência de novos pontos.
+
+### Troubleshooting
+
+```text
+Sintoma: alerta/métrica não recebe pontos
+Hipótese: filtro não corresponde às entradas geradas
+Evidência: Logs Explorer + definição da log-based metric
+Causa: mismatch no filtro/severity/logName
+Correção: alinhar filtro ao log real
+```
+
+### Cleanup
+
+```bash
+gcloud logging metrics delete ace_error_count --quiet
+```

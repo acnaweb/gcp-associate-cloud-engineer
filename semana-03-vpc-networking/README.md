@@ -1,5 +1,19 @@
 # semana-03-vpc-networking
 
+## Critério M/E/P
+
+Nesta versão, a cobertura é classificada como:
+
+```text
+M  = Mencionado
+E  = Explicado
+P  = Praticado com laboratório/inspeção/teste
+P* = Prática guiada/condicional por depender de permissão, Organization, Billing ou custo relevante
+```
+
+Para itens cujo verbo do guia é **criar, configurar, implantar, gerenciar ou trabalhar com**, apenas `M` ou `E` não é considerado suficiente.
+
+
 ## Índice das aulas
 
 - [Aula 1 — VPC, Subnets, CIDR e IPs no Google Cloud](./aula-01-vpc-subnets-cidr-ips.md)

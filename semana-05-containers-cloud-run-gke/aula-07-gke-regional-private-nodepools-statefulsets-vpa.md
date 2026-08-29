@@ -1,5 +1,12 @@
 # Aula 7 — GKE Regional, Private, Node Pools, StatefulSets, HPA e VPA
 
+## Nível de cobertura M/E/P
+
+```text
+Regional/Autopilot/node pools/StatefulSet/VPA: P/P*; GKE Enterprise/private: E/P*
+```
+
+
 ## Cobertura no exam guide
 
 Exam Guide 3.2 e 4.2: tipos de cluster, GKE Enterprise, node pools, StatefulSets e autoscaling horizontal/vertical.
@@ -186,3 +193,151 @@ GKE Enterprise
 Uma organização precisa de recursos empresariais de gerenciamento Kubernetes e o enunciado apresenta **GKE Enterprise** entre as opções.
 
 Para uma questão baseada no guia anexado, o candidato deve reconhecer que **GKE Enterprise é uma configuração/oferta distinta a ser considerada**, em vez de tratar Autopilot, Standard, Regional e Private como a lista completa.
+
+
+---
+
+## Práticas obrigatórias do guia — clusters, node pools, StatefulSet e VPA
+
+### Tipos/configurações de cluster
+
+O guia exige **implantar um cluster com diferentes configurações**. Não crie todos simultaneamente; escolha um por sessão para controlar custo.
+
+#### Regional Standard
+
+```bash
+gcloud container clusters create ace-regional \
+  --region=us-central1 \
+  --num-nodes=1
+```
+
+#### Autopilot
+
+```bash
+gcloud container clusters create-auto ace-autopilot \
+  --region=us-central1
+```
+
+#### Private cluster — prática guiada
+
+Antes de executar, revise requisitos de subnet/IPs e custo. Em projeto descartável, use o fluxo de criação de cluster privado no Console e inspecione:
+
+```text
+private nodes
+control plane endpoint/configuração
+master authorized networks quando aplicável
+```
+
+O objetivo é reconhecer e verificar a configuração, não manter três clusters ativos.
+
+#### GKE Enterprise
+
+**Nível esperado:** `E/P*`. O guia pede reconhecer/deployar configuração Enterprise, mas a habilitação pode depender da edição/frota/organização. Faça prática guiada no Console se disponível e identifique a diferença para cluster GKE isolado.
+
+### Node pools — Standard cluster
+
+```bash
+gcloud container node-pools create ace-extra-pool \
+  --cluster=ace-regional \
+  --region=us-central1 \
+  --num-nodes=1 \
+  --machine-type=e2-small
+
+gcloud container node-pools list \
+  --cluster=ace-regional \
+  --region=us-central1
+```
+
+Edite autoscaling do pool:
+
+```bash
+gcloud container clusters update ace-regional \
+  --region=us-central1 \
+  --enable-autoscaling \
+  --node-pool=ace-extra-pool \
+  --min-nodes=0 \
+  --max-nodes=2
+```
+
+Remova:
+
+```bash
+gcloud container node-pools delete ace-extra-pool \
+  --cluster=ace-regional \
+  --region=us-central1 --quiet
+```
+
+### StatefulSet — prática real
+
+```bash
+cat > statefulset.yaml <<'EOF'
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ace-stateful
+spec:
+  serviceName: ace-stateful
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ace-stateful
+  template:
+    metadata:
+      labels:
+        app: ace-stateful
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+EOF
+
+kubectl apply -f statefulset.yaml
+kubectl get statefulsets,pods
+```
+
+Observe nomes estáveis:
+
+```text
+ace-stateful-0
+ace-stateful-1
+```
+
+### VPA — prática guiada/executável quando API disponível
+
+```bash
+cat > vpa.yaml <<'EOF'
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: web-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  updatePolicy:
+    updateMode: "Off"
+EOF
+
+kubectl apply -f vpa.yaml
+kubectl get vpa
+kubectl describe vpa web-vpa
+```
+
+Use `Off` para observar recommendations sem permitir alterações automáticas durante o laboratório.
+
+### HPA x VPA
+
+```text
+HPA → número de Pods
+VPA → recursos/request recommendation por Pod
+```
+
+### Cleanup
+
+```bash
+kubectl delete -f statefulset.yaml --ignore-not-found
+kubectl delete -f vpa.yaml --ignore-not-found
+rm -f statefulset.yaml vpa.yaml
+# Exclua clusters criados exclusivamente para o lab.
+```
