@@ -2,180 +2,152 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- avaliar prontidão;
+- priorizar lacunas;
+- montar plano final;
+- decidir quando parar de expandir escopo.
 
-- Validar prontidão;
-- Criar plano de revisão;
-- Repetir labs críticos;
-- Evitar estudo caótico na véspera;
-
----
-
-# 1. Modelo mental
-
-```text
-Lacunas
-  ↓ labs dirigidos
-  ↓ simulado
-  ↓ análise de erros
-  ↓ revisão final
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Prontidão não é “terminei de ler”. É conseguir executar, explicar, diagnosticar e escolher.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Simulado
+ ↓
+erros
+ ↓
+labs dirigidos
+ ↓
+novo simulado
+ ↓
+prontidão
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-### Checklist hands-on mínimo
-Execute ou explique sem consultar:
-
+Checklist mínimo:
 ```text
-[ ] criar/configurar projeto/contexto gcloud
-[ ] criar VM e operar start/stop/reset
-[ ] disk + snapshot
-[ ] VPC/subnet/firewall/route
-[ ] Cloud NAT/PGA/DNS
-[ ] MIG + health check + LB
-[ ] bucket + IAM + lifecycle
-[ ] Cloud SQL/BigQuery escolha e operação básica
+[ ] gcloud configurations / projects / APIs
+[ ] IAM + SA + impersonation
+[ ] VM + disk + snapshot + startup script
+[ ] MIG + autoscaling + autohealing
+[ ] VPC + subnet + firewall + route
+[ ] NAT + PGA + DNS
+[ ] LB + health check
+[ ] Storage + lifecycle/versioning/retention
+[ ] Cloud SQL + database/user/troubleshooting
+[ ] BigQuery + escolha de banco
 [ ] Artifact Registry + Cloud Run
-[ ] GKE kubectl básico
-[ ] Monitoring/Logging
-[ ] quota/budget
-[ ] Terraform init/plan/apply/destroy
-[ ] SA + impersonation + least privilege
+[ ] GKE básico + troubleshooting
+[ ] Monitoring + Logging
+[ ] Billing + budget + quota
+[ ] Terraform
 ```
-
-### Plano pré-prova
-- D-7 a D-4: repetir labs onde errou.
-- D-3: simulado completo.
-- D-2: revisar erros, IAM e networking.
-- D-1: revisão leve; não abrir novos temas.
-- Dia da prova: validar horário/documentos/regras e chegar com margem.
-
-### Critério objetivo
-Você está pronto quando:
-1. acerta consistentemente simulados;
-2. explica por que alternativas erradas estão erradas;
-3. executa comandos fundamentais sem copiar receita;
-4. distingue rapidamente IAM, rede, quota, aplicação e serviço inadequado.
 
 ---
 
-# 4. Testes e falhas propositais
+# 3. Inspecionar
 
-- Não decore só gcloud; entenda o recurso.
-- Evite estudar produto fora do escopo sacrificando fundamentos.
-- Sono e leitura cuidadosa têm impacto real em prova de cenário.
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
-Para cada falha, não corrija imediatamente. Primeiro registre:
+Para cada item marque:
+```text
+0 = não sei
+1 = explico
+2 = executo
+3 = executo e diagnostico
+```
+
+Priorize itens com 0/1.
+
+---
+
+# 4. Testar
+
+Faça um último simulado e compare não só a nota, mas categorias de erro.
+
+---
+
+# 5. Quebrar propositalmente
+
+Falha proposital de estudo:
+> “Vou aprender um serviço novo na véspera porque apareceu em um blog.”
+
+Pergunte se ele está no guia/roadmap e se resolve uma lacuna real.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** revisão final está ficando cada vez maior.
+
+**Hipótese:** expansão de escopo em vez de consolidação.
+
+**Evidência:** novos tópicos não vieram de erros de simulado/labs.
+
+**Causa:** ansiedade de cobertura.
+
+**Correção:** voltar às lacunas demonstradas.
+
+Use sempre:
 
 ```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
 ```
 
 ---
 
-# 5. Troubleshooting
+# 7. Corrigir
 
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
-
-```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
-```
+Plano sugerido:
+- D-7 a D-4: labs fracos;
+- D-3: simulado;
+- D-2: erros + IAM/networking;
+- D-1: revisão leve;
+- prova: leitura cuidadosa.
 
 ---
 
-# 6. Pegadinhas ACE
+# 8. Questões estilo ACE
 
-- Revisão final deve ser baseada em erros reais.
-- IAM + networking + compute + operações merecem prioridade alta.
-- Prática é melhor que releitura passiva.
-
----
-
-# 7. Questões estilo ACE
-
-- Se você não consegue explicar por que a opção errada está errada, ainda há lacuna.
-- Última revisão deve consolidar, não expandir.
+1. Melhor métrica de prontidão: **acerto consistente + justificativa + hands-on**.
+2. Erro repetido de IAM: faça **lab IAM**, não leia produto novo.
+3. Último dia: **consolidar**, não expandir.
 
 ---
 
-# 8. Checklist
+# 9. Cleanup
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Nenhum recurso é criado.
 
 ---
 
-# 9. O que memorizar
+# 10. Checklist
 
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
-```
-
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
-
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

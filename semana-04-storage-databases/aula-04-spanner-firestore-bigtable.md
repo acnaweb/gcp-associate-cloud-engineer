@@ -2,176 +2,174 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- diferenciar os três modelos;
+- praticar Firestore de baixo custo quando possível;
+- inspecionar comandos dos serviços;
+- diagnosticar escolha inadequada de banco por padrão de acesso.
 
-- Diferenciar Spanner, Firestore e Bigtable;
-- Executar hands-on leve com Firestore quando possível;
-- Relacionar padrões de dados aos serviços;
-
----
-
-# 1. Modelo mental
-
-```text
-Relacional global/consistente → Spanner
-Documentos serverless       → Firestore
-Wide-column baixa latência  → Bigtable
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Spanner é relacional distribuído e horizontalmente escalável. Firestore é banco de documentos serverless. Bigtable é wide-column de grande throughput e baixa latência por chave. A aula prioriza **decisão de serviço**, pois provisionar Spanner/Bigtable só para observar console pode gerar custo desnecessário.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+SQL relacional global → Spanner
+Documentos           → Firestore
+Wide-column/time key → Bigtable
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-### Laboratório de decisão (sem custos altos)
-Crie uma matriz:
-```text
-Cenário                         Serviço
-Banco relacional global         Spanner
-App mobile/web documentos       Firestore
-Telemetria por chave/tempo       Bigtable
-```
+### Firestore
 
-### Firestore (se o projeto ainda não tiver database)
-No Console: Firestore → Create database → Native mode.
+Se o projeto não possui Firestore database, crie no Console em Native mode em um projeto de laboratório.
 
-Com `gcloud`:
+Inspecione:
+
 ```bash
 gcloud firestore databases list
 ```
 
-Use o console para criar uma collection `clientes` e documentos simples.
+No Console crie:
 
-### Spanner: inspeção
-```bash
-gcloud spanner instances list
-gcloud spanner databases list --instance=INSTANCE_ID 2>/dev/null || true
+```text
+collection: clientes
+document:
+  nome: Ana
+  segmento: premium
 ```
 
-### Bigtable: inspeção
+### Spanner e Bigtable — inspeção sem provisionar cluster caro
+
 ```bash
+gcloud spanner instances list
 gcloud bigtable instances list
 ```
 
-> Spanner/Bigtable podem gerar custo relevante; para ACE, a decisão correta de serviço é mais importante que provisionar clusters caros.
-
----
-
-# 4. Testes e falhas propositais
-
-- Escolha errada proposital: tente modelar consultas ad hoc analíticas em Bigtable e explique por que BigQuery é melhor.
-- Firestore não é relacional.
-- Spanner é relacional distribuído; não é simplesmente 'Cloud SQL maior'.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
+Monte uma matriz:
 
 ```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+transação relacional global → Spanner
+documento JSON-like         → Firestore
+telemetria por device/time  → Bigtable
 ```
 
 ---
 
-# 5. Troubleshooting
+# 3. Inspecionar
 
-Use este fluxo:
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Para Firestore, confira database/mode/location no Console ou:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud firestore databases describe --database='(default)'
 ```
 
----
-
-# 6. Pegadinhas ACE
-
-- Spanner: SQL + consistência + escala horizontal/global.
-- Firestore: documentos e aplicações serverless.
-- Bigtable: enorme throughput por chave, séries temporais/IoT.
-
----
-
-# 7. Questões estilo ACE
-
-- Milhões de eventos por device_id/time com baixa latência? → Bigtable.
-- Banco relacional global horizontal? → Spanner.
-- Documentos de app mobile? → Firestore.
+Para a matriz, escreva para cada serviço:
+- modelo;
+- padrão de consulta;
+- escala;
+- consistência/transação relevante;
+- custo operacional.
 
 ---
 
-# 8. Checklist
+# 4. Testar
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Teste no Firestore:
+1. crie dois documentos;
+2. consulte collection;
+3. altere um campo;
+4. exclua um documento.
+
+O foco é experimentar o modelo de documentos.
 
 ---
 
-# 9. O que memorizar
+# 5. Quebrar propositalmente
 
-Não memorize apenas comandos. Memorize a relação:
+Falha proposital de **decisão**, não de infraestrutura:
+
+Cenário:
+> “Precisamos fazer SQL analítico ad hoc sobre terabytes e escolhemos Bigtable.”
+
+Anote por que essa escolha é inadequada antes de ver a correção.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** a equipe precisa de agregações/joins analíticos e a solução escolhida exige modelagem por chave e não oferece a experiência de warehouse desejada.
+
+**Hipótese:** o banco foi escolhido pelo volume, não pelo padrão de acesso.
+
+**Evidência:** requisito dominante é SQL analítico ad hoc.
+
+**Causa:** Bigtable resolve alta escala por chave/wide-column, não warehouse analítico.
+
+**Correção:** BigQuery é o candidato natural para analytics.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Atualize sua matriz com a coluna **“não usar quando”**:
+
+```text
+Spanner   → não escolher apenas porque “é grande”; exige necessidade relacional distribuída
+Firestore → não escolher para SQL relacional/joins
+Bigtable  → não escolher para BI ad hoc
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Banco relacional global/horizontal? **Spanner**.
+2. App mobile com documentos? **Firestore**.
+3. Telemetria por chave com altíssimo throughput? **Bigtable**.
+4. Analytics ad hoc? **BigQuery**, não Bigtable.
+
+---
+
+# 9. Cleanup
+
+Remova documentos/collections de laboratório no Firestore se criados. Não há cleanup de Spanner/Bigtable porque não os provisionamos.
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

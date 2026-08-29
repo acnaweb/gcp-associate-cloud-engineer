@@ -2,181 +2,421 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- entender o problema que Cloud SQL resolve;
+- criar uma instância PostgreSQL gerenciada;
+- criar database e usuário;
+- inspecionar estado, versão, região, IP e configurações de backup;
+- conectar pelo Cloud Shell;
+- criar tabela e validar persistência;
+- entender, antes do troubleshooting, IP público, usuário, database e estado da instância;
+- provocar erros de senha/database de forma controlada;
+- diferenciar Cloud SQL e AlloyDB no nível esperado para ACE.
 
-- Criar Cloud SQL de laboratório;
-- Conectar e inspecionar;
-- Entender HA/backups;
-- Diferenciar Cloud SQL e AlloyDB;
+
+> **Custos:** Cloud SQL gera cobrança enquanto a instância existir. Cleanup é obrigatório.
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Cloud SQL é um banco relacional gerenciado para MySQL, PostgreSQL e SQL Server. O Google gerencia infraestrutura, patches de plataforma, backups configuráveis e mecanismos de disponibilidade, enquanto você continua responsável por schema, usuários, queries e escolhas de configuração.
+
+AlloyDB é PostgreSQL-compatible, mas possui arquitetura própria voltada a workloads PostgreSQL mais exigentes. Para ACE, o objetivo principal é reconhecer o caso de uso, não administrar profundamente AlloyDB.
+
+### Conceitos que serão usados no troubleshooting
+
+Antes de quebrar qualquer coisa, precisamos conhecer:
+
+1. **Estado da instância** — `RUNNABLE` indica que a instância está disponível.
+2. **Database** — conexão aponta para um database existente.
+3. **Usuário** — autenticação usa um usuário configurado no Cloud SQL.
+4. **Senha** — credencial do usuário; erro gera falha de autenticação.
+5. **IP público/privado** — determina o caminho de conectividade.
+6. **Authorized networks / Cloud SQL Auth Proxy / conectores** — métodos diferentes de conexão.
+7. **Backup configuration** — recuperação não é o mesmo que alta disponibilidade.
+8. **Availability type** — disponibilidade regional é uma configuração separada de backup.
+
+Nenhum desses conceitos aparecerá no troubleshooting sem antes ser inspecionado no laboratório.
+
+## Arquitetura mental
 
 ```text
-App ──> Cloud SQL
-          ├─ managed relational DB
-          ├─ backups
-          └─ HA opcional
+Aplicação / Cloud Shell
+        |
+        v
+Cloud SQL for PostgreSQL
+ ├─ instance
+ ├─ database: aceapp
+ ├─ user: aceuser
+ ├─ IP/configuração de conexão
+ └─ backups/configuração
 
-App ──> AlloyDB for PostgreSQL
-          └─ PostgreSQL-compatible, performance/HA architecture
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
-
----
-
-# 2. Regra de estudo da aula
-
-Use sempre este ciclo:
-
-```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+AlloyDB
+ └─ PostgreSQL-compatible para requisitos maiores de performance/HA
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-> Cloud SQL gera custo. Use instância pequena e remova no final.
+> **Atenção:** Cloud SQL gera cobrança. Use uma instância pequena compatível com sua conta/região e exclua no final.
 
 ```bash
 export REGION=us-central1
+export INSTANCE=ace-sql
+export DB=aceapp
+export DB_USER=aceuser
+
 gcloud services enable sqladmin.googleapis.com
 
-gcloud sql instances create ace-sql \
+gcloud sql instances create "$INSTANCE" \
   --database-version=POSTGRES_16 \
-  --cpu=1 --memory=3840MiB \
-  --region=$REGION \
+  --cpu=1 \
+  --memory=3840MiB \
+  --region="$REGION" \
   --storage-size=10GB
 
-gcloud sql databases create aceapp --instance=ace-sql
-gcloud sql users set-password postgres \
-  --instance=ace-sql \
-  --password='Troque-Esta-Senha-123!'
-gcloud sql instances describe ace-sql
+gcloud sql databases create "$DB" \
+  --instance="$INSTANCE"
+
+gcloud sql users create "$DB_USER" \
+  --instance="$INSTANCE" \
+  --password='Ace-Lab-12345!'
 ```
 
-Conexão pelo Cloud Shell:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
+### 3.1 Estado, engine e região
+
 ```bash
-gcloud sql connect ace-sql --user=postgres --database=aceapp
+gcloud sql instances describe "$INSTANCE" \
+  --format="yaml(name,state,databaseVersion,region,settings.availabilityType)"
 ```
 
-Dentro do psql:
+Localize:
+
+```text
+state
+databaseVersion
+region
+settings.availabilityType
+```
+
+### 3.2 IPs
+
+```bash
+gcloud sql instances describe "$INSTANCE" \
+  --format="yaml(ipAddresses)"
+```
+
+Agora você sabe se há endereço público configurado.
+
+### 3.3 Databases
+
+```bash
+gcloud sql databases list \
+  --instance="$INSTANCE"
+```
+
+Confirme que `aceapp` existe.
+
+### 3.4 Usuários
+
+```bash
+gcloud sql users list \
+  --instance="$INSTANCE"
+```
+
+Confirme que `aceuser` existe.
+
+### 3.5 Backup
+
+```bash
+gcloud sql instances describe "$INSTANCE" \
+  --format="yaml(settings.backupConfiguration)"
+```
+
+O objetivo é reconhecer se backup está habilitado/configurado. Não confunda backup com HA.
+
+### 3.6 Conectividade
+
+Para o laboratório, `gcloud sql connect` pode criar temporariamente a autorização necessária para o Cloud Shell e abrir o cliente PostgreSQL. Isso evita ensinar CIDRs de authorized networks antes da hora.
+
+```bash
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Quando solicitado, use:
+
+```text
+Ace-Lab-12345!
+```
+
+Dentro do `psql`:
+
 ```sql
-CREATE TABLE clientes(id INT PRIMARY KEY, nome TEXT);
-INSERT INTO clientes VALUES (1,'ACE');
+SELECT current_database();
+SELECT current_user;
+
+CREATE TABLE clientes (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL
+);
+
+INSERT INTO clientes VALUES
+(1, 'Ana'),
+(2, 'Bruno');
+
 SELECT * FROM clientes;
 ```
 
-Compare no console as opções de backup, PITR e HA.
-
----
-
-# 4. Testes e falhas propositais
-
-- Pare a conexão e valide que dado persiste.
-- Não confunda read replica com HA/failover.
-- AlloyDB não é 'Cloud SQL premium'; é serviço próprio PostgreSQL-compatible com arquitetura distinta.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
+Saia:
 
 ```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+\q
 ```
 
 ---
 
-# 5. Troubleshooting
+# 4. Testar
 
-Use este fluxo:
+### Teste 1 — persistência
 
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Conecte novamente:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Execute:
+
+```sql
+SELECT * FROM clientes;
+```
+
+Os dados devem continuar lá.
+
+### Teste 2 — estado
+
+```bash
+gcloud sql instances describe "$INSTANCE" \
+  --format="value(state)"
+```
+
+### Teste 3 — diferenciar backup e HA
+
+Confira simultaneamente:
+
+```bash
+gcloud sql instances describe "$INSTANCE" \
+  --format="yaml(settings.availabilityType,settings.backupConfiguration)"
+```
+
+Pergunta:
+
+> Uma instância pode possuir backup configurado sem ser HA?
+
+Sim. São mecanismos diferentes.
+
+---
+
+# 5. Quebrar propositalmente
+
+Vamos quebrar dois elementos **já ensinados**.
+
+### Falha A — database incorreto
+
+```bash
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database=banco-que-nao-existe
+```
+
+### Falha B — usuário incorreto
+
+```bash
+gcloud sql connect "$INSTANCE" \
+  --user=usuario-que-nao-existe \
+  --database="$DB"
+```
+
+> Para erro de senha, o comando interativo solicitará a senha. Digite deliberadamente uma senha incorreta e observe a mensagem de autenticação.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+## Caso A — database inexistente
+
+**Sintoma:** conexão informa que o database não existe.
+
+**Hipótese:** o nome passado em `--database` não está na instância.
+
+**Evidência:**
+```bash
+gcloud sql databases list --instance="$INSTANCE"
+```
+
+**Causa:** usamos deliberadamente `banco-que-nao-existe`.
+
+**Correção:** usar `aceapp`.
+
+---
+
+## Caso B — usuário inexistente
+
+**Sintoma:** falha envolvendo usuário/role não existente.
+
+**Hipótese:** `--user` não corresponde a um usuário do Cloud SQL.
+
+**Evidência:**
+```bash
+gcloud sql users list --instance="$INSTANCE"
+```
+
+**Causa:** usamos deliberadamente `usuario-que-nao-existe`.
+
+**Correção:** usar `aceuser`.
+
+---
+
+## Caso C — senha incorreta
+
+**Sintoma:** autenticação falha.
+
+**Hipótese:** usuário existe, mas a senha fornecida não corresponde.
+
+**Evidências:**
+```bash
+gcloud sql users list --instance="$INSTANCE"
+```
+
+Isso confirma que o usuário existe. A senha não é exibida pelo serviço.
+
+**Causa:** senha incorreta digitada deliberadamente.
+
+**Correção:** usar a senha correta ou redefini-la:
+
+```bash
+gcloud sql users set-password "$DB_USER" \
+  --instance="$INSTANCE" \
+  --password='Ace-Lab-12345!'
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+## O que NÃO investigar primeiro nesses três casos
 
-- Cloud SQL suporta engines relacionais gerenciadas.
-- HA é decisão de disponibilidade; backup/PITR é recuperação.
-- AlloyDB é forte candidato para PostgreSQL de alto desempenho/escala, mas ACE cobra principalmente escolha de serviço.
-
----
-
-# 7. Questões estilo ACE
-
-- Aplicação MySQL tradicional gerenciada? → Cloud SQL.
-- PostgreSQL-compatible com alta performance e arquitetura AlloyDB? → AlloyDB.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
+Não comece por:
 
 ```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+VPC
+Firewall
+Route
+Cloud NAT
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+porque o próprio `gcloud sql connect` chegou ao serviço e retornou erros específicos de database/usuário/autenticação.
 
+A mensagem de erro é evidência.
+
+Use sempre:
+
+```text
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
+```
+
+---
+
+# 7. Corrigir
+
+Conecte com os três valores corretos:
+
+```bash
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Senha:
+
+```text
+Ace-Lab-12345!
+```
+
+Valide:
+
+```sql
+SELECT current_database(), current_user;
+SELECT * FROM clientes;
+```
+
+### Cloud SQL x AlloyDB
+
+Use este modelo:
+
+```text
+Cloud SQL
+→ MySQL, PostgreSQL, SQL Server
+→ aplicações relacionais tradicionais
+→ operação gerenciada
+→ HA e backups configuráveis
+
+AlloyDB
+→ PostgreSQL-compatible
+→ arquitetura própria do Google
+→ workloads PostgreSQL exigentes em performance/escala
+```
+
+Para ACE, escolha pelo requisito; não transforme a questão em tuning avançado.
+
+---
+
+# 8. Questões estilo ACE
+
+1. Aplicação existente usa MySQL e quer banco gerenciado com mínima mudança. **Cloud SQL**.
+2. Backup e HA são a mesma configuração? **Não**.
+3. Erro “database does not exist”: qual evidência primeiro? **`gcloud sql databases list`**.
+4. Erro de autenticação mas usuário existe: o que verificar? **Senha/credencial**, não route table.
+5. Workload PostgreSQL-compatible com requisitos maiores de desempenho e arquitetura AlloyDB: **AlloyDB**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud sql instances delete "$INSTANCE" --quiet
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

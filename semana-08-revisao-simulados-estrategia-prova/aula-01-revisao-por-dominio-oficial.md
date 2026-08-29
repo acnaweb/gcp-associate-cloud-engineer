@@ -2,183 +2,140 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- revisar configuração de ambiente;
+- implementação;
+- operação;
+- acesso e segurança;
+- identificar lacunas por execução, não por releitura.
 
-- Revisar domínios ACE por ação prática;
-- Detectar lacunas;
-- Executar comandos-chave sem consulta;
-
----
-
-# 1. Modelo mental
-
-```text
-ACE
- ├─ Set up cloud solution environment
- ├─ Plan/configure cloud solution
- ├─ Deploy/implement
- └─ Ensure successful operation
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+A revisão final deve reproduzir as capacidades que a certificação exige: configurar ambiente, planejar/implementar, operar e configurar acesso/segurança.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Configurar ambiente
+ ↓
+Implementar
+ ↓
+Operar
+ ↓
+Acesso e segurança
+ ↓
+Troubleshooting
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Faça um circuito de 45–60 minutos:
-
-```bash
-# contexto
-gcloud config list
-
-# IAM
-gcloud projects get-iam-policy $(gcloud config get-value project)
-
-# compute
-gcloud compute instances list
-
-# networking
-gcloud compute networks list
-gcloud compute firewall-rules list
-gcloud compute routes list
-
-# storage
-gcloud storage buckets list
-
-# Cloud Run/GKE
-gcloud run services list --region=us-central1
-gcloud container clusters list
-
-# operations
-gcloud logging read 'severity>=ERROR' --limit=5
-
-# quotas
-gcloud compute project-info describe --format='yaml(quotas)'
-```
-
-Para cada domínio, escreva:
-```text
-Consigo fazer sem consultar?
-Consigo diagnosticar?
-Consigo explicar por que escolhi o serviço?
-```
-
----
-
-# 4. Testes e falhas propositais
-
-- Não revise apenas definições: pratique decisões.
-- Marque erros por categoria e volte à aula correspondente.
-- Uma questão pode misturar IAM + rede + operação.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Circuito:
 
 ```bash
 gcloud config list
 gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute instances list
+gcloud compute networks list
+gcloud compute firewall-rules list
+gcloud compute routes list
+gcloud storage buckets list
+gcloud run services list --region=us-central1
+gcloud container clusters list
+gcloud logging read 'severity>=ERROR' --limit=5
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 3. Inspecionar
 
-- A prova cobra execução e julgamento operacional.
-- Prefira solução gerenciada e mínima que atende requisito.
-- Leia verbos: create, grant, troubleshoot, migrate, monitor.
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
----
-
-# 7. Questões estilo ACE
-
-- Cenário pede ação mais simples e segura: elimine opções amplas/manuais sem necessidade.
-- Erro de permissão não é resolvido com mudança de rede.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Crie uma planilha/markdown com:
+```text
+Comando/ação
+Consigo executar sem consultar?
+Consigo explicar escopo?
+Consigo diagnosticar falha?
+```
 
 ---
 
-# 9. O que memorizar
+# 4. Testar
 
-Não memorize apenas comandos. Memorize a relação:
+Escolha 5 operações e execute `describe/list` até conseguir explicar cada campo relevante.
+
+---
+
+# 5. Quebrar propositalmente
+
+Marque uma lacuna real, por exemplo:
+> “Não consigo explicar diferença entre Health Check e Autohealing.”
+
+Esse é o “erro” a corrigir: lacuna detectada por revisão ativa.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+Use a aula específica:
+- reproduza arquitetura;
+- repita lab;
+- refaça falha;
+- responda questões.
+
+Não tente compensar lacuna lendo 20 serviços novos.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Registre a regra corrigida em uma frase e um comando-chave.
+
+---
+
+# 8. Questões estilo ACE
+
+1. Revisão passiva é suficiente? **Não**.
+2. Quais domínios merecem prática? **Todos os domínios operacionais do guia**.
+3. Erro deve gerar qual ação? **Repetir laboratório correspondente**.
+
+---
+
+# 9. Cleanup
+
+Sem cleanup obrigatório; use apenas comandos de inspeção, salvo se optar por recriar labs.
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

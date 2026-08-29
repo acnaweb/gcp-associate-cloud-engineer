@@ -2,177 +2,164 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- entender metric, resource, time series e alert policy;
+- observar CPU de uma VM;
+- criar dashboard/alert no Console;
+- provocar condição de indisponibilidade simples;
+- distinguir métrica de log.
 
-- Explorar métricas;
-- Criar VM monitorável;
-- Criar uptime check/alert conceitualmente;
-- Ler dashboards;
-
----
-
-# 1. Modelo mental
-
-```text
-Resource ── metrics ──> Cloud Monitoring
-                         ├─ dashboard
-                         ├─ alert policy
-                         └─ notification channel
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Monitoring trabalha com séries temporais. Uma métrica associada a um recurso gera pontos ao longo do tempo. Alert policy avalia condição; notification channel envia notificação.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Resource → metric → time series
+                    ├─ dashboard
+                    └─ alert policy → incident
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Crie uma VM web:
 ```bash
-cat > startup.sh <<'EOF'
-#!/bin/bash
-apt-get update
-apt-get install -y nginx
-systemctl enable --now nginx
-EOF
-
 gcloud compute instances create ace-monitor-vm \
   --zone=us-central1-a \
   --machine-type=e2-micro \
-  --tags=http-server \
-  --metadata-from-file=startup-script=startup.sh \
-  --image-family=debian-12 --image-project=debian-cloud
+  --image-family=debian-12 \
+  --image-project=debian-cloud
 ```
 
 No Console:
 1. Monitoring → Metrics Explorer.
 2. Resource: VM Instance.
-3. Métrica: CPU utilization.
-4. Salve em um dashboard.
-5. Crie alert policy (ex.: CPU > limite por janela).
-6. Observe incident state.
-
-Liste policies:
-```bash
-gcloud alpha monitoring policies list 2>/dev/null || true
-```
-
-> Algumas operações de Monitoring são mais didáticas no Console e APIs; o foco é entender resource + metric + condition + notification.
+3. Metric: CPU utilization.
+4. Salve o gráfico em um dashboard.
+5. Crie uma alert policy simples com limiar baixo o suficiente para laboratório, ou apenas configure sem esperar o disparo se não quiser gerar carga artificial.
 
 ---
 
-# 4. Testes e falhas propositais
+# 3. Inspecionar
 
-- Pare a VM e veja mudança nas séries/availability.
-- Alerta não 'conserta' recurso; ele detecta condição e abre incidente/notifica.
-- Métrica não é log.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute instances describe ace-monitor-vm \
+  --zone=us-central1-a \
+  --format="value(status)"
 ```
 
----
-
-# 6. Pegadinhas ACE
-
-- Metrics são time series.
-- Alert policy combina condição e canais.
-- Dashboard é visualização, não mecanismo de retenção/automação.
+No Metrics Explorer, identifique explicitamente:
+- monitored resource;
+- metric;
+- aggregation;
+- time range.
 
 ---
 
-# 7. Questões estilo ACE
+# 4. Testar
 
-- Quer ser notificado quando CPU alta? → alerting policy.
-- Quer visualizar tendência? → dashboard/metrics explorer.
+Gere CPU por curto período:
 
----
+```bash
+gcloud compute ssh ace-monitor-vm \
+  --zone=us-central1-a \
+  --command="timeout 30s yes > /dev/null || true"
+```
 
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Observe a série após alguns minutos.
 
 ---
 
-# 9. O que memorizar
+# 5. Quebrar propositalmente
 
-Não memorize apenas comandos. Memorize a relação:
+Pare a VM:
+
+```bash
+gcloud compute instances stop ace-monitor-vm \
+  --zone=us-central1-a
+```
+
+Agora você já conhece o estado da VM e a série temporal; observe a diferença de dados/availability.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** a VM está parada e novas métricas de CPU deixam de representar workload em execução.
+
+**Hipótese:** mudança no estado do recurso, não falha do dashboard.
+
+**Evidência:**
+```bash
+gcloud compute instances describe ace-monitor-vm \
+  --zone=us-central1-a \
+  --format="value(status)"
+```
+
+**Causa:** `stop` deliberado.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+```bash
+gcloud compute instances start ace-monitor-vm \
+  --zone=us-central1-a
+```
+
+Confirme status `RUNNING` e aguarde novas métricas.
+
+---
+
+# 8. Questões estilo ACE
+
+1. CPU ao longo do tempo é **métrica/time series**.
+2. Alert policy corrige automaticamente a VM? **Não**.
+3. Dashboard é visualização, não mecanismo de autorização.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud compute instances delete ace-monitor-vm \
+  --zone=us-central1-a --quiet
+# Remova dashboard/alert policy criados no Console.
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

@@ -2,180 +2,147 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- comparar Autopilot e Standard;
+- reconhecer HPA x cluster autoscaling;
+- interpretar `Pending`, `ImagePullBackOff` e `CrashLoopBackOff`;
+- provocar e corrigir `ImagePullBackOff`.
 
-- Comparar Autopilot e Standard;
-- Entender HPA/cluster autoscaling;
-- Praticar troubleshooting kubectl;
-- Escolher Cloud Run x GKE;
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Autopilot delega mais gestão de infraestrutura ao Google. Standard dá mais controle sobre nodes/node pools. HPA escala workloads/Pods; cluster autoscaling ajusta capacidade de nodes em Standard quando configurado.
+
+## Arquitetura mental
 
 ```text
-Autopilot → Google gerencia mais infraestrutura
-Standard  → maior controle de nodes/node pools
-
-HPA → Pods
-Cluster autoscaler → Nodes (Standard)
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
-
----
-
-# 2. Regra de estudo da aula
-
-Use sempre este ciclo:
-
-```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Deployment
+  └─ Pod status
+      ├─ Running
+      ├─ ImagePullBackOff
+      ├─ CrashLoopBackOff
+      └─ Pending
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Use cluster existente ou crie Autopilot temporário.
+Use o cluster da aula anterior se ainda existir ou crie um pequeno Autopilot de laboratório.
 
-Troubleshooting:
-```bash
-kubectl get pods -A
-kubectl describe pod POD_NAME
-kubectl logs POD_NAME
-kubectl get events --sort-by=.lastTimestamp
-kubectl get svc
-kubectl get endpoints
-```
+Crie Deployment quebrado:
 
-Crie falha de imagem:
 ```bash
 kubectl create deployment quebrado \
-  --image=nginx:imagem-que-nao-existe
-kubectl get pods
-kubectl describe pod -l app=quebrado
+  --image=nginx:tag-que-nao-existe-ace
 ```
 
-Observe `ImagePullBackOff`/erros relacionados e corrija:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
+```bash
+kubectl get deployment quebrado
+kubectl get pods -l app=quebrado
+kubectl describe pod -l app=quebrado
+kubectl get events --sort-by=.lastTimestamp | tail -30
+```
+
+---
+
+# 4. Testar
+
+Observe o pod por alguns minutos:
+
+```bash
+kubectl get pods -l app=quebrado -w
+```
+
+O estado deverá apontar problema ao obter a imagem.
+
+---
+
+# 5. Quebrar propositalmente
+
+A própria imagem inexistente é a falha proposital. Não adicione uma segunda falha antes de diagnosticar a primeira.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** `ImagePullBackOff`/`ErrImagePull`.
+
+**Hipótese:** image/tag não existe ou registry não pode ser acessado.
+
+**Evidências:**
+```bash
+kubectl describe pod -l app=quebrado
+kubectl get events --sort-by=.lastTimestamp | tail -30
+```
+
+**Causa:** `nginx:tag-que-nao-existe-ace` foi definido deliberadamente.
+
+Como o evento indica `not found`, não é necessário começar por CPU, HPA ou Service.
+
+Use sempre:
+
+```text
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
+```
+
+---
+
+# 7. Corrigir
+
 ```bash
 kubectl set image deployment/quebrado \
   nginx=nginx:alpine
-```
 
-HPA conceitual/prático quando metrics server disponível:
-```bash
-kubectl autoscale deployment web \
-  --cpu-percent=60 --min=1 --max=5
+kubectl rollout status deployment/quebrado
+kubectl get pods -l app=quebrado
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 8. Questões estilo ACE
 
-- ImagePullBackOff → imagem/credencial/tag.
-- CrashLoopBackOff → app inicia e falha repetidamente.
-- Pending → scheduling/recursos/policies.
-- Service sem endpoints → labels/selectors/readiness.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
+1. Quer maior abstração de nodes? **Autopilot**.
+2. Precisa controle profundo de node pools? **Standard**.
+3. `ImagePullBackOff`: olhar **image/tag/registry/credential**, começando pelos eventos.
 
 ---
 
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+# 9. Cleanup
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+kubectl delete deployment quebrado --ignore-not-found
+# Exclua o cluster se foi criado exclusivamente para esta aula.
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 10. Checklist
 
-- Autopilot reduz operação de nodes.
-- Standard oferece maior controle.
-- Cloud Run é mais simples para request-driven stateless sem necessidade de Kubernetes.
-- GKE quando há requisitos Kubernetes/orquestração avançada.
-
----
-
-# 7. Questões estilo ACE
-
-- Equipe não quer gerenciar nodes e aceita constraints Autopilot? → Autopilot.
-- Precisa customização profunda de node pools? → Standard.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
-```
-
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
-
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

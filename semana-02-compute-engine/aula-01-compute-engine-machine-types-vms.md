@@ -2,175 +2,148 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- criar e inspecionar uma VM;
+- entender machine type, zone, boot disk e network interface;
+- praticar `stop`, `start` e `reset`;
+- diagnosticar tentativa de conexão em VM parada.
 
-- Criar e operar VMs;
-- Comparar machine types;
-- Praticar stop/start/reset;
-- Inspecionar metadados e rede;
 
----
-
-# 1. Modelo mental
-
-```text
-Compute Engine
-  └─ VM (zonal)
-      ├─ vCPU/RAM
-      ├─ boot disk
-      ├─ NIC
-      └─ service account
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+> **Custos:** VMs podem gerar cobrança por compute e disco. Use `e2-micro` e remova ao final.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Compute Engine oferece VMs com controle do sistema operacional. A VM é tipicamente zonal e combina CPU/memória, disco de boot, NIC e uma identidade de runtime.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Project
+ └─ Zone
+    └─ VM
+       ├─ machine type
+       ├─ boot disk
+       └─ NIC
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
 ```bash
 export ZONE=us-central1-a
-gcloud services enable compute.googleapis.com
-
-gcloud compute machine-types list \
-  --zones=$ZONE \
-  --filter="name:e2-"
 
 gcloud compute instances create ace-vm \
-  --zone=$ZONE \
+  --zone="$ZONE" \
   --machine-type=e2-micro \
   --image-family=debian-12 \
   --image-project=debian-cloud
-
-gcloud compute instances describe ace-vm --zone=$ZONE
-gcloud compute instances stop ace-vm --zone=$ZONE
-gcloud compute instances start ace-vm --zone=$ZONE
-gcloud compute instances reset ace-vm --zone=$ZONE
 ```
 
-Observe status:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
+gcloud compute instances describe ace-vm --zone="$ZONE"
 gcloud compute instances list
-```
-
-> `stop/start` altera o estado da VM. `reset` equivale a um hard reset e não é um shutdown gracioso do SO.
-
----
-
-# 4. Testes e falhas propositais
-
-- Pare a VM e tente SSH.
-- Compare IP externo antes/depois de stop/start quando ele é efêmero.
-- Use `describe` para conferir zone, machine type e disks antes de troubleshooting.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+gcloud compute machine-types describe e2-micro --zone="$ZONE"
 ```
 
 ---
 
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+# 4. Testar
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute ssh ace-vm --zone="$ZONE" --command="hostname && uptime"
+gcloud compute instances stop ace-vm --zone="$ZONE"
+gcloud compute instances start ace-vm --zone="$ZONE"
+gcloud compute instances reset ace-vm --zone="$ZONE"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 5. Quebrar propositalmente
 
-- VM é normalmente zonal.
-- Machine family/series/type não são sinônimos.
-- Reset não é stop+start gracioso.
-- Pare VMs de laboratório para reduzir custo, mas discos persistentes continuam existindo.
+Pare a VM:
 
----
-
-# 7. Questões estilo ACE
-
-- Você precisa de controle do SO e software legado. Serviço? → Compute Engine.
-- Qual operação é semelhante a power-cycle sem shutdown gracioso? → reset.
+```bash
+gcloud compute instances stop ace-vm --zone="$ZONE"
+gcloud compute ssh ace-vm --zone="$ZONE"
+```
 
 ---
 
-# 8. Checklist
+# 6. Troubleshooting
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
 
----
+**Sintoma:** SSH falha.
 
-# 9. O que memorizar
+**Hipótese:** a instância está `TERMINATED`.
 
-Não memorize apenas comandos. Memorize a relação:
+**Evidência:**
+```bash
+gcloud compute instances describe ace-vm \
+  --zone="$ZONE" \
+  --format="value(status)"
+```
+
+**Causa:** a VM foi parada deliberadamente. Não altere firewall antes de confirmar o estado do recurso.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+```bash
+gcloud compute instances start ace-vm --zone="$ZONE"
+gcloud compute ssh ace-vm --zone="$ZONE" --command="hostname"
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Precisa de controle do SO para software legado? **Compute Engine**.
+2. `reset` é equivalente a shutdown gracioso? **Não**.
+3. Uma VM é normalmente global, regional ou zonal? **Zonal**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud compute instances delete ace-vm --zone="$ZONE" --quiet
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

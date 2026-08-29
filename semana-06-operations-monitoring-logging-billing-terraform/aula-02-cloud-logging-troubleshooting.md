@@ -2,176 +2,154 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- consultar logs;
+- filtrar por severity/resource;
+- entender Audit Logs;
+- provocar operação falha e encontrar evidência;
+- diferenciar log, metric e log-based metric.
 
-- Usar Logs Explorer/gcloud logging;
-- Filtrar logs;
-- Criar falha e localizar causa;
-- Entender log-based metric;
-
----
-
-# 1. Modelo mental
-
-```text
-Workload ── logs ──> Cloud Logging
-                      ├─ query
-                      ├─ sinks
-                      └─ log-based metrics
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Logging armazena entradas de eventos. Audit Logs registram atividades administrativas e acesso conforme categoria. Queries filtram campos estruturados.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Action
+  ↓
+Log entry
+  ├─ resource
+  ├─ severity
+  ├─ timestamp
+  └─ protoPayload/textPayload
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Gere logs com uma VM:
+Crie e delete uma VM para gerar atividade administrativa:
+
 ```bash
 gcloud compute instances create ace-log-vm \
   --zone=us-central1-a \
   --machine-type=e2-micro \
-  --image-family=debian-12 --image-project=debian-cloud
+  --image-family=debian-12 \
+  --image-project=debian-cloud
 ```
 
-Leia audit logs recentes:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
 gcloud logging read \
-  'resource.type="gce_instance"' \
-  --limit=20 \
-  --format="table(timestamp,severity,logName)"
-```
+ 'resource.type="gce_instance"' \
+ --limit=20 \
+ --format="table(timestamp,severity,logName)"
 
-Filtre erro:
-```bash
 gcloud logging read \
-  'severity>=ERROR' \
-  --limit=20
-```
-
-No Logs Explorer pratique:
-```text
-resource.type="gce_instance"
-severity>=ERROR
-```
-
-Crie uma operação inválida/erro controlado e compare timestamp + principal + recurso nos Audit Logs.
-
----
-
-# 4. Testes e falhas propositais
-
-- Filtro muito amplo pode gerar ruído/custo/tempo.
-- Logs de auditoria ajudam a responder 'quem fez o quê'.
-- Log-based metric transforma ocorrência em métrica para alerting.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+ 'logName:"cloudaudit.googleapis.com"' \
+ --limit=20
 ```
 
 ---
 
-# 5. Troubleshooting
+# 4. Testar
 
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Faça uma operação inválida:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute instances stop vm-que-nao-existe \
+  --zone=us-central1-a || true
 ```
 
----
-
-# 6. Pegadinhas ACE
-
-- Logging = eventos/registros; Monitoring = métricas/time series.
-- Audit logs são essenciais em IAM/troubleshooting.
-- Sink exporta logs para destinos suportados.
+Depois pesquise por erros/atividade relacionada no Logs Explorer e compare com saída do CLI.
 
 ---
 
-# 7. Questões estilo ACE
+# 5. Quebrar propositalmente
 
-- Quem deletou VM? → Audit Logs.
-- Contar ocorrências de mensagem ERROR e alertar? → log-based metric + alert.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+A falha já é a operação em recurso inexistente. O objetivo é não “inventar” causa de aplicação quando o CLI já informa resource not found.
 
 ---
 
-# 9. O que memorizar
+# 6. Troubleshooting
 
-Não memorize apenas comandos. Memorize a relação:
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** comando falha porque VM não existe.
+
+**Hipótese:** nome/zone incorreto ou recurso inexistente.
+
+**Evidências:**
+```bash
+gcloud compute instances list
+gcloud logging read 'severity>=ERROR' --limit=20
+```
+
+**Causa:** usamos `vm-que-nao-existe`.
+
+A lição é correlacionar mensagem do comando com logs/audit quando aplicável.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Use um recurso real:
+
+```bash
+gcloud compute instances describe ace-log-vm \
+  --zone=us-central1-a
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. “Quem alterou este recurso?” → **Audit Logs**.
+2. Contar ocorrências de um padrão para alertar → **log-based metric**.
+3. Log é série temporal numérica? **Não necessariamente**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud compute instances delete ace-log-vm \
+  --zone=us-central1-a --quiet
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

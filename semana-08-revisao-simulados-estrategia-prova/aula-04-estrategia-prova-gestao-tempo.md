@@ -2,173 +2,126 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- identificar requisito dominante;
+- eliminar alternativas;
+- gerenciar tempo;
+- separar erro de conhecimento de erro de leitura.
 
-- Aplicar estratégia de leitura;
-- Gerenciar tempo;
-- Eliminar alternativas;
-- Lidar com múltipla seleção;
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Questões de cenário oferecem informações úteis e distrações. A melhor resposta atende requisitos obrigatórios com menor complexidade, escopo correto e least privilege.
+
+## Arquitetura mental
 
 ```text
 Questão
-  ↓ requisito dominante
-  ↓ restrições
-  ↓ eliminar opções
-  ↓ escolher ação mínima/correta
+ ↓
+verbo/requisito
+ ↓
+restrições
+ ↓
+eliminar opções
+ ↓
+responder / marcar e seguir
 ```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 2. Criar
 
-Use sempre este ciclo:
+Selecione 20 questões dos simulados e faça uma sessão cronometrada. Não consulte material durante a primeira passagem.
+
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
+Para cada questão, marque:
+```text
+verbo:
+requisito dominante:
+restrições:
+duas opções eliminadas:
+```
+
+---
+
+# 4. Testar
+
+Na segunda passagem, explique por que a correta é melhor, não apenas possível.
+
+---
+
+# 5. Quebrar propositalmente
+
+Escolha deliberadamente uma alternativa “tecnicamente possível, mas mais complexa” e explique qual requisito ela viola (custo, operação, segurança, escopo).
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** duas opções parecem corretas.
+
+**Hipótese:** uma delas viola uma restrição implícita/explicita como “mínima operação” ou “least privilege”.
+
+**Evidência:** releia a última frase e palavras como `MOST`, `LEAST`, `MINIMIZE`, `REQUIRED`.
+
+**Causa comum:** responder pelo produto conhecido, não pelo requisito.
+
+Use sempre:
 
 ```text
-Conceito
+Sintoma
    ↓
-Criar
+Hipótese
    ↓
-Inspecionar
+Evidência
    ↓
-Testar
+Causa
    ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Correção
 ```
 
 ---
 
-# 3. Laboratório principal
+# 7. Corrigir
 
-### Simulação cronometrada
-Pegue 20 questões dos simulados e estabeleça uma janela.
-
-Para cada questão:
-1. Leia primeiro a última frase/pergunta.
-2. Identifique o verbo: `create`, `configure`, `troubleshoot`, `minimize`, `secure`.
-3. Marque requisitos duros: managed, global, private, least privilege, low ops.
-4. Elimine opções que violam um requisito.
-5. Se travar, marque e avance.
-6. Volte no fim.
-
-### Folha de erros
+Reescreva a questão em uma linha:
 ```text
-Erro de conhecimento
-Erro de leitura
-Erro de pressa
-Duas opções pareciam corretas
-Não reconheci produto
-Esqueci comando/escopo
-```
-
-### Técnica para “most appropriate”
-Prefira:
-- serviço gerenciado quando requisito pede baixa operação;
-- predefined role mínima em vez de basic role ampla;
-- recurso no escopo correto;
-- ação nativa em vez de workaround manual.
-
----
-
-# 4. Testes e falhas propositais
-
-- Não gaste vários minutos numa única questão.
-- Multiple select exige todas as opções corretas.
-- Cuidado com palavras como MOST, LEAST, MINIMIZE, REQUIRED.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+Preciso de X, com restrição Y; portanto escolho Z.
 ```
 
 ---
 
-# 5. Troubleshooting
+# 8. Questões estilo ACE
 
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
-
-```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
-```
+1. Duas opções funcionam, mas uma exige cluster sem necessidade: escolha a **mais simples/gerenciada**.
+2. Least privilege elimina **Owner/Editor** quando role específica atende.
+3. Não sabe uma questão após tempo razoável: **marque e avance**.
 
 ---
 
-# 6. Pegadinhas ACE
+# 9. Cleanup
 
-- Questões ACE frequentemente têm duas respostas tecnicamente possíveis; uma atende melhor custo/operação/segurança.
-- Conhecer escopos global/regional/zonal elimina alternativas rápido.
-
----
-
-# 7. Questões estilo ACE
-
-- Se duas opções funcionam, qual reduz operação mantendo requisito? Essa costuma ser a direção da resposta.
-- Se pergunta pede least privilege, descarte Owner/Editor quando há role específica.
+Nenhum recurso é criado.
 
 ---
 
-# 8. Checklist
+# 10. Checklist
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
-```
-
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
-
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

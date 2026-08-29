@@ -1,181 +1,158 @@
-# Aula 2 — Service Accounts, User, Token Creator e Impersonation
+# Aula 2 — Service Accounts e Impersonation
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- diferenciar runtime SA, Service Account User e Token Creator;
+- praticar impersonation;
+- remover Token Creator e observar falha;
+- evitar long-lived keys.
 
-- Diferenciar Service Account User e Token Creator;
-- Praticar impersonation;
-- Evitar keys persistentes;
-- Entender attach x impersonate;
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Service Account é principal. `Service Account User` permite usar/anexar SA em determinados contextos. `Service Account Token Creator` permite criar credenciais curtas/impersonar. São permissões diferentes.
+
+## Arquitetura mental
 
 ```text
 User
- ├─ Service Account User → anexar/usar SA em recurso
- └─ Token Creator → gerar credencial curta/impersonar
-                         ↓
-                    Service Account
-                         ↓
-                     API resource
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
-
----
-
-# 2. Regra de estudo da aula
-
-Use sempre este ciclo:
-
-```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+ ├─ SA User → attach/use SA
+ └─ Token Creator → impersonate
+                       ↓
+                 Service Account
+                       ↓
+                    API
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
 ```bash
 export PROJECT_ID=$(gcloud config get-value project)
-export SA=ace-impersonation@$PROJECT_ID.iam.gserviceaccount.com
+export USER=$(gcloud config get-value account)
+export SA="ace-impersonation@$PROJECT_ID.iam.gserviceaccount.com"
 
 gcloud iam service-accounts create ace-impersonation
-gcloud projects add-iam-policy-binding $PROJECT_ID \
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:$SA" \
   --role="roles/viewer"
-```
 
-Conceda Token Creator ao seu usuário (somente em projeto de laboratório):
-```bash
-export USER=$(gcloud config get-value account)
-
-gcloud iam service-accounts add-iam-policy-binding $SA \
+gcloud iam service-accounts add-iam-policy-binding "$SA" \
   --member="user:$USER" \
   --role="roles/iam.serviceAccountTokenCreator"
 ```
 
-Teste:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
-gcloud projects describe $PROJECT_ID \
-  --impersonate-service-account=$SA
+gcloud iam service-accounts get-iam-policy "$SA"
+gcloud projects get-iam-policy "$PROJECT_ID" \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:$SA"
 ```
 
-Compare:
+---
+
+# 4. Testar
+
 ```bash
+gcloud projects describe "$PROJECT_ID" \
+  --impersonate-service-account="$SA"
+
 gcloud auth print-access-token \
-  --impersonate-service-account=$SA | head -c 20
+  --impersonate-service-account="$SA" | head -c 20
 echo
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 5. Quebrar propositalmente
 
-- Remova Token Creator e repita impersonation.
-- Impersonation usa credenciais curtas; não exige baixar JSON key.
-- Service Account User não implica automaticamente Token Creator.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Remova Token Creator:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud iam service-accounts remove-iam-policy-binding "$SA" \
+  --member="user:$USER" \
+  --role="roles/iam.serviceAccountTokenCreator"
+
+gcloud projects describe "$PROJECT_ID" \
+  --impersonate-service-account="$SA"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 6. Troubleshooting
 
-- Attach SA e impersonate SA são ações distintas.
-- Preferir impersonation/federation a chaves persistentes.
-- Runtime SA deve ter apenas roles necessárias.
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
 
----
+**Sintoma:** impersonation falha.
 
-# 7. Questões estilo ACE
+**Hipótese:** usuário não pode mais gerar token da SA.
 
-- Usuário precisa gerar token da SA? → Service Account Token Creator.
-- Usuário precisa anexar SA a uma VM? → Service Account User, além de permissões do recurso.
+**Evidência:**
+```bash
+gcloud iam service-accounts get-iam-policy "$SA"
+```
 
----
+**Causa:** removemos `roles/iam.serviceAccountTokenCreator`.
 
-# 8. Checklist
+A SA ainda tem `roles/viewer` no projeto, mas o usuário não consegue mais assumir essa identidade. Isso separa “o que a SA pode fazer” de “quem pode impersoná-la”.
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Reaplique Token Creator e teste novamente.
+
+---
+
+# 8. Questões estilo ACE
+
+1. Gerar token da SA? **Service Account Token Creator**.
+2. Attach SA a recurso? **Service Account User** (além das permissões do recurso).
+3. Melhor que baixar chave JSON quando possível? **Impersonation/credenciais curtas**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud iam service-accounts delete "$SA" --quiet
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

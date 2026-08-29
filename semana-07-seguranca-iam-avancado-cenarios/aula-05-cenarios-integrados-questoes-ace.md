@@ -1,182 +1,160 @@
-# Aula 5 — Cenários Integrados e Questões Estilo ACE
+# Aula 5 — Cenários Integrados e Questões ACE
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- combinar identidade, escopo e role;
+- distinguir falha IAM de rede;
+- resolver cenários sem provisionar recursos desnecessários;
+- justificar resposta.
 
-- Resolver cenários least privilege;
-- Combinar IAM, rede e runtime identity;
-- Treinar troubleshooting de acesso;
-
----
-
-# 1. Modelo mental
-
-```text
-Usuário/Workload
-  ↓ identity
-IAM binding/condition
-  ↓
-Resource
-  ↕
-Network path (quando aplicável)
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+No ACE, a melhor resposta costuma ser a opção que atende requisito com serviço nativo, menor privilégio e menor complexidade operacional. A chave é separar as camadas.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Requirement
+ ↓
+Identity
+ ↓
+Scope
+ ↓
+Role
+ ↓
+Network path (se necessário)
+ ↓
+Operation
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-### Caso 1 — VM lê bucket
-Desenhe:
-```text
-VM
- └─ Service Account
-      └─ roles/storage.objectViewer
-           └─ Bucket
-```
-Pergunte:
-- Quem é o principal?
-- Em qual escopo conceder?
-- A VM precisa de key JSON? Não.
+Crie uma tabela de decisão:
 
-### Caso 2 — CI/CD externo
 ```text
-GitHub OIDC
-   ↓ WIF
-Google identity
-   ↓ impersonation/permissions
-Deploy Cloud Run
+Cenário | Principal | Recurso | Role mínima | Rede necessária? | Evidência
 ```
 
-### Caso 3 — usuário temporário
-Use IAM Condition com expiração em vez de lembrar de remover manualmente quando o caso comportar.
+Preencha:
+1. VM lê bucket.
+2. Usuário consulta BigQuery.
+3. GitHub faz deploy no Cloud Run.
+4. Cloud Run acessa Storage.
+5. Usuário recebe 403.
 
-### Checklist de comandos
+
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
+Use comandos já aprendidos:
+
 ```bash
 gcloud auth list
-gcloud projects get-iam-policy PROJECT_ID
+gcloud projects get-iam-policy "$(gcloud config get-value project)"
 gcloud iam service-accounts list
-gcloud iam roles describe ROLE
-gcloud logging read 'protoPayload.status.code=7' --limit=20
+gcloud iam roles describe roles/storage.objectViewer
+gcloud logging read 'protoPayload.status.code=7' --limit=10
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 4. Testar
 
-- Conceder role no nível errado aumenta blast radius.
-- Key SA é último recurso, não default.
-- Rede pode estar perfeita e IAM negar; IAM pode estar perfeito e rede falhar.
+Escolha um cenário e prove cada camada com comandos, sem alterar recursos:
+- principal;
+- role;
+- scope;
+- mensagem de erro/log.
 
-Para cada falha, não corrija imediatamente. Primeiro registre:
+---
+
+# 5. Quebrar propositalmente
+
+Falha proposital de raciocínio:
+
+> “A aplicação recebe 403 do Cloud Storage; vou abrir firewall tcp:443.”
+
+Explique por que essa correção não ataca a evidência observada.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** HTTP 403 / `PERMISSION_DENIED`.
+
+**Hipótese correta:** autorização.
+
+**Evidência:** resposta chegou à API e foi explicitamente negada.
+
+**Causa provável:** role/binding/condition/principal incorreto.
+
+**Por que firewall é hipótese fraca:** firewall de VPC costuma produzir conectividade/timeout, não decisão IAM explícita da API.
+
+Use sempre:
 
 ```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
 ```
 
 ---
 
-# 5. Troubleshooting
+# 7. Corrigir
 
-Use este fluxo:
-
+A correção deve atuar em:
 ```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
-
-```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+principal correto
++
+role mínima
++
+scope correto
++
+condition correta (se houver)
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 8. Questões estilo ACE
 
-- Identidade + escopo + role + condição.
-- Escolha mínima que resolve requisito.
-- Use logs/audit para evidência.
-
----
-
-# 7. Questões estilo ACE
-
-- Cloud Run precisa ler um bucket específico: runtime SA + role mínima no bucket.
-- Fornecedor externo sem conta Google precisa acesso temporário: federação/WIF quando compatível.
+1. 403 do Storage: **IAM**.
+2. Timeout para IP privado: **rede/rota/firewall/serviço**.
+3. CI externo sem key: **WIF**.
+4. Workload precisa ler bucket: **runtime SA + objectViewer no bucket**.
 
 ---
 
-# 8. Checklist
+# 9. Cleanup
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Nenhum recurso obrigatório é criado nesta aula; ela reutiliza conhecimento das anteriores.
 
 ---
 
-# 9. O que memorizar
+# 10. Checklist
 
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
-```
-
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
-
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

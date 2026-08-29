@@ -2,56 +2,35 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- criar Instance Template;
+- criar MIG;
+- redimensionar;
+- deletar uma VM e observar reconciliação;
+- entender template imutável e update.
 
-- Criar Instance Template;
-- Criar MIG zonal e entender regional;
-- Redimensionar MIG;
-- Atualizar template conceitualmente;
+
+> **Custos:** MIG mantém múltiplas VMs; faça cleanup obrigatório.
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Instance Template descreve como criar VMs. MIG mantém um estado desejado de instâncias homogêneas e pode recriar membros ausentes.
+
+## Arquitetura mental
 
 ```text
 Instance Template
-      │
-      v
-Managed Instance Group
-   ├─ VM
-   ├─ VM
-   └─ VM
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
-
----
-
-# 2. Regra de estudo da aula
-
-Use sempre este ciclo:
-
-```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+       ↓
+MIG (desired size)
+ ├─ VM
+ └─ VM
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
 ```bash
 cat > startup.sh <<'EOF'
@@ -64,111 +43,133 @@ EOF
 gcloud compute instance-templates create ace-template-v1 \
   --machine-type=e2-micro \
   --metadata-from-file=startup-script=startup.sh \
-  --image-family=debian-12 --image-project=debian-cloud
+  --image-family=debian-12 \
+  --image-project=debian-cloud
 
 gcloud compute instance-groups managed create ace-mig \
   --zone=us-central1-a \
   --template=ace-template-v1 \
   --size=2
+```
+
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
+```bash
+gcloud compute instance-templates describe ace-template-v1
+gcloud compute instance-groups managed describe ace-mig \
+  --zone=us-central1-a
+gcloud compute instance-groups managed list-instances ace-mig \
+  --zone=us-central1-a
+```
+
+---
+
+# 4. Testar
+
+```bash
+gcloud compute instance-groups managed resize ace-mig \
+  --zone=us-central1-a --size=3
 
 gcloud compute instance-groups managed list-instances ace-mig \
   --zone=us-central1-a
-
-gcloud compute instance-groups managed resize ace-mig \
-  --zone=us-central1-a --size=3
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 5. Quebrar propositalmente
 
-- Delete manualmente uma VM do MIG e observe o grupo recriá-la.
-- Instance Template é imutável: para mudanças, crie nova versão/template e faça update do MIG.
-- MIG regional distribui instâncias entre zonas e melhora disponibilidade.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Pegue uma VM do grupo e apague manualmente:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+VM=$(gcloud compute instance-groups managed list-instances ace-mig \
+  --zone=us-central1-a \
+  --format="value(instance.basename())" | head -1)
+
+gcloud compute instances delete "$VM" \
+  --zone=us-central1-a --quiet
 ```
 
----
-
-# 6. Pegadinhas ACE
-
-- MIG gerencia instâncias; unmanaged group não oferece os mesmos recursos.
-- Template define 'como criar'. MIG define 'grupo desejado'.
-- Regional MIG é preferível quando requisito é resiliência zonal.
+Aguarde e liste novamente.
 
 ---
 
-# 7. Questões estilo ACE
+# 6. Troubleshooting
 
-- Uma VM do grupo foi apagada. O que o MIG faz? → reconcilia com tamanho desejado.
-- Precisa mudar machine type de todas? → novo template + update.
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
 
----
+**Sintoma:** a VM apagada reaparece com outro nome.
 
-# 8. Checklist
+**Hipótese:** o MIG está reconciliando o tamanho desejado.
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+**Evidências:**
+```bash
+gcloud compute instance-groups managed describe ace-mig \
+  --zone=us-central1-a \
+  --format="yaml(targetSize,currentActions)"
+gcloud compute instance-groups managed list-instances ace-mig \
+  --zone=us-central1-a
+```
 
----
+**Causa:** o grupo foi configurado com `size=3`; uma exclusão manual cria diferença entre estado real e desejado.
 
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Não há “correção” de falha: o comportamento é desejado. Para reduzir instâncias, use o próprio MIG:
+
+```bash
+gcloud compute instance-groups managed resize ace-mig \
+  --zone=us-central1-a --size=2
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Quem define como uma nova VM do grupo é criada? **Instance Template**.
+2. Quem mantém a quantidade desejada? **MIG**.
+3. Deletar uma VM manualmente reduz permanentemente o MIG? **Não**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud compute instance-groups managed delete ace-mig \
+  --zone=us-central1-a --quiet
+gcloud compute instance-templates delete ace-template-v1 --quiet
+rm -f startup.sh
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

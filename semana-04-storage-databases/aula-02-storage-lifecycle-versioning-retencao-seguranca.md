@@ -1,72 +1,48 @@
-# Aula 2 — Lifecycle, Versioning, Retenção e Segurança no Storage
+# Aula 2 — Lifecycle, Versioning, Retenção e Segurança
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- habilitar Object Versioning;
+- criar duas gerações do mesmo objeto;
+- recuperar geração anterior;
+- configurar lifecycle;
+- entender retention policy;
+- diagnosticar exclusão bloqueada por retenção sem ativar lock irreversível.
 
-- Habilitar versioning;
-- Criar lifecycle rule;
-- Entender retention policy;
-- Praticar IAM no bucket;
-
----
-
-# 1. Modelo mental
-
-```text
-Objeto
- ├─ versões
- ├─ lifecycle
- ├─ retention policy
- └─ IAM
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Versioning mantém gerações anteriores. Lifecycle automatiza ações por condições. Retention policy impede exclusão antes de determinado período. IAM controla acesso. São mecanismos diferentes.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Bucket
+ ├─ versioning → generations
+ ├─ lifecycle → ações automáticas
+ ├─ retention → mínimo de retenção
+ └─ IAM → autorização
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
 ```bash
 export PROJECT_ID=$(gcloud config get-value project)
-export BUCKET=gs://$PROJECT_ID-ace-storage-sec-$RANDOM
-gcloud storage buckets create $BUCKET --location=us-central1
+export BUCKET="gs://$PROJECT_ID-ace-lifecycle-$RANDOM"
 
-gcloud storage buckets update $BUCKET --versioning
+gcloud storage buckets create "$BUCKET" --location=us-central1
+gcloud storage buckets update "$BUCKET" --versioning
+
 echo v1 > dado.txt
-gcloud storage cp dado.txt $BUCKET/dado.txt
+gcloud storage cp dado.txt "$BUCKET/dado.txt"
 echo v2 > dado.txt
-gcloud storage cp dado.txt $BUCKET/dado.txt
+gcloud storage cp dado.txt "$BUCKET/dado.txt"
 
-gcloud storage ls --all-versions $BUCKET
-```
-
-Lifecycle:
-```bash
 cat > lifecycle.json <<'EOF'
 {
   "rule": [{
@@ -76,108 +52,122 @@ cat > lifecycle.json <<'EOF'
 }
 EOF
 
-gcloud storage buckets update $BUCKET \
+gcloud storage buckets update "$BUCKET" \
   --lifecycle-file=lifecycle.json
-```
 
-Retention:
-```bash
-gcloud storage buckets update $BUCKET \
-  --retention-period=86400
-gcloud storage buckets describe $BUCKET
+gcloud storage buckets update "$BUCKET" \
+  --retention-period=60s
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 3. Inspecionar
 
-- Tente deletar um objeto ainda protegido por retention policy e observe bloqueio.
-- Versioning não é o mesmo que retention.
-- Lifecycle automatiza ações; não é backup por si só.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud storage ls --all-versions "$BUCKET"
+gcloud storage buckets describe "$BUCKET"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 4. Testar
 
-- Retention pode impedir exclusão até prazo.
-- Lock de retention é decisão séria/irreversível em certos contextos: não faça no lab.
-- Uniform bucket-level access simplifica IAM ao nível do bucket.
+Anote as generations:
 
----
+```bash
+gcloud storage ls --all-versions "$BUCKET/dado.txt"
+```
 
-# 7. Questões estilo ACE
-
-- Precisa impedir exclusão antes de 7 anos? → retention policy.
-- Quer apagar objetos antigos automaticamente? → lifecycle management.
+Confirme que existem versões e que a retention policy está configurada.
 
 ---
 
-# 8. Checklist
+# 5. Quebrar propositalmente
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Logo após configurar retenção, tente apagar:
+
+```bash
+gcloud storage rm "$BUCKET/dado.txt"
+```
+
+A operação pode ser bloqueada enquanto o objeto estiver dentro do período de retenção.
 
 ---
 
-# 9. O que memorizar
+# 6. Troubleshooting
 
-Não memorize apenas comandos. Memorize a relação:
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** exclusão negada por retenção.
+
+**Hipótese:** o objeto ainda não cumpriu `retention-period`.
+
+**Evidências:**
+```bash
+gcloud storage buckets describe "$BUCKET"
+gcloud storage objects describe "$BUCKET/dado.txt"
+```
+
+**Causa:** a retention policy foi configurada deliberadamente antes do teste.
+
+Isso é diferente de IAM: o erro está associado à política de retenção do objeto/bucket.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Aguarde o período curto de laboratório e tente novamente. Não aplique retention lock neste laboratório.
+
+Depois:
+```bash
+gcloud storage rm "$BUCKET/dado.txt"
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Quer recuperar conteúdo anterior sobrescrito? **Versioning**.
+2. Quer apagar automaticamente objetos com 90 dias? **Lifecycle**.
+3. Quer impedir deleção antes de prazo mínimo? **Retention policy**.
+
+---
+
+# 9. Cleanup
+
+```bash
+# Após a retenção mínima expirar:
+gcloud storage rm "$BUCKET/**" 2>/dev/null || true
+gcloud storage buckets delete "$BUCKET" --quiet
+rm -f dado.txt lifecycle.json
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

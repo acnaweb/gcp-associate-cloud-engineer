@@ -2,185 +2,170 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- entender principal, role, permission, policy e resource;
+- criar uma Service Account;
+- conceder uma role mínima em um bucket;
+- testar acesso com impersonation;
+- diagnosticar um `PERMISSION_DENIED` produzido no laboratório.
 
-- Entender Principal, Role, Permission e Resource;
-- Criar Service Account;
-- Conceder e remover role;
-- Testar least privilege;
-
----
-
-# 1. Modelo mental
-
-```text
-Principal ── role ──> Resource
-                 │
-                 └─ permissions
-
-VM/Cloud Run ── usa ──> Service Account
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+IAM responde “quem pode fazer o quê em qual recurso”. Service Accounts são identidades usadas por workloads. Nesta aula o acesso será testado sem criar chave JSON persistente.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+User
+  └─ impersonates
+      Service Account
+          └─ role
+              └─ Bucket
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
 ```bash
 export PROJECT_ID=$(gcloud config get-value project)
-export SA_NAME=ace-lab-sa
-export SA_EMAIL=$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com
+export SA_NAME=ace-storage-reader
+export SA_EMAIL="$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"
+export BUCKET="gs://$PROJECT_ID-ace-iam-$RANDOM"
 
-gcloud iam service-accounts create $SA_NAME \
-  --display-name="ACE Lab Service Account"
+gcloud iam service-accounts create "$SA_NAME"
+gcloud storage buckets create "$BUCKET" --location=us-central1
 
-gcloud iam service-accounts list
+echo "conteudo ACE" > dado.txt
+gcloud storage cp dado.txt "$BUCKET/"
 ```
 
-Crie um bucket e tente desenhar o acesso:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
-export BUCKET=gs://$PROJECT_ID-ace-iam-lab
-gcloud storage buckets create $BUCKET --location=us-central1
+gcloud iam service-accounts describe "$SA_EMAIL"
+gcloud storage buckets describe "$BUCKET"
+gcloud storage buckets get-iam-policy "$BUCKET"
+gcloud iam roles describe roles/storage.objectViewer
 ```
 
-Conceda somente leitura de objetos ao principal:
+---
+
+# 4. Testar
+
+Conceda leitura e depois teste:
+
 ```bash
-gcloud storage buckets add-iam-policy-binding $BUCKET \
+gcloud storage buckets add-iam-policy-binding "$BUCKET" \
   --member="serviceAccount:$SA_EMAIL" \
   --role="roles/storage.objectViewer"
 
-gcloud storage buckets get-iam-policy $BUCKET
+gcloud storage cat "$BUCKET/dado.txt" \
+  --impersonate-service-account="$SA_EMAIL"
 ```
 
-Inspecione IAM do projeto:
+---
+
+# 5. Quebrar propositalmente
+
+Remova a role que acabou de conceder:
+
 ```bash
-gcloud projects get-iam-policy $PROJECT_ID \
-  --format="table(bindings.role,bindings.members)"
+gcloud storage buckets remove-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:$SA_EMAIL" \
+  --role="roles/storage.objectViewer"
+
+gcloud storage cat "$BUCKET/dado.txt" \
+  --impersonate-service-account="$SA_EMAIL"
 ```
 
-Compare papéis:
+Agora você espera um erro de autorização.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** leitura retorna `PERMISSION_DENIED`/403.
+
+**Hipótese:** a SA não possui mais permissão `storage.objects.get`.
+
+**Evidências:**
 ```bash
+gcloud storage buckets get-iam-policy "$BUCKET"
 gcloud iam roles describe roles/storage.objectViewer
-gcloud iam roles describe roles/storage.objectAdmin
+```
+
+**Causa:** removemos deliberadamente o binding `roles/storage.objectViewer`.
+
+Observe que não há motivo para investigar rota, firewall ou DNS: o acesso está chegando ao serviço e a negação é de IAM.
+
+Use sempre:
+
+```text
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 7. Corrigir
 
-- Remova o binding e observe como o principal perde o acesso.
-- Compare objectViewer x objectAdmin antes de escolher a role.
-- Não crie chave persistente de SA para este lab: a prova favorece credenciais de curta duração quando possível.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Recrie exatamente o binding mínimo:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud storage buckets add-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:$SA_EMAIL" \
+  --role="roles/storage.objectViewer"
+
+gcloud storage cat "$BUCKET/dado.txt" \
+  --impersonate-service-account="$SA_EMAIL"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 8. Questões estilo ACE
 
-- Roles contêm permissions.
-- Bindings associam principals a roles.
-- Service Account é identidade de workload, não 'usuário técnico genérico'.
-- Owner/Editor são amplos; prefira predefined roles específicas.
-
----
-
-# 7. Questões estilo ACE
-
-- Uma aplicação só precisa ler objetos. Qual role é mais adequada? → Storage Object Viewer.
-- Você precisa permitir que uma VM aja como uma SA. Qual conceito aparece? → Service Account User/attach SA.
+1. A workload só precisa ler objetos. Qual role escolher? **Storage Object Viewer**.
+2. Por que não usar `roles/editor`? **Viola least privilege**.
+3. A SA precisa obrigatoriamente de uma chave JSON para este cenário? **Não.**
 
 ---
 
-# 8. Checklist
+# 9. Cleanup
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+```bash
+gcloud storage rm "$BUCKET/dado.txt"
+gcloud storage buckets delete "$BUCKET" --quiet
+gcloud iam service-accounts delete "$SA_EMAIL" --quiet
+rm -f dado.txt
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

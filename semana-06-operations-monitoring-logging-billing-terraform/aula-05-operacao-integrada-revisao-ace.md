@@ -2,187 +2,173 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- classificar sintomas por camada;
+- usar uma sequência de diagnóstico;
+- evitar mudanças aleatórias;
+- executar mini-incidente envolvendo VM e nginx.
 
-- Praticar fluxo operacional completo;
-- Classificar falha IAM/rede/quota/app;
-- Usar describe/logging/monitoring;
-- Treinar decisão ACE;
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Troubleshooting eficaz reduz espaço de busca. Primeiro confirme recurso/estado, depois configuração e camada específica. Mensagens 403, timeout, `RESOURCE_EXHAUSTED` e serviço parado apontam caminhos diferentes.
+
+## Arquitetura mental
 
 ```text
 Sintoma
-  ↓
-Recurso/status
-  ↓
-IAM
-  ↓
-rede
-  ↓
-quota
-  ↓
-logs/metrics
-  ↓
-ação corretiva
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
-
----
-
-# 2. Regra de estudo da aula
-
-Use sempre este ciclo:
-
-```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+ ↓
+Estado do recurso
+ ↓
+Configuração
+ ↓
+IAM / Rede / Quota / Aplicação
+ ↓
+Logs/Metrics
+ ↓
+Correção mínima
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-### Caso integrado
-Crie VM:
+Crie VM com nginx:
+
 ```bash
+cat > startup.sh <<'EOF'
+#!/bin/bash
+apt-get update
+apt-get install -y nginx
+systemctl enable --now nginx
+EOF
+
 gcloud compute instances create ace-ops-vm \
-  --zone=us-central1-a --machine-type=e2-micro \
-  --image-family=debian-12 --image-project=debian-cloud
+  --zone=us-central1-a \
+  --machine-type=e2-micro \
+  --metadata-from-file=startup-script=startup.sh \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
 ```
 
-Checklist operacional:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
-gcloud compute instances describe ace-ops-vm --zone=us-central1-a
-gcloud compute firewall-rules list
-gcloud compute routes list
-gcloud logging read 'resource.type="gce_instance"' --limit=10
-gcloud compute project-info describe --format="yaml(quotas)"
+gcloud compute instances describe ace-ops-vm \
+  --zone=us-central1-a
+gcloud compute ssh ace-ops-vm \
+  --zone=us-central1-a \
+  --command="systemctl is-active nginx; curl -s localhost | head"
 ```
 
-Agora provoque uma falha por vez:
-1. VM STOPPED.
-2. firewall ausente.
-3. serviço nginx parado.
-4. principal sem role.
-5. quota hipotética/real atingida.
+---
 
-Para cada falha, registre:
+# 4. Testar
+
+Valide primeiro o estado saudável. Registre:
+```text
+VM = RUNNING
+nginx = active
+localhost:80 = responde
+```
+
+---
+
+# 5. Quebrar propositalmente
+
+Pare apenas nginx:
+
+```bash
+gcloud compute ssh ace-ops-vm \
+  --zone=us-central1-a \
+  --command="sudo systemctl stop nginx"
+```
+
+Não altere VM, firewall ou IAM.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** aplicação local deixou de responder.
+
+**Hipótese:** nginx parado.
+
+**Evidências:**
+```bash
+gcloud compute instances describe ace-ops-vm \
+  --zone=us-central1-a \
+  --format="value(status)"
+
+gcloud compute ssh ace-ops-vm \
+  --zone=us-central1-a \
+  --command="systemctl is-active nginx || true; sudo ss -lntp | grep :80 || true"
+```
+
+**Causa:** serviço parado.
+
+A VM está `RUNNING`, então não é necessário reiniciar compute nem mexer em quota.
+
+Use sempre:
+
 ```text
 Sintoma
+   ↓
 Hipótese
-Comando de evidência
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
 Correção
-Prevenção
 ```
 
 ---
 
-# 4. Testes e falhas propositais
-
-- Não altere três coisas ao mesmo tempo.
-- Leia mensagem de erro antes de escalar privilégio.
-- 403 → IAM/auth; timeout → rede/serviço; RESOURCE_EXHAUSTED → quota/capacidade.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+# 7. Corrigir
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute ssh ace-ops-vm \
+  --zone=us-central1-a \
+  --command="sudo systemctl start nginx; curl -s localhost | head"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 8. Questões estilo ACE
 
-- Troubleshooting ACE é seleção da ação mínima correta.
-- Least privilege também vale em incidentes.
-- Logs + metrics + resource describe formam triângulo operacional útil.
-
----
-
-# 7. Questões estilo ACE
-
-- 403 ao acessar bucket: primeiro verificar IAM, não firewall.
-- VM sem resposta externa: status, IP/rota/firewall/serviço.
+1. VM `RUNNING`, porta 80 sem listener: investigar **aplicação**.
+2. 403 de API Google: investigar **IAM**, antes de firewall.
+3. `RESOURCE_EXHAUSTED`: investigar **quota/capacidade**.
 
 ---
 
-# 8. Checklist
+# 9. Cleanup
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+```bash
+gcloud compute instances delete ace-ops-vm \
+  --zone=us-central1-a --quiet
+rm -f startup.sh
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

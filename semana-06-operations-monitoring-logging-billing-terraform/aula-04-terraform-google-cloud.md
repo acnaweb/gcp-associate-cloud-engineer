@@ -2,60 +2,42 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- criar provider/config;
+- executar init, fmt, validate, plan, apply;
+- inspecionar state;
+- provocar drift;
+- corrigir por código ou importar/ajustar conforme estratégia.
 
-- Configurar provider Google;
-- Executar init/plan/apply/destroy;
-- Usar variables/outputs;
-- Entender state e drift;
-
----
-
-# 1. Modelo mental
-
-```text
-HCL ── terraform plan/apply ──> Google Cloud
-        │
-        └─ state acompanha recursos
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Terraform é IaC declarativa. Configuration descreve estado desejado; state mapeia objetos Terraform a recursos reais; plan compara configuração/state/realidade e mostra ações.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+HCL desired state
+      ↓
+plan
+      ↓
+apply
+      ↓
+Google Cloud
+      ↕
+state
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Crie diretório:
 ```bash
-mkdir -p ~/ace-terraform && cd ~/ace-terraform
-```
+mkdir -p ~/ace-tf && cd ~/ace-tf
 
-`main.tf`:
-```hcl
+cat > main.tf <<'EOF'
 terraform {
   required_providers {
     google = {
@@ -64,136 +46,142 @@ terraform {
   }
 }
 
+variable "project_id" {
+  type = string
+}
+
 provider "google" {
   project = var.project_id
   region  = "us-central1"
 }
 
-variable "project_id" {
-  type = string
-}
-
 resource "google_storage_bucket" "lab" {
-  name                        = "${var.project_id}-ace-tf-lab"
+  name                        = "${var.project_id}-ace-tf-2026"
   location                    = "US"
   uniform_bucket_level_access = true
   force_destroy               = true
-}
 
-output "bucket" {
-  value = google_storage_bucket.lab.name
+  labels = {
+    managed_by = "terraform"
+  }
 }
-```
+EOF
 
-Execute:
-```bash
 terraform init
 terraform fmt
 terraform validate
 terraform plan -var="project_id=$(gcloud config get-value project)"
-terraform apply -var="project_id=$(gcloud config get-value project)"
-terraform state list
-```
-
-Drift:
-1. Altere label/configuração suportada manualmente no Console.
-2. Execute novo `terraform plan`.
-3. Observe diferença entre state/config/realidade.
-
----
-
-# 4. Testes e falhas propositais
-
-- Nunca versione credenciais ou tfstate sensível em repo público.
-- `plan` não aplica.
-- State é crítico para mapear recursos.
-- Mudança manual pode produzir drift.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+terraform apply -var="project_id=$(gcloud config get-value project)" -auto-approve
 ```
 
 ---
 
-# 5. Troubleshooting
+# 3. Inspecionar
 
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+terraform state list
+terraform state show google_storage_bucket.lab
+gcloud storage buckets describe \
+ "gs://$(gcloud config get-value project)-ace-tf-2026"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 4. Testar
 
-- init baixa provider/backend.
-- plan prevê.
-- apply converge.
-- destroy remove recursos gerenciados.
-- State remoto é preferível para colaboração.
+```bash
+terraform plan -var="project_id=$(gcloud config get-value project)"
+```
 
----
-
-# 7. Questões estilo ACE
-
-- Quer saber impacto antes da mudança? → plan.
-- Equipe compartilhando IaC? → backend remoto/state locking adequado.
+O resultado deve indicar nenhuma mudança relevante imediatamente após apply.
 
 ---
 
-# 8. Checklist
+# 5. Quebrar propositalmente
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Altere manualmente uma label do bucket no Console ou via `gcloud`, por exemplo adicionando uma label extra. Depois:
+
+```bash
+terraform plan -var="project_id=$(gcloud config get-value project)"
+```
 
 ---
 
-# 9. O que memorizar
+# 6. Troubleshooting
 
-Não memorize apenas comandos. Memorize a relação:
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** `terraform plan` mostra mudança inesperada.
+
+**Hipótese:** houve drift entre configuração e recurso real.
+
+**Evidências:**
+```bash
+terraform state show google_storage_bucket.lab
+gcloud storage buckets describe \
+ "gs://$(gcloud config get-value project)-ace-tf-2026"
+terraform plan -var="project_id=$(gcloud config get-value project)"
+```
+
+**Causa:** mudança manual fora do Terraform.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Escolha uma estratégia consciente:
+- se a mudança manual não deve permanecer, `terraform apply` reconcilia;
+- se deve permanecer, altere `main.tf` antes do apply.
+
+Para o lab, remova o drift com:
+
+```bash
+terraform apply -var="project_id=$(gcloud config get-value project)" -auto-approve
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Ver mudanças antes de executar? **terraform plan**.
+2. State guarda credenciais? Pode conter dados sensíveis; **proteja-o**.
+3. Alteração manual fora do IaC pode gerar **drift**.
+
+---
+
+# 9. Cleanup
+
+```bash
+cd ~/ace-tf
+terraform destroy -var="project_id=$(gcloud config get-value project)" -auto-approve
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

@@ -2,173 +2,158 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- diagnosticar 403 de maneira estruturada;
+- identificar principal efetivo;
+- conferir IAM no recurso;
+- usar Policy Troubleshooter no Console;
+- corrigir com role mínima.
 
-- Investigar PermissionDenied;
-- Usar Policy Troubleshooter quando disponível;
-- Validar SA de runtime;
-- Distinguir authn/authz;
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Autenticação responde “quem é”. Autorização responde “pode”. Em workload, identidade efetiva costuma ser uma Service Account. 403 normalmente indica autorização, embora detalhes devam ser confirmados pela mensagem/evidência.
+
+## Arquitetura mental
 
 ```text
 Request
-  ↓ authentication: quem é?
-  ↓ authorization: pode?
-  ↓ resource policy / IAM condition
-  ↓ allow/deny
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
-
----
-
-# 2. Regra de estudo da aula
-
-Use sempre este ciclo:
-
-```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+ ↓ identity
+ ↓ IAM policy/condition
+ ↓ allow/deny decision
+ ↓ Resource
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Crie SA sem acesso:
 ```bash
 export PROJECT_ID=$(gcloud config get-value project)
+export SA="ace-noaccess@$PROJECT_ID.iam.gserviceaccount.com"
+export BUCKET="gs://$PROJECT_ID-ace-sec-$RANDOM"
+
 gcloud iam service-accounts create ace-noaccess
+gcloud storage buckets create "$BUCKET" --location=us-central1
+echo dado > arquivo.txt
+gcloud storage cp arquivo.txt "$BUCKET/"
 ```
 
-Crie bucket:
-```bash
-export BUCKET=gs://$PROJECT_ID-ace-sec-$RANDOM
-gcloud storage buckets create $BUCKET --location=us-central1
-echo secret > arquivo.txt
-gcloud storage cp arquivo.txt $BUCKET/
-```
+---
 
-Roteiro de diagnóstico de 403:
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
+gcloud iam service-accounts describe "$SA"
+gcloud storage buckets get-iam-policy "$BUCKET"
 gcloud auth list
-gcloud config get-value account
-gcloud projects get-iam-policy $PROJECT_ID
-gcloud storage buckets get-iam-policy $BUCKET
-gcloud iam service-accounts get-iam-policy \
-  ace-noaccess@$PROJECT_ID.iam.gserviceaccount.com
-```
-
-No Console: IAM & Admin → Policy Troubleshooter.
-Teste principal + permission + resource para explicar por que acesso é permitido/negado.
-
----
-
-# 4. Testes e falhas propositais
-
-- Não resolva 403 concedendo Owner.
-- Cheque principal efetivo (especialmente com impersonation).
-- IAM Conditions e deny policies podem alterar resultado.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
 ```
 
 ---
 
-# 5. Troubleshooting
+# 4. Testar
 
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Tente ler via SA sem role:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud storage cat "$BUCKET/arquivo.txt" \
+  --impersonate-service-account="$SA"
 ```
 
----
-
-# 6. Pegadinhas ACE
-
-- 401 costuma apontar autenticação/token; 403 autorização.
-- Policy Troubleshooter ajuda explicar decisão.
-- Least privilege é correção preferida.
+Se ainda não tiver Token Creator para impersonar, use a aula anterior para conceder temporariamente essa capacidade ao seu usuário. O importante aqui é separar:
+1. conseguir assumir a SA;
+2. a SA poder acessar o bucket.
 
 ---
 
-# 7. Questões estilo ACE
+# 5. Quebrar propositalmente
 
-- 403 em Storage: verificar principal, role/binding, condition, resource.
-- Workload usa SA errada: corrigir runtime identity antes de aumentar permissões.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+A ausência de role no bucket é a falha proposital. Não adicione firewall ou VPC ao cenário.
 
 ---
 
-# 9. O que memorizar
+# 6. Troubleshooting
 
-Não memorize apenas comandos. Memorize a relação:
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** 403/PERMISSION_DENIED ao ler objeto.
+
+**Hipótese:** SA efetiva não tem `storage.objects.get`.
+
+**Evidências:**
+```bash
+gcloud storage buckets get-iam-policy "$BUCKET"
+gcloud iam roles describe roles/storage.objectViewer
+```
+
+No Console:
+IAM & Admin → Policy Troubleshooter
+- Principal: `$SA`
+- Permission: `storage.objects.get`
+- Resource: bucket/objeto apropriado
+
+**Causa:** nenhuma role de leitura foi concedida à SA.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+```bash
+gcloud storage buckets add-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:$SA" \
+  --role="roles/storage.objectViewer"
+
+gcloud storage cat "$BUCKET/arquivo.txt" \
+  --impersonate-service-account="$SA"
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. 403 em API: investigar primeiro **IAM/autorização**.
+2. Corrigir com Owner? **Não; usar role mínima**.
+3. Workload está usando SA diferente da esperada: corrigir **runtime identity**, não aumentar permissões aleatoriamente.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud storage rm "$BUCKET/arquivo.txt"
+gcloud storage buckets delete "$BUCKET" --quiet
+gcloud iam service-accounts delete "$SA" --quiet
+rm -f arquivo.txt
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

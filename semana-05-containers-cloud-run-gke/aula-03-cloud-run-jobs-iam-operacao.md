@@ -2,172 +2,156 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- criar Cloud Run Job;
+- executar;
+- inspecionar executions;
+- configurar runtime SA;
+- provocar exit code 1;
+- diagnosticar falha pela execution/logs.
 
-- Criar Cloud Run Job;
-- Executar manualmente;
-- Configurar Service Account;
-- Ler executions/logs;
-
----
-
-# 1. Modelo mental
-
-```text
-Scheduler/manual ──> Cloud Run Job
-                    └─ execution ── task(s)
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Cloud Run Job executa tarefas que terminam; não oferece endpoint HTTP contínuo. Job define configuração; Execution representa uma execução concreta; Task é unidade executada.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Job
+ ↓ execute
+Execution
+ └─ Task(s)
+      └─ exit code/logs
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
 ```bash
 export REGION=us-central1
-gcloud services enable run.googleapis.com
-
 gcloud run jobs create ace-job \
   --image=alpine \
-  --region=$REGION \
+  --region="$REGION" \
   --command=sh \
   --args=-c,'echo ACE Job; date'
+```
+
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
+```bash
+gcloud run jobs describe ace-job --region="$REGION"
+gcloud run jobs executions list --job=ace-job --region="$REGION"
+```
+
+---
+
+# 4. Testar
+
+```bash
+gcloud run jobs execute ace-job --region="$REGION" --wait
+gcloud run jobs executions list --job=ace-job --region="$REGION"
+```
+
+---
+
+# 5. Quebrar propositalmente
+
+Atualize o job para terminar com erro:
+
+```bash
+gcloud run jobs update ace-job \
+  --region="$REGION" \
+  --command=sh \
+  --args=-c,'echo falha proposital; exit 1'
 
 gcloud run jobs execute ace-job \
-  --region=$REGION \
-  --wait
-
-gcloud run jobs executions list \
-  --job=ace-job \
-  --region=$REGION
+  --region="$REGION" \
+  --wait || true
 ```
 
-Service Account:
-```bash
-export PROJECT_ID=$(gcloud config get-value project)
-gcloud iam service-accounts create ace-job-sa
+---
 
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** execution termina `FAILED`.
+
+**Hipótese:** o processo no container retornou código diferente de zero.
+
+**Evidências:**
+```bash
+gcloud run jobs executions list --job=ace-job --region="$REGION"
+gcloud logging read \
+ 'resource.type="cloud_run_job" AND resource.labels.job_name="ace-job"' \
+ --limit=20
+```
+
+**Causa:** adicionamos `exit 1` deliberadamente.
+
+Use sempre:
+
+```text
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
+```
+
+---
+
+# 7. Corrigir
+
+Restaure comando:
+
+```bash
 gcloud run jobs update ace-job \
-  --region=$REGION \
-  --service-account=ace-job-sa@$PROJECT_ID.iam.gserviceaccount.com
+  --region="$REGION" \
+  --command=sh \
+  --args=-c,'echo corrigido; exit 0'
+
+gcloud run jobs execute ace-job --region="$REGION" --wait
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 8. Questões estilo ACE
 
-- Use comando `exit 1` numa nova versão do job e observe execution FAILED.
-- Service account de runtime define identidade do job para APIs Google.
-- Job não precisa ficar ouvindo porta HTTP.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
+1. Processo batch sem endpoint? **Cloud Run Job**.
+2. Onde ver execução concreta? **Executions**.
+3. Exit code 1 aponta primeiro para quê? **Processo/aplicação do job**, antes de IAM/rede.
 
 ---
 
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+# 9. Cleanup
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud run jobs delete ace-job --region="$REGION" --quiet
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 10. Checklist
 
-- Service ≠ Job.
-- Invoker executa/chama; runtime SA define o que workload pode acessar.
-- Falha de job: olhar execution + logs.
-
----
-
-# 7. Questões estilo ACE
-
-- Processo batch diário containerizado? → Cloud Run Job.
-- Endpoint HTTP escalável? → Cloud Run Service.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
-```
-
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
-
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

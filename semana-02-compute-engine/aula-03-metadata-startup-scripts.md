@@ -2,183 +2,174 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- criar metadata de instância;
+- usar startup script para instalar nginx;
+- consultar serial port output;
+- provocar erro de bootstrap e identificar a linha problemática.
 
-- Usar metadata;
-- Automatizar bootstrap com startup script;
-- Inspecionar serial port/logs;
-- Corrigir script quebrado;
 
----
-
-# 1. Modelo mental
-
-```text
-Instance metadata
-      │
-      v
-Startup script
-      │
-      v
-VM configurada automaticamente
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+> **Custos:** São criadas duas VMs pequenas. Remova no final.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Metadata guarda pares chave/valor associados à instância/projeto. Startup scripts podem automatizar bootstrap no boot. Não use metadata comum para armazenar segredos.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+VM metadata
+   └─ startup-script
+        └─ configura SO/aplicação
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Crie:
 ```bash
-cat > startup.sh <<'EOF'
+cat > startup-ok.sh <<'EOF'
 #!/bin/bash
 apt-get update
 apt-get install -y nginx
-echo "ACE startup $(hostname)" > /var/www/html/index.html
-systemctl restart nginx
+echo "ACE $(hostname)" > /var/www/html/index.html
+systemctl enable --now nginx
 EOF
-```
 
-```bash
-gcloud compute instances create ace-startup-vm \
+gcloud compute instances create ace-startup \
   --zone=us-central1-a \
   --machine-type=e2-micro \
-  --tags=http-server \
   --metadata=ambiente=lab \
-  --metadata-from-file=startup-script=startup.sh \
+  --metadata-from-file=startup-script=startup-ok.sh \
   --image-family=debian-12 \
   --image-project=debian-cloud
 ```
 
-Leia metadata:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
-gcloud compute instances describe ace-startup-vm \
+gcloud compute instances describe ace-startup \
   --zone=us-central1-a \
   --format="yaml(metadata)"
-```
 
-Logs do startup:
-```bash
-gcloud compute instances get-serial-port-output ace-startup-vm \
-  --zone=us-central1-a | tail -50
+gcloud compute instances get-serial-port-output ace-startup \
+  --zone=us-central1-a | tail -80
 ```
 
 ---
 
-# 4. Testes e falhas propositais
-
-- Troque `nginx` por um pacote inexistente e recrie a VM para observar falha.
-- Startup scripts precisam ser idempotentes quando há reexecução/recriação.
-- Metadata não deve armazenar segredo em texto puro.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+# 4. Testar
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute ssh ace-startup --zone=us-central1-a \
+  --command="curl -s localhost; systemctl is-active nginx"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 5. Quebrar propositalmente
 
-- Metadata é configuração, não segredo.
-- Startup script executa no boot e é útil para bootstrap.
-- Instance template + startup script é combinação comum em MIG.
+Crie uma segunda VM com pacote inválido:
 
----
+```bash
+cat > startup-fail.sh <<'EOF'
+#!/bin/bash
+apt-get update
+apt-get install -y pacote-que-nao-existe-ace
+EOF
 
-# 7. Questões estilo ACE
-
-- Quer instalar agente em toda nova VM de um MIG? → startup script no template.
-- Script falhou: onde começar? → serial port output / logs.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+gcloud compute instances create ace-startup-fail \
+  --zone=us-central1-a \
+  --machine-type=e2-micro \
+  --metadata-from-file=startup-script=startup-fail.sh \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
 
 ---
 
-# 9. O que memorizar
+# 6. Troubleshooting
 
-Não memorize apenas comandos. Memorize a relação:
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** bootstrap não entrega o software esperado.
+
+**Hipótese:** startup script falhou.
+
+**Evidência ensinada nesta aula:**
+```bash
+gcloud compute instances get-serial-port-output ace-startup-fail \
+  --zone=us-central1-a | tail -100
+```
+
+Procure a mensagem do `apt-get`.
+
+**Causa:** pacote deliberadamente inexistente.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Atualize metadata com script válido ou recrie a VM.
+
+```bash
+gcloud compute instances add-metadata ace-startup-fail \
+  --zone=us-central1-a \
+  --metadata-from-file=startup-script=startup-ok.sh
+
+gcloud compute instances reset ace-startup-fail --zone=us-central1-a
+```
+
+Depois confira serial output novamente.
+
+---
+
+# 8. Questões estilo ACE
+
+1. Quer instalar agente automaticamente em novas VMs? **Startup script**.
+2. Onde começar se o startup falhar? **Serial port output/logs**.
+3. Deve guardar senha em metadata simples? **Não**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud compute instances delete ace-startup ace-startup-fail \
+  --zone=us-central1-a --quiet
+rm -f startup-ok.sh startup-fail.sh
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

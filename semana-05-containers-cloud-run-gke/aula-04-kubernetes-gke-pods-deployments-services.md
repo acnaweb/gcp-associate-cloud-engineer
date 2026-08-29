@@ -2,176 +2,161 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- criar cluster Autopilot;
+- criar Deployment;
+- escalar Pods;
+- expor Service;
+- deletar Pod e observar reconciliação;
+- diagnosticar selector/endpoint.
 
-- Criar GKE Autopilot;
-- Usar kubectl;
-- Criar Deployment e Service;
-- Simular falha de Pod;
 
----
-
-# 1. Modelo mental
-
-```text
-GKE Cluster
- └─ Namespace
-    └─ Deployment
-       └─ ReplicaSet
-          ├─ Pod
-          └─ Pod
-    └─ Service
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
+> **Custos:** GKE pode gerar cobrança. Cluster deve ser excluído no final.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Pod é unidade de execução. Deployment mantém estado desejado de Pods. Service fornece endpoint estável e seleciona Pods por labels.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+GKE
+ └─ Deployment
+     └─ Pods
+Service ── selector ──> Pods
 ```
 
 ---
 
-# 3. Laboratório principal
-
-> GKE pode gerar custo. Exclua o cluster no final.
+# 2. Criar
 
 ```bash
 export REGION=us-central1
 gcloud services enable container.googleapis.com
 
 gcloud container clusters create-auto ace-gke \
-  --region=$REGION
+  --region="$REGION"
 
 gcloud container clusters get-credentials ace-gke \
-  --region=$REGION
+  --region="$REGION"
 
 kubectl create deployment web --image=nginx:alpine
 kubectl scale deployment web --replicas=2
 kubectl expose deployment web --port=80 --type=ClusterIP
-
-kubectl get pods -o wide
-kubectl get deployments
-kubectl get services
-```
-
-Self-healing:
-```bash
-POD=$(kubectl get pods -l app=web -o jsonpath='{.items[0].metadata.name}')
-kubectl delete pod $POD
-kubectl get pods -w
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 3. Inspecionar
 
-- Delete um Pod e observe Deployment restaurar réplica.
-- Service seleciona Pods por labels; selector errado = endpoint vazio.
-- Pod não é Deployment.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+kubectl get deployment web
+kubectl get pods -l app=web -o wide
+kubectl get service web
+kubectl get endpoints web
+kubectl describe service web
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 4. Testar
 
-- Deployment gerencia estado desejado de Pods.
-- Service oferece endpoint estável.
-- kubectl opera recursos Kubernetes, gcloud gerencia cluster GKE.
-
----
-
-# 7. Questões estilo ACE
-
-- Pod morreu e voltou automaticamente por Deployment. Qual conceito? → reconciliation.
-- Precisa endpoint estável para Pods efêmeros? → Service.
+```bash
+kubectl run curl --rm -it --restart=Never \
+  --image=curlimages/curl -- \
+  curl -s http://web
+```
 
 ---
 
-# 8. Checklist
+# 5. Quebrar propositalmente
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
+Altere selector do Service para não corresponder aos Pods:
+
+```bash
+kubectl patch service web \
+  -p '{"spec":{"selector":{"app":"nome-errado"}}}'
+
+kubectl get endpoints web
+```
+
+Agora teste novamente de um pod curl.
 
 ---
 
-# 9. O que memorizar
+# 6. Troubleshooting
 
-Não memorize apenas comandos. Memorize a relação:
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** nome `web` resolve, mas Service não encaminha para Pods/tem endpoints vazios.
+
+**Hipótese:** selector não corresponde às labels dos Pods.
+
+**Evidências:**
+```bash
+kubectl get service web -o yaml
+kubectl get pods --show-labels
+kubectl get endpoints web
+```
+
+**Causa:** alteramos `spec.selector.app` para `nome-errado`.
+
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+```bash
+kubectl patch service web \
+  -p '{"spec":{"selector":{"app":"web"}}}'
+
+kubectl get endpoints web
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Quem mantém réplicas? **Deployment**.
+2. Quem fornece endpoint estável? **Service**.
+3. Service sem endpoints: primeiro comparar **selector e labels**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud container clusters delete ace-gke \
+  --region="$REGION" --quiet
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

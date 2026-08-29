@@ -2,171 +2,153 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- criar bucket;
+- carregar, listar, ler e copiar objetos;
+- entender localização e Storage Class;
+- alterar a classe de um objeto;
+- diagnosticar referência a objeto inexistente.
 
-- Criar buckets e objetos;
-- Entender localização e classes;
-- Copiar/listar/remover objetos;
-- Escolher classe por padrão de acesso;
-
----
-
-# 1. Modelo mental
-
-```text
-Cloud Storage
-  └─ Bucket (location)
-      ├─ objeto A
-      └─ objeto B
-           └─ storage class
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Cloud Storage é object storage. Bucket é contêiner lógico com nome globalmente único e localização. Objeto é o dado armazenado; Storage Class expressa padrão de acesso/custo, não permissão.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Bucket
+ ├─ location
+ ├─ default storage class
+ └─ objects
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
 ```bash
 export PROJECT_ID=$(gcloud config get-value project)
-export BUCKET=gs://$PROJECT_ID-ace-storage-$RANDOM
+export BUCKET="gs://$PROJECT_ID-ace-storage-$RANDOM"
 
-gcloud storage buckets create $BUCKET \
+gcloud storage buckets create "$BUCKET" \
   --location=us-central1 \
   --default-storage-class=STANDARD
 
-echo "ACE Storage Lab" > exemplo.txt
-gcloud storage cp exemplo.txt $BUCKET/
-gcloud storage ls -L $BUCKET
-gcloud storage cat $BUCKET/exemplo.txt
+echo "arquivo 1" > arquivo.txt
+gcloud storage cp arquivo.txt "$BUCKET/"
 ```
 
-Mude classe de um objeto:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
-gcloud storage objects update $BUCKET/exemplo.txt \
+gcloud storage buckets describe "$BUCKET"
+gcloud storage ls -L "$BUCKET"
+gcloud storage objects describe "$BUCKET/arquivo.txt"
+```
+
+---
+
+# 4. Testar
+
+```bash
+gcloud storage cat "$BUCKET/arquivo.txt"
+gcloud storage cp "$BUCKET/arquivo.txt" "$BUCKET/copia.txt"
+
+gcloud storage objects update "$BUCKET/copia.txt" \
   --storage-class=NEARLINE
-gcloud storage ls -L $BUCKET/exemplo.txt
-```
 
-Compare conceitualmente:
-- Standard: acesso frequente
-- Nearline/Coldline/Archive: acesso progressivamente menos frequente, com regras/custos associados
-
----
-
-# 4. Testes e falhas propositais
-
-- Tente criar outro bucket com o mesmo nome global para entender namespace global.
-- Remova localmente o arquivo e prove que o objeto permanece no bucket.
-- Classe não define autorização: IAM é separado.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+gcloud storage objects describe "$BUCKET/copia.txt"
 ```
 
 ---
 
-# 5. Troubleshooting
+# 5. Quebrar propositalmente
 
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Tente acessar um nome errado:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud storage cat "$BUCKET/arquivo-inexistente.txt"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 6. Troubleshooting
 
-- Bucket name é globalmente único.
-- Bucket location e storage class são decisões diferentes.
-- Cloud Storage é object storage, não filesystem POSIX tradicional.
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
 
----
+**Sintoma:** objeto não encontrado.
 
-# 7. Questões estilo ACE
+**Hipótese:** o bucket existe, mas o object name está incorreto.
 
-- Objeto acessado várias vezes ao dia? → Standard.
-- Backup raramente acessado? → classe fria conforme requisito de retenção/acesso.
+**Evidências:**
+```bash
+gcloud storage buckets describe "$BUCKET"
+gcloud storage ls "$BUCKET"
+```
 
----
+**Causa:** o nome usado não corresponde a nenhum objeto listado.
 
-# 8. Checklist
+Não investigue IAM quando a própria listagem feita pelo mesmo principal confirma acesso e revela o nome correto.
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Use o object name correto:
+
+```bash
+gcloud storage cat "$BUCKET/arquivo.txt"
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Storage Class define autorização? **Não**.
+2. Bucket name é único em qual escopo? **Global**.
+3. Arquivo acessado frequentemente? **STANDARD**, em geral.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud storage rm "$BUCKET/**"
+gcloud storage buckets delete "$BUCKET" --quiet
+rm -f arquivo.txt
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

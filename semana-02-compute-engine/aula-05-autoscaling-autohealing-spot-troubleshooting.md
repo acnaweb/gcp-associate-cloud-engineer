@@ -2,55 +2,35 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- configurar autoscaling;
+- configurar health check de autohealing;
+- diferenciar autoscaling de autohealing;
+- entender Spot VM;
+- provocar falha do nginx e observar reparo.
 
-- Configurar autoscaling;
-- Entender autohealing;
-- Conhecer Spot VMs;
-- Investigar MIG;
+
+> **Custos:** MIG, VM e health checks podem gerar cobrança indireta. Remova tudo.
 
 ---
 
-# 1. Modelo mental
+# 1. Conceito
+
+Autoscaling responde à demanda e altera quantidade de VMs. Autohealing responde à saúde e repara/substitui instâncias. Spot é modelo de provisionamento com possibilidade de interrupção.
+
+## Arquitetura mental
 
 ```text
 MIG
- ├─ autoscaler: QUANTAS VMs?
- ├─ autohealing: VMs estão saudáveis?
- └─ template: COMO criar VMs?
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
-
----
-
-# 2. Regra de estudo da aula
-
-Use sempre este ciclo:
-
-```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+ ├─ autoscaler → quantas VMs?
+ ├─ autohealing → estão saudáveis?
+ └─ template → como criá-las?
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Crie template/MIG rapidamente:
 ```bash
 cat > startup.sh <<'EOF'
 #!/bin/bash
@@ -58,129 +38,158 @@ apt-get update
 apt-get install -y nginx
 systemctl enable --now nginx
 EOF
-gcloud compute instance-templates create ace-scale-template \
+
+gcloud compute instance-templates create ace-auto-template \
   --machine-type=e2-micro \
+  --tags=ace-health \
   --metadata-from-file=startup-script=startup.sh \
   --image-family=debian-12 --image-project=debian-cloud
-gcloud compute instance-groups managed create ace-scale-mig \
-  --zone=us-central1-a --template=ace-scale-template --size=1
-```
 
-Autoscaling:
-```bash
-gcloud compute instance-groups managed set-autoscaling ace-scale-mig \
+gcloud compute instance-groups managed create ace-auto-mig \
+  --zone=us-central1-a \
+  --template=ace-auto-template \
+  --size=1
+
+gcloud compute firewall-rules create ace-health-allow \
+  --network=default \
+  --allow=tcp:80 \
+  --source-ranges=130.211.0.0/22,35.191.0.0/16 \
+  --target-tags=ace-health
+
+gcloud compute health-checks create http ace-auto-hc --port=80
+
+gcloud compute instance-groups managed update ace-auto-mig \
+  --zone=us-central1-a \
+  --health-check=ace-auto-hc \
+  --initial-delay=90
+
+gcloud compute instance-groups managed set-autoscaling ace-auto-mig \
   --zone=us-central1-a \
   --min-num-replicas=1 \
   --max-num-replicas=3 \
   --target-cpu-utilization=0.60
 ```
 
-Health check para autohealing:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
-gcloud compute health-checks create http ace-mig-hc --port=80
-gcloud compute instance-groups managed update ace-scale-mig \
+gcloud compute instance-groups managed describe ace-auto-mig \
+  --zone=us-central1-a
+gcloud compute health-checks describe ace-auto-hc
+gcloud compute instance-groups managed list-instances ace-auto-mig \
+  --zone=us-central1-a
+```
+
+---
+
+# 4. Testar
+
+Verifique que nginx está ativo na VM atual:
+
+```bash
+VM=$(gcloud compute instance-groups managed list-instances ace-auto-mig \
+ --zone=us-central1-a --format="value(instance.basename())" | head -1)
+
+gcloud compute ssh "$VM" --zone=us-central1-a \
+ --command="systemctl is-active nginx"
+```
+
+---
+
+# 5. Quebrar propositalmente
+
+Pare nginx:
+
+```bash
+gcloud compute ssh "$VM" --zone=us-central1-a \
+  --command="sudo systemctl stop nginx"
+```
+
+Aguarde os ciclos do health check/initial delay e acompanhe o MIG.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** instância pode ser marcada como não saudável e reparada/recriada.
+
+**Hipótese:** autohealing detectou falha HTTP.
+
+**Evidências:**
+```bash
+gcloud compute instance-groups managed list-instances ace-auto-mig \
+  --zone=us-central1-a
+gcloud compute instance-groups managed describe ace-auto-mig \
   --zone=us-central1-a \
-  --health-check=ace-mig-hc \
-  --initial-delay=120
+  --format="yaml(currentActions)"
 ```
 
-Inspecione:
-```bash
-gcloud compute instance-groups managed describe ace-scale-mig --zone=us-central1-a
+**Causa:** nginx foi parado propositalmente. O health check configurado é o sinal usado pelo autohealing.
+
+Não confunda com autoscaling: CPU não foi o motivo da substituição.
+
+Use sempre:
+
+```text
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
 ```
 
 ---
 
-# 4. Testes e falhas propositais
+# 7. Corrigir
 
-- Pare nginx em uma instância para observar autohealing após os ciclos de health check.
-- Autoscaling não é load balancing.
-- Spot VM pode ser preemptada; use para workloads tolerantes a interrupção.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
-```
-
----
-
-# 5. Troubleshooting
-
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+O MIG deverá reparar/recriar automaticamente. Confirme nova instância e nginx ativo.
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute instance-groups managed list-instances ace-auto-mig \
+  --zone=us-central1-a
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 8. Questões estilo ACE
 
-- Autoscaler responde à métrica/capacidade.
-- Autohealing substitui instância não saudável.
-- Spot reduz custo com interrupção possível.
-- Health check de LB e de autohealing têm propósitos relacionados, mas efeitos diferentes.
-
----
-
-# 7. Questões estilo ACE
-
-- Batch tolerante a interrupção e custo baixo? → Spot.
-- Instância existe mas app morreu; mecanismo de reparo no MIG? → autohealing.
+1. CPU alta e necessidade de mais VMs? **Autoscaler**.
+2. App parou de responder e VM deve ser reparada? **Autohealing**.
+3. Batch tolerante a interrupção e sensível a custo? **Spot VM**.
 
 ---
 
-# 8. Checklist
+# 9. Cleanup
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+```bash
+gcloud compute instance-groups managed delete ace-auto-mig \
+  --zone=us-central1-a --quiet
+gcloud compute instance-templates delete ace-auto-template --quiet
+gcloud compute health-checks delete ace-auto-hc --quiet
+gcloud compute firewall-rules delete ace-health-allow --quiet
+rm -f startup.sh
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

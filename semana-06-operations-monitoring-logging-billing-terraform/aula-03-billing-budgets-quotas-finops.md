@@ -1,178 +1,148 @@
-# Aula 3 — Billing, Budgets, Quotas e FinOps Básico
+# Aula 3 — Billing, Budgets, Quotas e FinOps
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- identificar billing account vinculada;
+- entender budget x quota;
+- inspecionar quotas;
+- criar recurso com labels;
+- diagnosticar cenário de quota sem confundir com budget.
 
-- Entender billing account;
-- Criar/inspecionar budget quando permitido;
-- Diferenciar budget e quota;
-- Usar labels para custo;
-
----
-
-# 1. Modelo mental
-
-```text
-Billing Account
- └─ Project
-    ├─ resources
-    └─ labels
-
-Budget → alerta
-Quota  → limite técnico/consumo de recurso
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Billing account paga pelo consumo dos projetos vinculados. Budget gera acompanhamento/alertas; quota limita uso técnico de determinados recursos. Labels ajudam classificação de custos.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Billing Account → Project → Resources
+Budget → alerta financeiro
+Quota → limite técnico
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Inspecione billing:
 ```bash
+export PROJECT_ID=$(gcloud config get-value project)
+
 gcloud billing accounts list
-gcloud billing projects describe $(gcloud config get-value project)
+gcloud billing projects describe "$PROJECT_ID"
+
+gcloud compute instances create ace-finops-vm \
+  --zone=us-central1-a \
+  --machine-type=e2-micro \
+  --labels=environment=lab,cost-center=ace \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
 ```
 
-Quotas:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
+gcloud compute instances describe ace-finops-vm \
+  --zone=us-central1-a \
+  --format="yaml(labels)"
+
 gcloud compute project-info describe \
   --format="yaml(quotas)"
 ```
 
-Crie recurso com labels:
-```bash
-gcloud compute instances create ace-finops-vm \
-  --zone=us-central1-a \
-  --machine-type=e2-micro \
-  --labels=environment=lab,owner=ace \
-  --image-family=debian-12 --image-project=debian-cloud
-```
+---
 
-Budget (se tiver permissão na Billing Account):
-```bash
-gcloud billing budgets list \
-  --billing-account=BILLING_ACCOUNT_ID
-```
+# 4. Testar
 
-No Console: Billing → Budgets & alerts → crie um budget pequeno de laboratório sem esperar que ele bloqueie gastos.
+No Console, Billing → Budgets & alerts:
+- identifique/crie budget se sua permissão permitir;
+- observe thresholds;
+- confirme que budget não é quota.
+
+Depois consulte quotas de CPUs/região.
 
 ---
 
-# 4. Testes e falhas propositais
+# 5. Quebrar propositalmente
 
-- Budget alerta; não interrompe gasto automaticamente.
-- Quota pode impedir criação mesmo com orçamento disponível.
-- Labels ajudam alocação, mas não substituem estrutura de billing/projects.
+Falha de decisão:
 
-Para cada falha, não corrija imediatamente. Primeiro registre:
+> “O budget chegou a 100%, então novas VMs serão automaticamente bloqueadas.”
+
+Marque como hipótese e valide pelos conceitos observados.
+
+---
+
+# 6. Troubleshooting
+
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
+
+**Sintoma:** expectativa de bloqueio automático por budget.
+
+**Evidência:** budget é mecanismo de acompanhamento/alertas, enquanto `gcloud compute project-info describe` mostra quotas técnicas.
+
+**Causa:** confusão entre duas funções diferentes.
+
+**Correção mental:**
+```text
+Budget → custo/alerta
+Quota  → limite de recurso/API
+```
+
+Use sempre:
 
 ```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+Sintoma
+   ↓
+Hipótese
+   ↓
+Evidência
+   ↓
+Causa
+   ↓
+Correção
 ```
 
 ---
 
-# 5. Troubleshooting
+# 7. Corrigir
 
-Use este fluxo:
+Atualize sua folha de decisão e, se quiser testar quota real, faça isso apenas em projeto controlado; não tente consumir recursos de propósito até estourar limite.
 
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
+---
 
-Comandos-base:
+# 8. Questões estilo ACE
+
+1. Quer alerta em 80% do gasto? **Budget**.
+2. `RESOURCE_EXHAUSTED` ao criar recurso? Investigue **quota/capacidade**.
+3. Budget bloqueia gasto automaticamente por padrão? **Não**.
+
+---
+
+# 9. Cleanup
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud compute instances delete ace-finops-vm \
+  --zone=us-central1-a --quiet
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 10. Checklist
 
-- Budget ≠ quota.
-- Billing account financia projetos vinculados.
-- Cost controls combinam budgets, labels, rightsizing, schedules e arquitetura.
-
----
-
-# 7. Questões estilo ACE
-
-- Quer avisar ao atingir 80% do gasto? → budget alert.
-- Erro RESOURCE_EXHAUSTED ao criar CPU? → quota.
-
----
-
-# 8. Checklist
-
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
-
-```text
-Requisito
-   ↓
-Serviço/recurso correto
-   ↓
-Escopo correto
-   ↓
-Permissão correta
-   ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
-```
-
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
-
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.

@@ -2,176 +2,165 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá:
+Ao final, você deverá:
+- deployar serviço;
+- identificar URL;
+- criar nova revision;
+- configurar min/max instances;
+- testar autenticação pública/privada;
+- diagnosticar 403 por invoker.
 
-- Deploy Cloud Run;
-- Criar revisions;
-- Dividir tráfego;
-- Testar scaling e auth;
-
----
-
-# 1. Modelo mental
-
-```text
-Artifact Registry ──> Cloud Run Service
-                       ├─ revision v1
-                       ├─ revision v2
-                       └─ traffic split
-```
-
-O objetivo desta aula não é apenas reconhecer nomes de serviços. Você deve conseguir **criar, inspecionar, testar e explicar** o comportamento dos recursos.
 
 ---
 
-# 2. Regra de estudo da aula
+# 1. Conceito
 
-Use sempre este ciclo:
+Cloud Run executa containers serverless. Cada alteração de imagem/configuração cria uma revision imutável. IAM controla quem invoca o serviço. Scaling define quantidade de instâncias, inclusive zero quando permitido.
+
+## Arquitetura mental
 
 ```text
-Conceito
-   ↓
-Criar
-   ↓
-Inspecionar
-   ↓
-Testar
-   ↓
-Quebrar propositalmente
-   ↓
-Diagnosticar
-   ↓
-Corrigir
-   ↓
-Remover
+Client
+  ↓ IAM invoker
+Cloud Run Service
+ ├─ revision 1
+ └─ revision 2
+      └─ autoscaling
 ```
 
 ---
 
-# 3. Laboratório principal
+# 2. Criar
 
-Use uma imagem pública simples:
 ```bash
 export REGION=us-central1
 gcloud services enable run.googleapis.com
 
 gcloud run deploy ace-web \
   --image=us-docker.pkg.dev/cloudrun/container/hello \
-  --region=$REGION \
+  --region="$REGION" \
   --allow-unauthenticated
-
-gcloud run services describe ace-web --region=$REGION
-gcloud run revisions list --service=ace-web --region=$REGION
 ```
 
-Nova revision alterando env:
+---
+
+# 3. Inspecionar
+
+Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+
 ```bash
-gcloud run services update ace-web \
-  --region=$REGION \
-  --set-env-vars=VERSAO=v2
+gcloud run services describe ace-web --region="$REGION"
+gcloud run revisions list --service=ace-web --region="$REGION"
 ```
 
-Scaling:
+---
+
+# 4. Testar
+
 ```bash
+URL=$(gcloud run services describe ace-web \
+  --region="$REGION" --format="value(status.url)")
+curl "$URL"
+
 gcloud run services update ace-web \
-  --region=$REGION \
+  --region="$REGION" \
+  --set-env-vars=VERSAO=v2 \
   --min=0 --max=3
-```
 
-Inspecione URL e revisions.
-
----
-
-# 4. Testes e falhas propositais
-
-- Remova `--allow-unauthenticated` em um serviço de teste e observe 403 sem identidade.
-- Revision é imutável; mudança de configuração gera nova revision.
-- Min instances pode gerar custo mesmo sem tráfego.
-
-Para cada falha, não corrija imediatamente. Primeiro registre:
-
-```text
-Sintoma:
-Hipótese:
-Comando/evidência:
-Causa:
-Correção:
+gcloud run revisions list --service=ace-web --region="$REGION"
 ```
 
 ---
 
-# 5. Troubleshooting
+# 5. Quebrar propositalmente
 
-Use este fluxo:
-
-```text
-1. O recurso existe e está no estado esperado?
-2. O escopo (project/region/zone) está correto?
-3. A identidade/principal está correta?
-4. IAM permite a operação?
-5. Rede/rota/firewall permitem comunicação, quando aplicável?
-6. A aplicação/serviço está saudável?
-7. Há quota/capacidade suficiente?
-8. Logs e métricas confirmam a hipótese?
-```
-
-Comandos-base:
+Remova acesso público:
 
 ```bash
-gcloud config list
-gcloud auth list
-gcloud projects describe $(gcloud config get-value project)
-gcloud logging read 'severity>=ERROR' --limit=10
+gcloud run services remove-iam-policy-binding ace-web \
+  --region="$REGION" \
+  --member="allUsers" \
+  --role="roles/run.invoker"
+
+curl -i "$URL"
 ```
 
 ---
 
-# 6. Pegadinhas ACE
+# 6. Troubleshooting
 
-- Cloud Run Service é request-driven.
-- Revision guarda snapshot de código+configuração.
-- Traffic splitting permite rollout/canary.
-- Scaling to zero é característica importante.
+Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
 
----
+**Sintoma:** `HTTP 403`.
 
-# 7. Questões estilo ACE
+**Hipótese:** o serviço continua `Ready`, mas o principal anônimo não tem `run.invoker`.
 
-- API HTTP containerizada sem gerenciar cluster? → Cloud Run.
-- Precisa execução batch sem endpoint? → Cloud Run Job.
+**Evidências:**
+```bash
+gcloud run services describe ace-web --region="$REGION" \
+  --format="value(status.conditions[0].status)"
+gcloud run services get-iam-policy ace-web --region="$REGION"
+```
 
----
+**Causa:** removemos deliberadamente o binding `allUsers → roles/run.invoker`.
 
-# 8. Checklist
+Não é falha de revision nem scaling.
 
-- [ ] Consigo explicar o modelo mental da aula;
-- [ ] Executei o laboratório;
-- [ ] Inspecionei os recursos com `describe/list`;
-- [ ] Provoquei ao menos uma falha;
-- [ ] Diagnostiquei antes de corrigir;
-- [ ] Consigo justificar a escolha do serviço;
-- [ ] Consigo explicar as pegadinhas ACE;
-- [ ] Fiz o cleanup.
-
----
-
-# 9. O que memorizar
-
-Não memorize apenas comandos. Memorize a relação:
+Use sempre:
 
 ```text
-Requisito
+Sintoma
    ↓
-Serviço/recurso correto
+Hipótese
    ↓
-Escopo correto
+Evidência
    ↓
-Permissão correta
+Causa
    ↓
-Operação correta
-   ↓
-Troubleshooting com evidência
+Correção
 ```
 
-Essa é a forma de raciocínio mais útil para o Associate Cloud Engineer.
+---
 
+# 7. Corrigir
+
+Restaure acesso público:
+
+```bash
+gcloud run services add-iam-policy-binding ace-web \
+  --region="$REGION" \
+  --member="allUsers" \
+  --role="roles/run.invoker"
+
+curl "$URL"
+```
+
+---
+
+# 8. Questões estilo ACE
+
+1. Container HTTP stateless sem cluster? **Cloud Run**.
+2. Mudou env var. Surge nova revision? **Sim**.
+3. Serviço Ready, mas anônimo recebe 403: verificar **IAM Invoker**.
+
+---
+
+# 9. Cleanup
+
+```bash
+gcloud run services delete ace-web --region="$REGION" --quiet
+```
+
+---
+
+# 10. Checklist
+
+- [ ] Entendi os conceitos usados no laboratório;
+- [ ] Criei o recurso;
+- [ ] Inspecionei estado e configuração;
+- [ ] Testei o comportamento esperado;
+- [ ] Provoquei a falha descrita;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
+- [ ] Consigo relacionar o cenário a uma questão ACE;
+- [ ] Executei o cleanup.
