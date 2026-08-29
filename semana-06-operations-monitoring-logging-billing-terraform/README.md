@@ -1,14 +1,6 @@
-# Semana 6 — Operations, Observability, Billing e IaC
+# semana-06-operations-monitoring-logging-billing-terraform
 
-## Regra didática desta edição
-
-> Nenhum troubleshooting deve introduzir conceitos que ainda não foram explicados e inspecionados. Primeiro construímos o modelo mental e o cenário saudável; depois quebramos uma variável por vez.
-
-```text
-Conceito → Criar → Inspecionar → Testar → Quebrar → Troubleshooting → Corrigir → Questões → Cleanup
-```
-
-## Aulas
+## Índice das aulas
 
 - [Aula 1 — Cloud Monitoring, Metrics, Dashboards e Alerts](./aula-01-cloud-monitoring-metrics-dashboards-alerts.md)
 - [Aula 2 — Cloud Logging e Troubleshooting](./aula-02-cloud-logging-troubleshooting.md)
@@ -16,11 +8,12 @@ Conceito → Criar → Inspecionar → Testar → Quebrar → Troubleshooting �
 - [Aula 4 — Terraform no Google Cloud](./aula-04-terraform-google-cloud.md)
 - [Aula 5 — Operação Integrada e Revisão ACE](./aula-05-operacao-integrada-revisao-ace.md)
 - [Aula 6 — Log Routing, Ops Agent, Managed Prometheus e Cloud Diagnostics](./aula-06-log-routing-ops-agent-prometheus-diagnostics.md)
+- [Aula 7 — AI-assisted Tooling, Active Assist e Cloud Hub](./aula-07-ai-assisted-tooling-cloud-hub-active-assist.md)
 
-## Checklist da semana
+## Método
 
-- [ ] Cobri todos os tópicos do Exam Guide mapeados para esta semana;
-- [ ] Executei os labs viáveis;
-- [ ] Inspecionei antes de quebrar;
-- [ ] Consigo explicar as diferenças entre serviços semelhantes;
-- [ ] Fiz cleanup dos recursos com custo.
+```text
+Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Troubleshooting → Corrigir → Questões → Cleanup
+```
+
+> O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.

@@ -142,6 +142,38 @@ gcloud compute instances delete ace-log-vm \
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — audit, flow e firewall logs
+
+## Tipos importantes de logs
+
+```text
+Cloud Audit Logs → ações administrativas/acesso conforme categoria
+VPC Flow Logs    → amostras de fluxos de rede em subnets configuradas
+Firewall Rules Logging → decisão/observação de regras habilitadas
+```
+
+Para troubleshooting, escolha o sinal correto:
+
+```text
+Quem alterou IAM?        → Audit Logs
+Fluxo chegou à subnet?   → VPC Flow Logs
+Qual regra firewall?     → Firewall Rules Logging
+```
+
+## Log details
+
+No Logs Explorer, abra uma entrada e identifique:
+
+- timestamp;
+- resource;
+- severity;
+- principal (quando aplicável);
+- methodName/status;
+- labels/payload.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

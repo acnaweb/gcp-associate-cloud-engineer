@@ -145,6 +145,53 @@ gcloud iam service-accounts delete "$SA" --quiet
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — short-lived credentials e SA em recursos
+
+## Assign Service Account to resource
+
+Exemplo VM:
+
+```bash
+gcloud compute instances create ace-sa-vm \
+  --zone=us-central1-a \
+  --service-account="$SA" \
+  --scopes=cloud-platform \
+  --machine-type=e2-micro \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
+
+A autorização efetiva depende das IAM roles da SA; scopes não substituem IAM.
+
+## Short-lived credentials
+
+Além de impersonation pelo `gcloud`, entenda o conceito de credenciais temporárias:
+
+```text
+User/Workload autorizado
+       ↓ token curto
+Service Account identity
+       ↓
+Google API
+```
+
+Isso reduz risco em comparação com chaves JSON de longa duração.
+
+## Service Account IAM policy
+
+Há duas dimensões diferentes:
+
+```text
+Roles concedidas À SA em recursos
+→ o que a SA pode fazer
+
+IAM policy DA própria SA
+→ quem pode usar/impersonar/administrar a SA
+```
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

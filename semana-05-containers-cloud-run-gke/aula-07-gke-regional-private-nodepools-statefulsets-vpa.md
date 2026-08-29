@@ -103,3 +103,54 @@ kubectl delete deployment web --ignore-not-found
 - [ ] Inspecionei a configuração antes de provocar a falha;
 - [ ] Diagnostiquei a falha com evidências;
 - [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
+
+
+---
+
+# Cobertura ACE ampliada — GKE operational checklist
+
+## Inventário
+
+```bash
+kubectl get nodes
+kubectl get pods -A
+kubectl get services -A
+gcloud container clusters list
+```
+
+## Node pools
+
+Em Standard clusters:
+
+```bash
+gcloud container node-pools list --cluster=CLUSTER --location=LOCATION
+```
+
+Operações cobradas incluem adicionar, editar, remover e configurar autoscaling de node pool.
+
+## StatefulSet
+
+Use StatefulSet quando Pods precisam de identidade estável/ordenação e storage persistente associado ao padrão stateful.
+
+```bash
+kubectl get statefulsets
+```
+
+## HPA x VPA
+
+```text
+HPA → muda número de Pods
+VPA → ajusta requests/limits recomendados/aplicados conforme modo
+```
+
+## Autopilot Pod resource requests
+
+Autopilot gerencia nodes, mas requests de Pods continuam importantes para scheduling e custo/comportamento.
+
+## GKE + Artifact Registry
+
+Cluster/workload precisa de identidade/permissão adequada para pull da imagem quando não houver integração automática suficiente. Em troubleshooting de `ImagePullBackOff`, verifique imagem, localização e IAM do principal apropriado.
+
+## Service Account com GKE application
+
+Para acesso a APIs Google, prefira identidade de workload (Workload Identity Federation for GKE) em vez de key JSON dentro do Pod.

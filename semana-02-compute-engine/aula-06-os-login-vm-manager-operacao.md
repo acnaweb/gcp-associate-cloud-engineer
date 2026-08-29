@@ -88,3 +88,42 @@ gcloud compute instances delete ace-opslogin --zone=us-central1-a --quiet
 - [ ] Inspecionei a configuração antes de provocar a falha;
 - [ ] Diagnostiquei a falha com evidências;
 - [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
+
+
+---
+
+# Cobertura ACE ampliada — conexão remota, OS Login e VM Manager
+
+## SSH keys x OS Login
+
+```text
+SSH metadata keys → chaves gerenciadas via metadata
+OS Login          → acesso SSH vinculado à identidade IAM
+```
+
+Inspecione OS Login:
+
+```bash
+gcloud compute project-info describe --format='yaml(commonInstanceMetadata)'
+```
+
+Habilitação em projeto de laboratório:
+
+```bash
+gcloud compute project-info add-metadata --metadata=enable-oslogin=TRUE
+```
+
+Roles comuns envolvidas incluem `roles/compute.osLogin` e, quando necessário, `roles/compute.osAdminLogin`.
+
+## VM Manager
+
+VM Manager reúne capacidades de gerenciamento de SO, como inventário, patching e políticas, dependendo da configuração/agentes.
+
+No Console: **Compute Engine → VM Manager**.
+
+Para ACE, saiba distinguir:
+
+```text
+OS Login  → controle de login SSH por IAM
+VM Manager → gerenciamento operacional do sistema operacional
+```

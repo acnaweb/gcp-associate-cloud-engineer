@@ -1,7 +1,8 @@
-# Inventário
+# Inventário de arquivos
 
 - `ARQUIVOS.md`
 - `AUDITORIA-EXAM-GUIDE.md`
+- `MATRIZ-CONTEUDO-ACE.md`
 - `README.md`
 - `semana-01-fundamentos-projetos-iam/README.md`
 - `semana-01-fundamentos-projetos-iam/aula-01-hierarquia-projects-regions-zones-gcloud.md`
@@ -14,6 +15,7 @@
 - `semana-02-compute-engine/aula-04-instance-templates-managed-instance-groups.md`
 - `semana-02-compute-engine/aula-05-autoscaling-autohealing-spot-troubleshooting.md`
 - `semana-02-compute-engine/aula-06-os-login-vm-manager-operacao.md`
+- `semana-02-compute-engine/aula-07-agent-runtime-workbench-workstations.md`
 - `semana-03-vpc-networking/README.md`
 - `semana-03-vpc-networking/aula-01-vpc-subnets-cidr-ips.md`
 - `semana-03-vpc-networking/aula-02-firewall-rules-e-rotas.md`
@@ -27,6 +29,7 @@
 - `semana-04-storage-databases/aula-04-spanner-firestore-bigtable.md`
 - `semana-04-storage-databases/aula-05-bigquery-matriz-escolha-bancos.md`
 - `semana-04-storage-databases/aula-06-pubsub-dataflow-storage-transfer-jobs.md`
+- `semana-04-storage-databases/aula-07-storage-filesystems-kafka-memorystore.md`
 - `semana-05-containers-cloud-run-gke/README.md`
 - `semana-05-containers-cloud-run-gke/aula-01-containers-artifact-registry.md`
 - `semana-05-containers-cloud-run-gke/aula-02-cloud-run-services-revisions-scaling.md`
@@ -42,6 +45,7 @@
 - `semana-06-operations-monitoring-logging-billing-terraform/aula-04-terraform-google-cloud.md`
 - `semana-06-operations-monitoring-logging-billing-terraform/aula-05-operacao-integrada-revisao-ace.md`
 - `semana-06-operations-monitoring-logging-billing-terraform/aula-06-log-routing-ops-agent-prometheus-diagnostics.md`
+- `semana-06-operations-monitoring-logging-billing-terraform/aula-07-ai-assisted-tooling-cloud-hub-active-assist.md`
 - `semana-07-seguranca-iam-avancado-cenarios/README.md`
 - `semana-07-seguranca-iam-avancado-cenarios/aula-01-iam-avancado-heranca-roles.md`
 - `semana-07-seguranca-iam-avancado-cenarios/aula-02-service-accounts-impersonation.md`

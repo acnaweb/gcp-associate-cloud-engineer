@@ -1,23 +1,15 @@
-# Semana 1 — Fundamentos, Projects, IAM e Ambiente
+# semana-01-fundamentos-projetos-iam
 
-## Regra didática desta edição
-
-> Nenhum troubleshooting deve introduzir conceitos que ainda não foram explicados e inspecionados. Primeiro construímos o modelo mental e o cenário saudável; depois quebramos uma variável por vez.
-
-```text
-Conceito → Criar → Inspecionar → Testar → Quebrar → Troubleshooting → Corrigir → Questões → Cleanup
-```
-
-## Aulas
+## Índice das aulas
 
 - [Aula 1 — Hierarquia, Projects, Regions, Zones e gcloud](./aula-01-hierarquia-projects-regions-zones-gcloud.md)
 - [Aula 2 — IAM e Service Accounts](./aula-02-iam-service-accounts.md)
 - [Aula 3 — Billing, Observability, Quotas e Cloud Identity](./aula-03-billing-observability-quotas-cloud-identity.md)
 
-## Checklist da semana
+## Método
 
-- [ ] Cobri todos os tópicos do Exam Guide mapeados para esta semana;
-- [ ] Executei os labs viáveis;
-- [ ] Inspecionei antes de quebrar;
-- [ ] Consigo explicar as diferenças entre serviços semelhantes;
-- [ ] Fiz cleanup dos recursos com custo.
+```text
+Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Troubleshooting → Corrigir → Questões → Cleanup
+```
+
+> O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.

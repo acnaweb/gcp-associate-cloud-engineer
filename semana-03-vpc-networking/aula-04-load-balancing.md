@@ -1234,3 +1234,26 @@ gcloud compute forwarding-rules list \
 ```
 
 Não escolha tier apenas por preço: valide escopo do recurso e requisito de rede.
+
+
+---
+
+# Cobertura ACE ampliada — escolha de Load Balancer
+
+## Escolha de load balancer
+
+Antes de criar, responda:
+
+```text
+Camada 7 HTTP/HTTPS?        → Application Load Balancer
+TCP/UDP pass-through/proxy? → Network Load Balancer adequado
+Externo ou interno?
+Global ou regional?
+Backends serverless, VM, GKE?
+```
+
+Para ACE, o essencial é reconhecer o tipo que atende protocolo, alcance e backend.
+
+## Network Service Tier
+
+Ao reservar endereços/forwarding rules, observe se o recurso suporta/usa Premium ou Standard e quais implicações de alcance existem.

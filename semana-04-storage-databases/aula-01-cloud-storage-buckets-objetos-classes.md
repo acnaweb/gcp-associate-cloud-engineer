@@ -141,6 +141,87 @@ rm -f arquivo.txt
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — Storage Classes, localização e custo
+
+## Storage Classes
+
+O exam guide cita explicitamente **Standard, Nearline, Coldline e Archive**.
+
+| Classe | Perfil de acesso | Duração mínima típica | Exemplo |
+|---|---|---:|---|
+| **Standard** | Frequente | sem mínimo de classe fria | dados ativos, aplicações, analytics |
+| **Nearline** | Aproximadamente mensal ou menos | 30 dias | backups mensais |
+| **Coldline** | Aproximadamente trimestral ou menos | 90 dias | disaster recovery |
+| **Archive** | Muito raro | 365 dias | retenção de longo prazo/compliance |
+
+> Valores de preço mudam por região e operação. Para prova, foque no **padrão de acesso, duração mínima e retrieval/operation costs**, não em decorar preço.
+
+Modelo mental:
+
+```text
+Acesso frequente        → Standard
+~ mensal                → Nearline
+~ trimestral            → Coldline
+muito raro/longo prazo  → Archive
+```
+
+## Retrieval e minimum storage duration
+
+Escolher a classe mais barata por GB pode sair mais caro se o objeto for recuperado frequentemente ou removido antes do período mínimo aplicável.
+
+Considere:
+
+```text
+storage cost
++ retrieval cost
++ operation cost
++ minimum storage duration
++ access frequency
+```
+
+## Autoclass
+
+Autoclass pode gerenciar automaticamente transições de classes para objetos do bucket conforme padrões e regras do recurso. Ele é útil quando o padrão de acesso é variável e você quer reduzir gerenciamento manual.
+
+> Autoclass é relevante para prática/arquitetura, mesmo que o exam guide liste nominalmente as quatro classes principais.
+
+## Localização
+
+Diferencie:
+
+```text
+Region       → uma região
+Dual-region  → duas regiões específicas suportadas
+Multi-region → área geográfica ampla
+```
+
+Localização influencia latência, redundância, disponibilidade e custo.
+
+## Laboratório adicional
+
+Crie objetos com classes diferentes:
+
+```bash
+echo nearline > nearline.txt
+gcloud storage cp nearline.txt "$BUCKET/nearline.txt" --additional-headers=x-goog-storage-class:NEARLINE
+
+gcloud storage objects update "$BUCKET/arquivo.txt" --storage-class=COLDLINE
+gcloud storage objects describe "$BUCKET/arquivo.txt"
+```
+
+Use `describe` e identifique `storageClass`.
+
+## Questões adicionais
+
+1. Dados acessados várias vezes por dia? **Standard**.
+2. Backup acessado aproximadamente uma vez por mês? **Nearline**.
+3. DR raramente acessado? **Coldline**, conforme frequência/retenção.
+4. Arquivamento de anos? **Archive**.
+5. Padrão imprevisível e desejo de automação de classes? Avalie **Autoclass**.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

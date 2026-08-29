@@ -162,6 +162,58 @@ gcloud compute snapshots delete ace-data-snap --quiet
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — tipos de storage de Compute Engine
+
+## Zonal Persistent Disk
+
+Volume associado a uma zona. Bom para workloads que não exigem replicação síncrona entre zonas pelo próprio disco.
+
+## Regional Persistent Disk
+
+Replica dados entre duas zonas da mesma região para maior disponibilidade.
+
+## Hyperdisk
+
+Família de block storage do Google Cloud voltada a requisitos modernos de performance/capacidade configuráveis. Para ACE, reconheça que pode ser alternativa a Persistent Disk conforme workload e disponibilidade regional.
+
+## Snapshot schedules
+
+O guia cobra agendamento de snapshots. Use resource policies:
+
+```bash
+gcloud compute resource-policies create snapshot-schedule ace-daily-snapshot \
+  --region=us-central1 \
+  --daily-schedule \
+  --start-time=03:00
+```
+
+Associe a um disco compatível:
+
+```bash
+gcloud compute disks add-resource-policies DISK_NAME \
+  --zone=us-central1-a \
+  --resource-policies=ace-daily-snapshot
+```
+
+Inspecione:
+
+```bash
+gcloud compute resource-policies describe ace-daily-snapshot --region=us-central1
+```
+
+## Matriz
+
+```text
+Zonal PD      → bloco em uma zona
+Regional PD   → bloco replicado entre zonas
+Hyperdisk     → bloco com opções modernas de performance
+Snapshot      → ponto de recuperação
+Image         → base para criação de discos/VMs
+```
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

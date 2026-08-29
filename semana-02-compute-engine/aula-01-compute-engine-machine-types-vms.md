@@ -136,6 +136,55 @@ gcloud compute instances delete ace-vm --zone="$ZONE" --quiet
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — compute choices, custom types, GPUs e TPUs
+
+## Escolha de compute
+
+| Requisito | Escolha típica |
+|---|---|
+| Controle do SO/VM | Compute Engine |
+| Kubernetes | GKE |
+| Container HTTP/serverless | Cloud Run |
+| Função/evento | Cloud Run functions |
+| Agente gerenciado | Agent Runtime no Gemini Enterprise Agent Platform |
+
+## Custom machine types
+
+Quando predefined machine types não atendem à combinação desejada de vCPU/memória, avalie custom machine type.
+
+```bash
+gcloud compute machine-types list --zones=us-central1-a --filter='name:n2'
+```
+
+Exemplo de criação (não é necessário executar se gerar custo):
+
+```bash
+gcloud compute instances create ace-custom-vm \
+  --zone=us-central1-a \
+  --custom-cpu=2 \
+  --custom-memory=4GB \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
+
+## Availability policy
+
+Em `describe`, observe scheduling/provisioning model. Decisões como automatic restart, host maintenance e Spot fazem parte da política de disponibilidade da VM.
+
+## GPUs x TPUs
+
+Regra de decisão de nível ACE:
+
+```text
+GPU → aceleração genérica/ML/HPC, ampla compatibilidade
+TPU → workloads de ML compatíveis com aceleradores Google
+```
+
+Não é necessário dominar tuning de aceleradores para ACE, mas reconhecer o requisito.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

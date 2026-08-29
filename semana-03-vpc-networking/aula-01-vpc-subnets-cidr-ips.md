@@ -1920,3 +1920,48 @@ gcloud compute addresses describe ace-internal-ip \
 ```
 
 Lembre-se: a faixa deve pertencer à subnet e não estar em uso/reservada.
+
+
+---
+
+# Cobertura ACE ampliada — resize de subnet e IP interno estático
+
+## Expandir subnet IPv4
+
+O guia cobra resize da faixa IPv4. A expansão deve usar um prefixo maior em capacidade, sem sobreposição.
+
+Exemplo:
+
+```bash
+gcloud compute networks subnets expand-ip-range subnet-us \
+  --region=us-central1 \
+  --prefix-length=23
+```
+
+> Uma subnet `10.10.0.0/24` pode ser expandida para uma faixa compatível maior; não é um mecanismo para encolher livremente a subnet.
+
+## IP interno estático
+
+Além de IP externo estático, você pode reservar endereço interno regional:
+
+```bash
+gcloud compute addresses create ace-internal-ip \
+  --region=us-central1 \
+  --subnet=subnet-us \
+  --addresses=10.10.0.50
+```
+
+Inspecione:
+
+```bash
+gcloud compute addresses describe ace-internal-ip --region=us-central1
+```
+
+## Network Service Tiers
+
+```text
+Premium Tier  → tráfego usa backbone premium do Google por mais do percurso
+Standard Tier → opção de custo/roteamento diferente para casos suportados
+```
+
+A escolha depende do tipo de recurso, alcance e requisitos de performance/custo.

@@ -1456,3 +1456,55 @@ Aplicação
 ```
 
 Se você consegue identificar rapidamente se uma falha é de **caminho** ou de **permissão**, já domina o núcleo desta aula para o nível Associate Cloud Engineer.
+
+
+---
+
+# Cobertura ACE ampliada — Cloud NGFW, secure tags e service accounts
+
+## VPC Firewall Rules x Cloud NGFW policies
+
+O exam guide atual cobra ambos.
+
+```text
+VPC firewall rules
+→ regras tradicionais associadas à VPC
+
+Cloud NGFW policies
+→ políticas de firewall hierárquicas/regionais/globais conforme recurso,
+   com capacidades modernas e integração com tags
+```
+
+Atributos cobrados:
+
+- ingress / egress;
+- action;
+- source;
+- destination;
+- targets;
+- protocols;
+- ports.
+
+## Secure Tags
+
+Secure Tags são recursos de Resource Manager que podem ser usados como identidade/atributo em políticas compatíveis, incluindo Cloud NGFW.
+
+Não confunda:
+
+```text
+Network tag tradicional → string na VM
+Secure Tag             → recurso governado, com IAM
+```
+
+## Service Account em regras
+
+Service accounts também podem ser usadas como alvo/origem conforme mecanismo de firewall suportado, permitindo políticas baseadas na identidade da workload.
+
+## Laboratório de decisão
+
+Para cada requisito escolha:
+
+```text
+Permitir tcp:80 para VMs com tag simples em uma VPC → VPC firewall rule pode bastar
+Guardrail central baseado em secure tags → Cloud NGFW policy
+```

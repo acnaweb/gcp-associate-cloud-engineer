@@ -174,6 +174,45 @@ terraform destroy -var="project_id=$(gcloud config get-value project)" -auto-app
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — Fabric FAST, Config Connector, Helm e AI tooling
+
+## IaC/tooling cobrado
+
+O exam guide cita:
+
+```text
+Fabric FAST
+Config Connector
+Terraform
+Helm
+```
+
+### Terraform
+Declarativo, provider Google, state/plan/apply.
+
+### Config Connector
+Gerencia recursos Google Cloud usando recursos Kubernetes declarativos.
+
+### Helm
+Gerencia pacotes/charts Kubernetes; é especialmente relevante para aplicações no GKE.
+
+### Fabric FAST
+Acelerador/fundação para infraestrutura Google Cloud baseada em boas práticas e automação, útil em implantação de fundações de cloud em escala.
+
+## AI-assisted planning/implementation
+
+O guia atual também cita ferramentas como:
+
+- Gemini CLI;
+- Google Antigravity;
+- Gemini Cloud Assist;
+- Application Design Center.
+
+Para ACE, o foco é **usar/entender como assistência**, não confiar cegamente. A saída deve ser revisada, e as permissões do operador continuam valendo.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

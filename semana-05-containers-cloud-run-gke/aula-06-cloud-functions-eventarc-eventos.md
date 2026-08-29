@@ -95,3 +95,30 @@ gcloud pubsub topics delete ace-events --quiet
 - [ ] Inspecionei a configuração antes de provocar a falha;
 - [ ] Diagnostiquei a falha com evidências;
 - [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
+
+
+---
+
+# Cobertura ACE ampliada — serverless events
+
+## Cloud Run functions
+
+O exam guide atual usa a terminologia **Cloud Run functions**. Funções podem processar eventos sem você gerenciar servidores.
+
+## Eventarc
+
+Eventarc roteia eventos de fontes suportadas para destinos como Cloud Run.
+
+```text
+Cloud Storage object finalized
+        ↓ Eventarc
+Cloud Run / Cloud Run function
+```
+
+## Pub/Sub event
+
+```text
+Publisher → Pub/Sub topic → event trigger → serverless workload
+```
+
+Para prova, escolha trigger/event source apropriado em vez de polling manual.

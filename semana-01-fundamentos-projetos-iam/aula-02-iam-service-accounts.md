@@ -158,6 +158,102 @@ rm -f dado.txt
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — permissions e tipos de roles
+
+## Permission → Role → Binding
+
+```text
+Permission
+   ↓ agrupada em
+Role
+   ↓ concedida a um
+Principal
+   ↓ em um
+Resource / Scope
+```
+
+Exemplos:
+
+```text
+storage.objects.get
+compute.instances.start
+resourcemanager.projects.get
+```
+
+## Basic Roles
+
+As Basic Roles são amplas e históricas:
+
+```text
+roles/viewer  → Viewer
+roles/editor  → Editor
+roles/owner   → Owner
+```
+
+Inspecione:
+
+```bash
+gcloud iam roles describe roles/viewer
+gcloud iam roles describe roles/editor
+gcloud iam roles describe roles/owner
+```
+
+## Predefined Roles
+
+São criadas e mantidas pelo Google para serviços específicos.
+
+Exemplos:
+
+```text
+roles/compute.viewer
+roles/compute.admin
+roles/storage.objectViewer
+roles/storage.admin
+roles/bigquery.dataViewer
+```
+
+Descubra as roles existentes:
+
+```bash
+gcloud iam roles list --filter='stage:GA' --limit=30
+gcloud iam roles list --filter='title:Compute'
+gcloud iam roles list --filter='title:Storage'
+```
+
+Inspecione as permissions de uma role:
+
+```bash
+gcloud iam roles describe roles/storage.objectViewer
+gcloud iam roles describe roles/compute.viewer
+```
+
+## Custom Roles
+
+Use quando nenhuma predefined role atende o conjunto necessário de permissions.
+
+```text
+Preferência para a prova:
+predefined role mínima
+   ↓ se não atende
+custom role
+   ↓ evitar
+basic role ampla
+```
+
+## Google-managed service accounts
+
+Alguns serviços criam Service Accounts gerenciadas pelo Google/service agents. Não delete ou altere suas permissões sem entender a dependência do serviço.
+
+## Perguntas adicionais
+
+1. Onde descobrir roles prontas? **IAM & Admin → Roles** ou `gcloud iam roles list`.
+2. Viewer, Editor e Owner pertencem a qual categoria? **Basic Roles**.
+3. `Storage Object Viewer` é basic ou predefined? **Predefined**.
+4. Role é uma lista de quê? **Permissions**.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

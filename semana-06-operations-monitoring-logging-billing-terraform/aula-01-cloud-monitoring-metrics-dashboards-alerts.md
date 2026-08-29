@@ -152,6 +152,40 @@ gcloud compute instances delete ace-monitor-vm \
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — custom metrics, Cloud Assist e Active Assist
+
+## Custom metrics
+
+Além de métricas nativas, aplicações podem publicar métricas customizadas. Conceito:
+
+```text
+Application
+   ↓ custom metric
+Cloud Monitoring
+   ↓
+Alert / Dashboard
+```
+
+Para laboratório, não é necessário desenvolver um agente complexo: saiba identificar o metric type e consultar no Metrics Explorer.
+
+## Gemini Cloud Assist for Monitoring
+
+Pode auxiliar investigação e interpretação de sinais no contexto suportado. Sempre valide recomendações contra métricas/logs/configuração real.
+
+## Active Assist
+
+Active Assist fornece recomendações para otimização de recursos, custo, performance e segurança em áreas suportadas.
+
+Não confunda:
+
+```text
+Monitoring alert → detecta condição operacional
+Active Assist    → recomenda otimização
+```
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

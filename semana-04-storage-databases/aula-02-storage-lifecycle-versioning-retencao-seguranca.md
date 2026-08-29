@@ -160,6 +160,45 @@ rm -f dado.txt lifecycle.json
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — segurança, CMEK e Storage Transfer Service
+
+## CMEK
+
+Por padrão, Google Cloud oferece criptografia gerenciada. **Customer-managed encryption keys (CMEK)** usa chaves do Cloud KMS controladas pelo cliente em recursos compatíveis.
+
+Modelo:
+
+```text
+Cloud KMS key
+   ↓ permission + config
+Cloud Storage / Database / outro recurso compatível
+```
+
+Para ACE, saiba quando um requisito pede controle explícito de ciclo de vida/rotação/permissões da chave.
+
+## Storage Transfer Service
+
+Para mover dados para Cloud Storage ou entre storages em cenários suportados, avalie Storage Transfer Service em vez de scripts manuais de cópia em larga escala.
+
+```text
+Fonte externa / outro bucket
+       ↓
+Storage Transfer Service
+       ↓
+Cloud Storage
+```
+
+Laboratório de inspeção:
+
+```bash
+gcloud transfer jobs list 2>/dev/null || true
+```
+
+> A criação de transfer jobs depende da origem/destino e credenciais; não crie integração fictícia.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

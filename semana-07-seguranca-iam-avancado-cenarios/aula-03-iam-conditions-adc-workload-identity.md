@@ -159,6 +159,34 @@ Opcional: `gcloud auth application-default revoke` ao final, se não precisar ma
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — Workload Identity Federation
+
+## Workload Identity Federation
+
+Fluxo:
+
+```text
+External workload identity
+(AWS / Azure / OIDC / CI)
+        ↓
+Workload Identity Pool + Provider
+        ↓ token exchange
+Google short-lived credential
+        ↓
+Google Cloud resource
+```
+
+Use quando workloads externos precisam acessar GCP sem distribuir service account keys.
+
+Não confunda com **Workforce Identity Federation**, voltada a usuários/workforce.
+
+## GKE application identity
+
+Em GKE, Workload Identity Federation for GKE associa identidades Kubernetes a identidades Google de forma controlada, evitando armazenar JSON keys em Pods.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

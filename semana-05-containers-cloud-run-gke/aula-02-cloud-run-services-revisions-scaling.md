@@ -153,6 +153,40 @@ gcloud run services delete ace-web --region="$REGION" --quiet
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — traffic splitting e versões
+
+## Traffic splitting
+
+Liste revisions:
+
+```bash
+gcloud run revisions list --service=ace-web --region=$REGION
+```
+
+Depois de possuir duas revisions, você pode dividir tráfego por percentuais:
+
+```bash
+gcloud run services update-traffic ace-web \
+  --region=$REGION \
+  --to-revisions=REVISION_V1=90,REVISION_V2=10
+```
+
+Casos:
+
+```text
+100% nova revision → rollout direto
+90/10             → canary
+50/50             → comparação controlada
+rollback          → redirecionar tráfego à revision anterior
+```
+
+## Autoscaling de Cloud Run
+
+Além de min/max instances, entenda concurrency e CPU como fatores do comportamento de scaling conforme configuração/plataforma.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

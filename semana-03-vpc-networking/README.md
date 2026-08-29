@@ -1,14 +1,6 @@
-# Semana 3 — VPC e Networking
+# semana-03-vpc-networking
 
-## Regra didática desta edição
-
-> Nenhum troubleshooting deve introduzir conceitos que ainda não foram explicados e inspecionados. Primeiro construímos o modelo mental e o cenário saudável; depois quebramos uma variável por vez.
-
-```text
-Conceito → Criar → Inspecionar → Testar → Quebrar → Troubleshooting → Corrigir → Questões → Cleanup
-```
-
-## Aulas
+## Índice das aulas
 
 - [Aula 1 — VPC, Subnets, CIDR e IPs no Google Cloud](./aula-01-vpc-subnets-cidr-ips.md)
 - [Aula 2 — Firewall Rules e Rotas no Google Cloud](./aula-02-firewall-rules-e-rotas.md)
@@ -16,10 +8,10 @@ Conceito → Criar → Inspecionar → Testar → Quebrar → Troubleshooting �
 - [Aula 4 — Load Balancing no Google Cloud](./aula-04-load-balancing.md)
 - [Aula 5 — Shared VPC, VPC Peering, Cloud VPN, Cloud Interconnect e Troubleshooting](./aula-05-shared-vpc-peering-vpn-interconnect-troubleshooting.md)
 
-## Checklist da semana
+## Método
 
-- [ ] Cobri todos os tópicos do Exam Guide mapeados para esta semana;
-- [ ] Executei os labs viáveis;
-- [ ] Inspecionei antes de quebrar;
-- [ ] Consigo explicar as diferenças entre serviços semelhantes;
-- [ ] Fiz cleanup dos recursos com custo.
+```text
+Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Troubleshooting → Corrigir → Questões → Cleanup
+```
+
+> O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.

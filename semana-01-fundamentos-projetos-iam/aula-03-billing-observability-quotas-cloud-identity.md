@@ -94,3 +94,86 @@ Remova budgets de laboratório e recursos criados. APIs podem permanecer habilit
 - [ ] Inspecionei a configuração antes de provocar a falha;
 - [ ] Diagnostiquei a falha com evidências;
 - [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
+
+
+---
+
+# Cobertura ACE ampliada — billing, observability, quotas e Cloud Identity
+
+## Billing accounts e linkage
+
+```bash
+gcloud billing accounts list
+gcloud billing projects describe $PROJECT_ID
+```
+
+Conceito:
+
+```text
+Billing Account
+  └─ linked Project
+      └─ billable resources
+```
+
+## Budgets e alerts
+
+Budget **não bloqueia automaticamente** o consumo. Ele acompanha gasto e dispara alertas/integrações configuradas.
+
+## Billing export
+
+O exam guide inclui configuração de billing export. O cenário mais comum é exportar dados detalhados para BigQuery para análises de custo.
+
+```text
+Cloud Billing
+   ↓ export
+BigQuery dataset
+   ↓
+SQL / dashboards / FinOps
+```
+
+A ativação é normalmente feita em **Billing → Billing export** no Console, pois exige permissão na Billing Account.
+
+## Quotas e aumento
+
+```bash
+gcloud compute project-info describe --format='yaml(quotas)'
+```
+
+Diferencie:
+
+```text
+Budget → limite financeiro de referência/alerta
+Quota  → limite técnico de uso
+```
+
+## Google Cloud Observability
+
+O guia cobra provisioning/setup dos produtos de observabilidade. Nesta etapa identifique:
+
+- Cloud Monitoring;
+- Cloud Logging;
+- dashboards;
+- alerts;
+- métricas;
+- logs.
+
+O aprofundamento operacional ocorre na Semana 6.
+
+## Cloud Identity
+
+Cloud Identity gerencia usuários e grupos associados à organização. Para ACE, entenda:
+
+- usuários;
+- grupos;
+- associação de grupos a IAM roles;
+- provisionamento manual ou automatizado.
+
+Exemplo mental:
+
+```text
+Cloud Identity Group: devops@example.com
+       ↓ IAM binding
+roles/compute.viewer
+       ↓
+Project
+```

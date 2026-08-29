@@ -142,6 +142,92 @@ gcloud config configurations delete ace-sem-projeto --quiet
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — ambiente, organização e inventário
+
+## Resource hierarchy e standalone organization
+
+```text
+Organization
+  ├─ Folder
+  │   └─ Project
+  └─ Project
+      └─ Resources
+```
+
+- **Organization**: raiz administrativa para políticas e IAM corporativo.
+- **Folder**: agrupamento opcional de projetos para delegação e políticas.
+- **Project**: fronteira fundamental de recursos, quotas, APIs e billing linkage.
+- **Standalone organization**: opção de organização que não depende do domínio tradicional do Google Workspace/Cloud Identity, conforme disponibilidade do produto.
+
+Inspecione, quando aplicável:
+
+```bash
+gcloud organizations list
+gcloud resource-manager folders list --organization=ORG_ID
+gcloud projects list
+```
+
+## Organization Policies
+
+Organization Policy é diferente de IAM:
+
+```text
+IAM              → quem pode fazer
+Organization Policy → quais configurações/ações são permitidas como guardrail
+```
+
+Exemplos comuns de constraints incluem restrições de localização, uso de IP externo ou criação de chaves, dependendo do ambiente.
+
+```bash
+gcloud org-policies list --project=$PROJECT_ID
+```
+
+> Algumas políticas só fazem sentido em ambientes com Organization. Em conta pessoal, pratique leitura e decisão arquitetural.
+
+## Cloud Asset Inventory
+
+Cloud Asset Inventory ajuda a pesquisar e inventariar recursos e políticas.
+
+```bash
+gcloud asset search-all-resources --scope=projects/$PROJECT_ID --limit=20
+```
+
+Perguntas que ele ajuda a responder:
+
+```text
+Quais recursos existem?
+Em quais regiões?
+Quais tipos?
+Quais recursos correspondem a determinado filtro?
+```
+
+## Gemini Cloud Assist para análise de recursos
+
+No nível ACE, entenda que Gemini Cloud Assist pode ajudar a analisar recursos, troubleshooting e operações; ele **não substitui** IAM, políticas ou validação do operador.
+
+## Workforce Identity Federation
+
+Não confunda:
+
+```text
+Workforce Identity Federation
+→ usuários/workforce externos acessando Google Cloud
+
+Workload Identity Federation
+→ workloads externos obtendo credenciais Google
+```
+
+A configuração completa normalmente envolve IdP externo e não é um bom laboratório isolado sem esse provedor. O importante aqui é reconhecer o caso de uso.
+
+## Questões adicionais
+
+1. Precisa restringir configurações em toda a hierarquia? **Organization Policy**, não apenas IAM.
+2. Precisa descobrir recursos existentes em vários projetos? **Cloud Asset Inventory**.
+3. Funcionários autenticados em IdP externo precisam acessar Google Cloud sem contas Google individuais? **Workforce Identity Federation**.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

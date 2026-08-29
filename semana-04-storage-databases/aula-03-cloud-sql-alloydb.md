@@ -409,6 +409,58 @@ gcloud sql instances delete "$INSTANCE" --quiet
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — backup, restore, HA, replicas e Database Center
+
+## Backup x Restore x HA x Read Replica
+
+```text
+Backup       → recuperação de dados
+Restore      → recria/recupera estado a partir do backup
+HA           → disponibilidade/failover
+Read replica → leitura/escala e, conforme configuração, DR; não substitui backup
+```
+
+Liste backups:
+
+```bash
+gcloud sql backups list --instance="$INSTANCE"
+```
+
+Crie backup on-demand:
+
+```bash
+gcloud sql backups create --instance="$INSTANCE"
+```
+
+Inspecione:
+
+```bash
+gcloud sql backups list --instance="$INSTANCE"
+```
+
+> Restauração pode criar impacto e deve ser feita em ambiente de laboratório com atenção. Para prova, conheça a operação e objetivo.
+
+## Database Center
+
+Database Center fornece visão central da frota de bancos do Google Cloud, com inventário e insights compatíveis com os produtos suportados.
+
+No Console: **Database Center**.
+
+Use para responder perguntas como:
+
+```text
+Quais bancos existem?
+Quais apresentam alertas/insights?
+Como está a frota multi-projeto?
+```
+
+## Queries em data instances
+
+A operação da prova inclui executar queries para recuperar dados. Nesta aula isso é feito via PostgreSQL; em outras aulas, via BigQuery/serviços correspondentes.
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

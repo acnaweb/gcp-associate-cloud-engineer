@@ -86,3 +86,62 @@ Delete VM de laboratório e sinks/destinos extras criados.
 - [ ] Inspecionei a configuração antes de provocar a falha;
 - [ ] Diagnostiquei a falha com evidências;
 - [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
+
+
+---
+
+# Cobertura ACE ampliada — observability completa
+
+## Log Router, sinks, buckets, views e Log Analytics
+
+```text
+Log entry
+   ↓ Log Router
+   ├─ _Required/_Default buckets
+   ├─ custom log bucket
+   └─ sink → BigQuery / Storage / Pub/Sub / destino suportado
+```
+
+- **Sink**: roteia/exporta logs.
+- **Log bucket**: armazena logs.
+- **Log view**: controla subconjunto visível.
+- **Log Analytics**: consultas analíticas sobre logs em configuração compatível.
+
+## Ops Agent
+
+Agente recomendado para coletar métricas/logs de VMs em cenários suportados.
+
+Inspeção em VM configurada:
+
+```bash
+sudo systemctl status google-cloud-ops-agent
+```
+
+## Managed Service for Prometheus
+
+Use para monitoramento compatível com Prometheus sem operar toda a infraestrutura de armazenamento/consulta por conta própria.
+
+## Diagnostic tools
+
+O guia cita ferramentas como:
+
+- Cloud Trace;
+- Cloud Profiler;
+- Query Insights;
+- index advisor.
+
+Modelo:
+
+```text
+latência distribuída → Trace
+CPU/perfil de código → Profiler
+SQL/database issue   → Query Insights / index advisor
+```
+
+## Personalized Service Health
+
+Use para verificar eventos/incidentes de serviços Google relevantes ao seu ambiente antes de assumir que o problema está na aplicação.
+
+## Cloud Hub
+
+Fornece visão agregada de eventos ativos e dados de saúde de aplicações/recursos em cenários suportados.

@@ -162,6 +162,46 @@ Remova documentos/collections de laboratório no Firestore se criados. Não há 
 
 ---
 
+
+---
+
+# Cobertura ACE ampliada — backups e serviços de dados adicionais
+
+## Backup/restore como capacidade operacional
+
+O guia cita backup/restore para Cloud SQL, Firestore, Spanner, AlloyDB e Bigtable. No nível ACE, saiba:
+
+- identificar se o produto oferece backup gerenciado;
+- localizar backups;
+- entender restore;
+- distinguir backup de HA/replicação.
+
+## Memorystore
+
+```text
+Memorystore → cache/in-memory gerenciado (Redis/Valkey conforme produto atual)
+```
+
+Use quando o requisito é cache/sessão/baixa latência em memória, não como warehouse analítico.
+
+## Google Cloud Managed Service for Apache Kafka
+
+Serviço gerenciado para workloads Kafka compatíveis quando o requisito exige ecossistema/protocolo Kafka. Não confunda com Pub/Sub, que é serviço nativo de mensageria do Google Cloud com modelo operacional diferente.
+
+## Matriz ampliada
+
+```text
+Cloud SQL     → OLTP relacional tradicional
+AlloyDB       → PostgreSQL-compatible exigente
+Spanner       → relacional distribuído/global
+Firestore     → documentos
+Bigtable      → wide-column / chave / alto throughput
+BigQuery      → analytics
+Memorystore   → cache/in-memory
+Pub/Sub       → messaging/event ingestion nativo
+Managed Kafka → ecossistema Kafka
+```
+
 # 10. Checklist
 
 - [ ] Entendi os conceitos usados no laboratório;

@@ -94,3 +94,61 @@ gcloud pubsub topics delete ace-topic --quiet
 - [ ] Inspecionei a configuração antes de provocar a falha;
 - [ ] Diagnostiquei a falha com evidências;
 - [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
+
+
+---
+
+# Cobertura ACE ampliada — data products e job status
+
+## Pub/Sub
+
+Modelo:
+
+```text
+Publisher → Topic → Subscription → Subscriber
+```
+
+Comandos básicos:
+
+```bash
+gcloud pubsub topics create ace-topic
+gcloud pubsub subscriptions create ace-sub --topic=ace-topic
+gcloud pubsub topics publish ace-topic --message='ACE'
+gcloud pubsub subscriptions pull ace-sub --auto-ack --limit=1
+```
+
+## Dataflow
+
+Dataflow executa pipelines Apache Beam para batch/streaming. Para ACE, reconheça:
+
+```text
+Pub/Sub → Dataflow → BigQuery
+```
+
+E saiba revisar job status:
+
+```bash
+gcloud dataflow jobs list --region=us-central1
+```
+
+## BigQuery jobs
+
+```bash
+bq ls -j -a -n 10
+```
+
+Job status é parte explícita do escopo operacional.
+
+## Filestore, NetApp Volumes e Managed Lustre
+
+Matriz de storage:
+
+```text
+Cloud Storage        → object storage
+Filestore            → NFS gerenciado para arquivos
+NetApp Volumes       → file storage empresarial com capacidades NetApp
+Managed Lustre       → filesystem paralelo para HPC/AI
+Persistent Disk      → block storage para VMs
+```
+
+Escolha pelo protocolo e workload, não apenas pela capacidade.
