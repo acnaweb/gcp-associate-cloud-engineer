@@ -177,18 +177,20 @@ terraform destroy -var="project_id=$(gcloud config get-value project)" -auto-app
 
 ---
 
-# Cobertura ACE ampliada — Fabric FAST, Config Connector, Helm e AI tooling
+# Conteúdo complementar + cobertura oficial de IaC
 
 ## IaC/tooling cobrado
 
-O exam guide cita:
+O **guia oficial anexado** cita explicitamente:
 
 ```text
-Fabric FAST
+Cloud Foundation Toolkit
 Config Connector
 Terraform
 Helm
 ```
+
+`Fabric FAST` pode ser estudado como conteúdo complementar, mas **não deve substituir Cloud Foundation Toolkit na matriz oficial baseada no anexo**.
 
 ### Terraform
 Declarativo, provider Google, state/plan/apply.

@@ -48,3 +48,13 @@ Uma aula só é considerada completa quando cobre os conceitos da prova associad
 ## Fonte oficial
 
 Use este material junto ao **Associate Cloud Engineer Certification Exam Guide** e à documentação oficial do Google Cloud.
+
+---
+
+# Mapas de Cobertura
+
+- [Matriz de Conteúdo ACE](./MATRIZ-CONTEUDO-ACE.md)
+- [Auditoria do Exam Guide](./AUDITORIA-EXAM-GUIDE.md)
+- [Relatório de Compatibilidade com o Guia Anexado](./RELATORIO-COMPATIBILIDADE-GUIA-ANEXO.md)
+
+A matriz e a auditoria usam como fonte de verdade o guia oficial anexado ao projeto.

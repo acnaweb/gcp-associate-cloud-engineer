@@ -154,3 +154,35 @@ Cluster/workload precisa de identidade/permissão adequada para pull da imagem q
 ## Service Account com GKE application
 
 Para acesso a APIs Google, prefira identidade de workload (Workload Identity Federation for GKE) em vez de key JSON dentro do Pod.
+
+
+---
+
+# Cobertura obrigatória do guia anexado — GKE Enterprise
+
+O guia anexado cita **GKE Enterprise** entre as configurações que o candidato deve reconhecer ao implantar clusters.
+
+Para o nível ACE, o objetivo não é administrar todas as funcionalidades avançadas da edição Enterprise, mas reconhecer o contexto:
+
+```text
+GKE Autopilot
+→ maior abstração da infraestrutura de nodes
+
+GKE Standard
+→ maior controle do cluster e node pools
+
+Regional Cluster
+→ arquitetura regional / maior resiliência do control plane
+
+Private Cluster
+→ reduz exposição pública de componentes/nodes conforme configuração
+
+GKE Enterprise
+→ recursos empresariais para gestão de Kubernetes em cenários mais amplos/multicluster
+```
+
+## Questão estilo prova
+
+Uma organização precisa de recursos empresariais de gerenciamento Kubernetes e o enunciado apresenta **GKE Enterprise** entre as opções.
+
+Para uma questão baseada no guia anexado, o candidato deve reconhecer que **GKE Enterprise é uma configuração/oferta distinta a ser considerada**, em vez de tratar Autopilot, Standard, Regional e Private como a lista completa.

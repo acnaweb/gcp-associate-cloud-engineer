@@ -1,5 +1,8 @@
 # Aula 7 — Filestore, NetApp Volumes, Managed Lustre, Managed Kafka e Memorystore
 
+> **Classificação em relação ao guia oficial anexado:** conteúdo complementar. Os tópicos desta aula não aparecem explicitamente no PDF usado como fonte de verdade nesta versão. Estude depois de concluir os itens obrigatórios do guia.
+
+
 ## Método da aula
 
 ```text

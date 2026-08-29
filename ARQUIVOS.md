@@ -1,9 +1,10 @@
-# Inventário de arquivos
+# Inventário
 
 - `ARQUIVOS.md`
 - `AUDITORIA-EXAM-GUIDE.md`
 - `MATRIZ-CONTEUDO-ACE.md`
 - `README.md`
+- `RELATORIO-COMPATIBILIDADE-GUIA-ANEXO.md`
 - `semana-01-fundamentos-projetos-iam/README.md`
 - `semana-01-fundamentos-projetos-iam/aula-01-hierarquia-projects-regions-zones-gcloud.md`
 - `semana-01-fundamentos-projetos-iam/aula-02-iam-service-accounts.md`

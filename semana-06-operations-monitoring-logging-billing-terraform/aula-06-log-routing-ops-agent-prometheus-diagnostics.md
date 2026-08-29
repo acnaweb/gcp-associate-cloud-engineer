@@ -145,3 +145,180 @@ Use para verificar eventos/incidentes de serviços Google relevantes ao seu ambi
 ## Cloud Hub
 
 Fornece visão agregada de eventos ativos e dados de saúde de aplicações/recursos em cenários suportados.
+
+
+---
+
+# Cobertura obrigatória do guia anexado — exportação e diagnóstico
+
+## Exportar logs para sistemas externos
+
+O guia anexado exige reconhecer exportação de registros para:
+
+```text
+sistemas externos
+on-premises
+BigQuery
+```
+
+Modelo mental:
+
+```text
+Cloud Logging
+     ↓
+Log Router
+     ↓
+Sink
+ ├─ BigQuery
+ ├─ Cloud Storage
+ ├─ Pub/Sub
+ └─ integração/encaminhamento para consumidor externo, conforme arquitetura
+```
+
+### Exemplo: sink para BigQuery
+
+```bash
+gcloud logging sinks create ace-bq-sink \
+  bigquery.googleapis.com/projects/PROJECT_ID/datasets/DATASET_ID \
+  --log-filter='severity>=ERROR'
+```
+
+Inspecione:
+
+```bash
+gcloud logging sinks describe ace-bq-sink
+```
+
+> O destino precisa existir e a identidade do sink precisa das permissões adequadas no destino.
+
+Para sistemas externos/on-premises, pense no pipeline como:
+
+```text
+Cloud Logging
+   ↓
+export / sink
+   ↓
+destino intermediário suportado
+   ↓
+processo/consumer
+   ↓
+sistema externo
+```
+
+O ponto cobrado é saber que logs podem ser **roteados/exportados**, não apenas visualizados no Logs Explorer.
+
+---
+
+## Log Buckets, Log Router e análise de dados de registro
+
+```text
+Log entry
+   ↓
+Log Router
+   ├─ Log Bucket
+   └─ Sink
+```
+
+- **Log Router** decide para onde as entradas são encaminhadas.
+- **Log Bucket** armazena logs.
+- Recursos de análise permitem consultar/avaliar dados armazenados de acordo com a configuração.
+
+Inspeção:
+
+```bash
+gcloud logging sinks list
+gcloud logging buckets list --location=global
+```
+
+---
+
+## Visualizar detalhes específicos da mensagem
+
+No Logs Explorer, não pare na lista.
+
+Abra uma entrada e identifique:
+
+```text
+timestamp
+severity
+resource.type
+resource.labels
+logName
+textPayload / jsonPayload
+protoPayload
+```
+
+O troubleshooting deve usar esses campos como evidência.
+
+---
+
+## Cloud diagnostics
+
+O guia anexado usa a expressão **diagnóstico de nuvem** para pesquisar problemas da aplicação.
+
+Modelo operacional:
+
+```text
+Sintoma
+   ↓
+Monitoring
+   ↓
+Logging
+   ↓
+traces/profiling/diagnostic evidence quando aplicável
+   ↓
+causa
+```
+
+A prova pode pedir a ferramenta/fluxo mais apropriado para investigar um problema, não apenas criar um alerta.
+
+---
+
+## Status do Google Cloud
+
+Antes de assumir que uma falha é da sua aplicação, valide se há problema no serviço Google Cloud.
+
+```text
+Aplicação falhou
+   ↓
+logs/metrics locais
+   +
+status do Google Cloud
+```
+
+Isso ajuda a diferenciar:
+
+```text
+falha da workload
+vs
+incidente da plataforma
+```
+
+---
+
+## Audit Logs
+
+Audit Logs ajudam a responder perguntas como:
+
+```text
+quem?
+fez o quê?
+em qual recurso?
+quando?
+```
+
+Exemplo de consulta:
+
+```bash
+gcloud logging read \
+  'logName:"cloudaudit.googleapis.com"' \
+  --limit=20
+```
+
+## Cleanup do sink de laboratório
+
+Se criou o sink:
+
+```bash
+gcloud logging sinks delete ace-bq-sink
+```

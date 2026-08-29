@@ -122,3 +122,90 @@ Publisher → Pub/Sub topic → event trigger → serverless workload
 ```
 
 Para prova, escolha trigger/event source apropriado em vez de polling manual.
+
+
+---
+
+# Cobertura obrigatória do guia anexado — decisão de implantação
+
+O guia oficial anexado pede explicitamente que o candidato saiba decidir onde implantar uma aplicação entre:
+
+```text
+Cloud Run (totalmente gerenciado)
+Cloud Run for Anthos
+Cloud Functions
+```
+
+## Cloud Run totalmente gerenciado
+
+Use quando o objetivo é executar containers HTTP/event-driven sem administrar cluster Kubernetes.
+
+```text
+Container
+   ↓
+Cloud Run
+   ↓
+Google gerencia a infraestrutura
+```
+
+## Cloud Run for Anthos
+
+O **guia anexado utiliza essa terminologia**. Para a prova baseada nesse documento, associe-a ao cenário em que workloads Cloud Run são executados em uma plataforma baseada em Anthos/Kubernetes, em vez do ambiente totalmente gerenciado.
+
+Modelo mental para a questão:
+
+```text
+Quer serverless container sem administrar cluster
+→ Cloud Run totalmente gerenciado
+
+Quer integração com ambiente Anthos/Kubernetes
+→ Cloud Run for Anthos
+
+Quer função pequena orientada a evento
+→ Cloud Functions
+```
+
+## Eventos exigidos pelo guia
+
+O documento cita explicitamente:
+
+```text
+Pub/Sub
+Cloud Storage object change notification
+Eventarc
+```
+
+Arquitetura:
+
+```text
+Pub/Sub message
+      ↓
+Eventarc / trigger
+      ↓
+Cloud Run ou Cloud Functions
+```
+
+e:
+
+```text
+Cloud Storage
+object created/changed
+      ↓
+Eventarc / trigger
+      ↓
+Cloud Run ou Cloud Functions
+```
+
+## Questões estilo ACE
+
+**1.** Uma equipe quer implantar um container HTTP sem operar Kubernetes.
+
+**Resposta:** Cloud Run totalmente gerenciado.
+
+**2.** Uma função deve executar após um evento de criação de objeto em Cloud Storage.
+
+**Resposta:** Cloud Functions ou destino serverless apropriado acionado pelo mecanismo de eventos; o guia espera reconhecimento de Cloud Storage events/Eventarc.
+
+**3.** O enunciado da prova, seguindo o guia anexado, menciona execução de Cloud Run integrada ao Anthos.
+
+**Resposta:** reconhecer **Cloud Run for Anthos** como a alternativa descrita pelo guia.
