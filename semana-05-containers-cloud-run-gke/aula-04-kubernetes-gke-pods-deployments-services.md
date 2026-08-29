@@ -160,3 +160,40 @@ gcloud container clusters delete ace-gke \
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — StatefulSets e Artifact Registry no GKE
+
+## StatefulSet
+
+Deployment é adequado para réplicas intercambiáveis/stateless. StatefulSet oferece identidade estável e ordenação apropriada para workloads stateful.
+
+```bash
+kubectl get statefulsets
+```
+
+Não use StatefulSet só porque a aplicação “usa banco”; normalmente o banco pode estar fora do cluster.
+
+## GKE acessando Artifact Registry
+
+Fluxo:
+
+```text
+Artifact Registry
+      ↓ pull da imagem
+GKE node/workload identity + IAM
+      ↓
+Pod
+```
+
+Se ocorrer `ImagePullBackOff` com imagem privada, confirme em ordem:
+
+```bash
+kubectl describe pod POD
+
+gcloud artifacts docker images list \
+  REGION-docker.pkg.dev/PROJECT/REPOSITORY
+```
+
+Só depois investigue a identidade/IAM usada para pull.

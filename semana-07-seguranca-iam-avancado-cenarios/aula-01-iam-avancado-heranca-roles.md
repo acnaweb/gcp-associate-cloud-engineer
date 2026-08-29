@@ -161,3 +161,28 @@ rm -f role.yaml
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Revisão obrigatória — Basic, Predefined e Custom Roles
+
+A prova cita explicitamente os três tipos.
+
+```bash
+gcloud iam roles describe roles/viewer
+gcloud iam roles describe roles/editor
+gcloud iam roles describe roles/owner
+gcloud iam roles describe roles/compute.viewer
+gcloud iam roles describe roles/compute.admin
+gcloud iam roles list --project="$(gcloud config get-value project)"
+```
+
+O aluno deve conseguir responder:
+
+```text
+Viewer/Editor/Owner → Basic roles
+Compute Viewer      → Predefined role
+aceMinhaRole        → Custom role
+```
+
+E também explicar que **role contém permissions**; binding associa principal + role em um resource/scope.

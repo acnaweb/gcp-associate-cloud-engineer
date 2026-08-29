@@ -156,3 +156,44 @@ gcloud iam service-accounts delete "$SA" --quiet
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — identidade temporária e credenciais de curta duração
+
+O exam guide exige administrar identidade temporária e credenciais curtas de Service Account.
+
+Exemplos:
+
+```bash
+gcloud auth print-access-token \
+  --impersonate-service-account="$SA"
+```
+
+Para emitir token ID quando necessário para audiência compatível:
+
+```bash
+gcloud auth print-identity-token \
+  --impersonate-service-account="$SA"
+```
+
+Modelo mental:
+
+```text
+Key JSON de longa duração
+→ segredo persistente; maior risco operacional
+
+Impersonation / short-lived token
+→ credencial temporária
+→ preferível quando arquitetura suporta
+```
+
+Não confunda:
+
+```text
+roles/iam.serviceAccountUser
+→ usar/anexar SA a um recurso
+
+roles/iam.serviceAccountTokenCreator
+→ criar tokens/impersonar em cenários suportados
+```

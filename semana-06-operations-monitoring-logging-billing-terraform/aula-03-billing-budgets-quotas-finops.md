@@ -146,3 +146,40 @@ gcloud compute instances delete ace-finops-vm \
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — Billing Accounts, vínculo de projetos e Billing Export
+
+O exam guide inclui:
+
+- criar/administrar billing accounts (quando você possui permissão); 
+- vincular projeto à billing account;
+- budgets/alerts;
+- billing export.
+
+Inspecione:
+
+```bash
+gcloud billing accounts list
+gcloud billing projects describe "$(gcloud config get-value project)"
+```
+
+Em ambientes com permissão adequada, o vínculo de billing é administrado pelo Console/CLI apropriado. Não faça isso em projeto corporativo sem autorização.
+
+## Billing Export
+
+No Console:
+
+```text
+Billing → Billing export → BigQuery export
+```
+
+Modelo mental:
+
+```text
+Billing Export → dados detalhados de custo em BigQuery
+Budget         → thresholds/alertas
+Quota          → limite técnico
+Pricing Calculator → estimativa antes da implantação
+```

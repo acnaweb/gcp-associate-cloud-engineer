@@ -167,3 +167,42 @@ rm -f vendas.csv
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — BigQuery Jobs e estimativa de custo
+
+O exam guide inclui revisar status de jobs e estimar custos de storage/data processing.
+
+## Jobs
+
+```bash
+bq ls -j -a -n 20
+```
+
+Para inspecionar um job específico:
+
+```bash
+bq show -j PROJECT_ID:LOCATION.JOB_ID
+```
+
+## Dry run
+
+Antes de executar query analítica maior:
+
+```bash
+bq query \
+  --use_legacy_sql=false \
+  --dry_run \
+  'SELECT estado, SUM(valor) FROM `PROJECT.dataset.table` GROUP BY estado'
+```
+
+O dry run ajuda a estimar bytes processados sem executar a consulta.
+
+Diferencie:
+
+```text
+bytes processados por query
+storage armazenado
+slots/capacidade (quando aplicável)
+```

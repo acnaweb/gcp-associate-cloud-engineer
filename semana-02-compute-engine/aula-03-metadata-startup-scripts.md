@@ -173,3 +173,45 @@ rm -f startup-ok.sh startup-fail.sh
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — SSH, OS Login e Metadata
+
+A prova menciona explicitamente conexão remota e configuração de OS Login.
+
+## SSH tradicional x OS Login
+
+```text
+Metadata SSH keys
+→ chaves mantidas em metadata de projeto/instância
+
+OS Login
+→ acesso SSH integrado a IAM/identidade Google
+```
+
+Verifique metadata:
+
+```bash
+gcloud compute project-info describe --format='yaml(commonInstanceMetadata)'
+gcloud compute instances describe INSTANCE --zone=ZONE --format='yaml(metadata)'
+```
+
+Habilitar OS Login por metadata de projeto em laboratório controlado:
+
+```bash
+gcloud compute project-info add-metadata \
+  --metadata enable-oslogin=TRUE
+```
+
+Roles relacionadas ao acesso do SO incluem `roles/compute.osLogin` e, para acesso administrativo, `roles/compute.osAdminLogin`.
+
+Não confunda:
+
+```text
+IAM permite usar OS Login
+≠
+Firewall permite chegar à porta 22
+```
+
+São duas camadas distintas.

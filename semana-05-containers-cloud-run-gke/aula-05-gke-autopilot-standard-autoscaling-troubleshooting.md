@@ -146,3 +146,53 @@ kubectl delete deployment quebrado --ignore-not-found
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — regional/private clusters, node pools, HPA e VPA
+
+## Tipos/decisões de cluster
+
+```text
+Autopilot
+→ maior gerenciamento pelo Google
+
+Standard
+→ controle de nodes/node pools
+
+Regional cluster
+→ control plane/recursos distribuídos regionalmente conforme arquitetura do GKE
+
+Private cluster
+→ restringe exposição de nodes/endpoints conforme configuração
+
+GKE Enterprise
+→ recursos de gerenciamento de frotas/multicluster/enterprise
+```
+
+## Node pools
+
+No Standard:
+
+```bash
+gcloud container node-pools list \
+  --cluster=CLUSTER \
+  --location=LOCATION
+```
+
+Node pool é agrupamento de nodes com configuração comum.
+
+## HPA x VPA
+
+```text
+HPA
+→ altera quantidade de Pods
+
+VPA
+→ recomenda/ajusta requests de CPU/memória, conforme modo/configuração
+
+Cluster autoscaler
+→ altera quantidade de nodes em node pools suportados
+```
+
+Não confunda as três camadas de escala.

@@ -173,3 +173,61 @@ gcloud compute snapshots delete ace-data-snap --quiet
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — Zonal x Regional Persistent Disk, Images e Snapshot Schedules
+
+## Zonal x Regional Persistent Disk
+
+```text
+Zonal PD
+→ réplica dentro da zona/infraestrutura do serviço
+→ usado por VM na zona compatível
+
+Regional PD
+→ replicação síncrona entre duas zonas da mesma região
+→ maior disponibilidade de armazenamento
+```
+
+## Images
+
+Snapshots são voltados a recuperação de disco. Images são usadas como origem padronizada para boot disks/VMs.
+
+```bash
+gcloud compute images list --no-standard-images --limit=10
+```
+
+Exemplo a partir de um disk:
+
+```bash
+gcloud compute images create ace-custom-image \
+  --source-disk=DISK_NAME \
+  --source-disk-zone=us-central1-a
+```
+
+## Snapshot schedules
+
+A prova inclui trabalhar com snapshots, inclusive agendamento. Modelo mental:
+
+```text
+Resource Policy (snapshot schedule)
+        ↓ associada ao
+Persistent Disk
+        ↓
+snapshots automáticos
+```
+
+Liste policies:
+
+```bash
+gcloud compute resource-policies list
+```
+
+Diferencie:
+
+```text
+Snapshot manual   → ação pontual
+Snapshot schedule → política automática recorrente
+Image             → base para criar boot disks/VMs
+```

@@ -147,3 +147,55 @@ gcloud compute instances delete ace-vm --zone="$ZONE" --quiet
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — escolha de compute, Custom Machine Types, Spot e availability policies
+
+A prova exige comparar, no mínimo:
+
+```text
+Compute Engine → VM / controle do SO
+GKE            → Kubernetes
+Cloud Run      → container serverless
+Cloud Functions → função orientada a eventos/HTTP
+```
+
+## Custom Machine Type
+
+Quando tipos predefinidos não atendem bem à relação vCPU/memória, um custom machine type pode reduzir desperdício.
+
+Exemplo:
+
+```bash
+gcloud compute instances create ace-custom-vm \
+  --zone=us-central1-a \
+  --custom-cpu=2 \
+  --custom-memory=4GB \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+```
+
+Inspecione:
+
+```bash
+gcloud compute instances describe ace-custom-vm \
+  --zone=us-central1-a \
+  --format='value(machineType)'
+```
+
+## Spot VMs
+
+Spot VMs têm preço reduzido, mas podem ser interrompidas pelo Google Cloud. São apropriadas para workloads tolerantes a interrupção, como batch e processamento distribuído resiliente.
+
+## Availability policy
+
+Inspecione:
+
+```bash
+gcloud compute instances describe ace-vm \
+  --zone=us-central1-a \
+  --format='yaml(scheduling)'
+```
+
+A seção `scheduling` ajuda a entender manutenção, reinício automático e comportamento de provisionamento.

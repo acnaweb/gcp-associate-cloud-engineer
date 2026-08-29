@@ -169,3 +169,119 @@ rm -f dado.txt
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura fundamental — Permissions, Basic Roles, Predefined Roles e Custom Roles
+
+Este conteúdo deve ser dominado já na Semana 1, e será aprofundado novamente na Semana 7.
+
+## Permission
+
+Permission é uma operação elementar, normalmente com formato semelhante a:
+
+```text
+service.resource.verb
+```
+
+Exemplos:
+
+```text
+compute.instances.get
+storage.objects.get
+storage.objects.create
+```
+
+## Role
+
+Role é um conjunto de permissions:
+
+```text
+Principal
+   ↓ recebe
+Role
+   ↓ contém
+Permissions
+   ↓ sobre
+Resource
+```
+
+## Tipos de roles
+
+### Basic Roles
+
+```text
+roles/viewer
+roles/editor
+roles/owner
+```
+
+São amplas e existem principalmente por compatibilidade/conveniência. Para novos grants, prefira roles mais específicas quando possível.
+
+### Predefined Roles
+
+Criadas e mantidas pelo Google para serviços e responsabilidades específicas:
+
+```text
+roles/compute.viewer
+roles/compute.admin
+roles/storage.objectViewer
+roles/storage.objectAdmin
+roles/storage.admin
+roles/bigquery.dataViewer
+roles/run.invoker
+```
+
+### Custom Roles
+
+Criadas na organização ou projeto quando nenhuma predefined role atende ao conjunto mínimo necessário.
+
+## Como descobrir roles existentes
+
+No Console:
+
+```text
+IAM & Admin → Roles
+```
+
+Pelo CLI:
+
+```bash
+gcloud iam roles list
+gcloud iam roles list --filter='title:Compute'
+gcloud iam roles describe roles/viewer
+gcloud iam roles describe roles/editor
+gcloud iam roles describe roles/compute.viewer
+gcloud iam roles describe roles/storage.objectViewer
+```
+
+Para listar apenas custom roles do projeto:
+
+```bash
+gcloud iam roles list --project="$(gcloud config get-value project)"
+```
+
+## Como descobrir as permissions de uma role
+
+```bash
+gcloud iam roles describe roles/storage.objectViewer
+```
+
+Observe `includedPermissions`.
+
+## Regra de prova
+
+Se a questão disser:
+
+> “O usuário precisa apenas visualizar VMs.”
+
+Compare:
+
+```text
+Editor           → amplo demais
+Compute Admin    → amplo demais
+Compute Viewer   → adequado
+Owner            → muito amplo
+```
+
+A prova costuma favorecer **least privilege**.

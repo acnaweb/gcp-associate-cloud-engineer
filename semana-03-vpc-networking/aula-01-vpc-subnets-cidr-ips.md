@@ -1870,3 +1870,53 @@ VPC global
 ```
 
 Se você consegue olhar para uma arquitetura e identificar corretamente **VPC, subnet, região, zona, CIDR, IP interno e IP externo**, já domina a base de networking necessária para avançar nas próximas aulas do Associate Cloud Engineer.
+
+---
+
+# Cobertura adicional do exam guide — expansão de subnet e IP interno estático
+
+## Expandir uma subnet
+
+O primary IPv4 range pode ser expandido, não reduzido.
+
+Exemplo após validar ausência de conflito:
+
+```bash
+gcloud compute networks subnets expand-ip-range subnet-us \
+  --region=us-central1 \
+  --prefix-length=23
+```
+
+Antes:
+
+```text
+10.10.0.0/24
+```
+
+Depois:
+
+```text
+10.10.0.0/23
+```
+
+Inspecione:
+
+```bash
+gcloud compute networks subnets describe subnet-us \
+  --region=us-central1 \
+  --format='value(ipCidrRange)'
+```
+
+## Reservar IP interno estático
+
+```bash
+gcloud compute addresses create ace-internal-ip \
+  --region=us-central1 \
+  --subnet=subnet-us \
+  --addresses=10.10.0.50
+
+gcloud compute addresses describe ace-internal-ip \
+  --region=us-central1
+```
+
+Lembre-se: a faixa deve pertencer à subnet e não estar em uso/reservada.

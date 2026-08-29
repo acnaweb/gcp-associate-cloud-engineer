@@ -163,3 +163,32 @@ gcloud compute instances delete ace-monitor-vm \
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — Custom Metrics
+
+Além de métricas nativas, o exam guide inclui criar/enviar métricas personalizadas.
+
+Modelo mental:
+
+```text
+Application
+   ↓ produz medida
+Custom Metric
+   ↓
+Cloud Monitoring
+   ↓
+Dashboard / Alert
+```
+
+Para prova, entenda que métricas também podem ser derivadas de logs (log-based metrics), mas **log entry e metric time series são objetos diferentes**.
+
+No Console:
+
+```text
+Monitoring → Metrics Management / Metrics Explorer
+Logging → Log-based Metrics
+```
+
+Uma falha comum é criar alerta sobre uma métrica que não recebe pontos. Antes de mudar o threshold, valide se há dados no Metrics Explorer.

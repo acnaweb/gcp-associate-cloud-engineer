@@ -153,3 +153,79 @@ gcloud config configurations delete ace-sem-projeto --quiet
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional exigida pelo exam guide — Hierarquia, Organization Policies, Cloud Identity, APIs e Quotas
+
+A prova não limita “ambiente” a Project/Region/Zone. Também é necessário reconhecer:
+
+```text
+Organization
+  ↓
+Folders
+  ↓
+Projects
+  ↓
+Resources
+```
+
+## Organization Policies
+
+Organization Policy é diferente de IAM:
+
+```text
+IAM
+→ quem pode fazer uma ação
+
+Organization Policy
+→ quais configurações são permitidas/restritas na hierarquia
+```
+
+Em uma conta com Organization:
+
+```bash
+gcloud organizations list
+gcloud resource-manager folders list --organization=ORGANIZATION_ID
+gcloud org-policies list --organization=ORGANIZATION_ID
+```
+
+Exemplo de cenário de prova: impedir criação de recursos fora de determinadas regiões é uma **restrição organizacional**, não uma role IAM.
+
+## Cloud Identity — usuários e grupos
+
+Cloud Identity/Google Workspace representa identidades humanas e grupos que podem aparecer em bindings IAM:
+
+```text
+user:ana@empresa.com
+group:engenharia@empresa.com
+serviceAccount:app@projeto.iam.gserviceaccount.com
+```
+
+Para muitos usuários com a mesma responsabilidade, prefira conceder IAM ao **grupo** em vez de manter bindings individuais.
+
+## APIs e Services
+
+```bash
+gcloud services list --available --limit=20
+gcloud services list --enabled
+gcloud services enable compute.googleapis.com
+```
+
+Habilitar API ≠ conceder IAM ≠ criar recurso.
+
+## Quotas
+
+```bash
+gcloud compute project-info describe --format='yaml(quotas)'
+```
+
+Modelo mental:
+
+```text
+Billing/Budget → dinheiro
+Quota          → limite técnico
+IAM            → autorização
+```
+
+Se a criação falhar com `RESOURCE_EXHAUSTED`, confirme quota antes de alterar IAM ou firewall.

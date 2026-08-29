@@ -153,3 +153,50 @@ gcloud compute instances delete ace-log-vm \
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — Log Router, Sinks, Buckets, Views e Audit Logs
+
+Fluxo:
+
+```text
+Log entries
+   ↓
+Log Router
+   ├─ _Required bucket
+   ├─ _Default bucket
+   └─ Sink → BigQuery / Storage / Pub/Sub / projeto etc.
+```
+
+Liste sinks:
+
+```bash
+gcloud logging sinks list
+```
+
+Liste buckets:
+
+```bash
+gcloud logging buckets list --location=global
+```
+
+Exemplo de sink para BigQuery exige dataset previamente criado e permissões da writer identity retornada pelo sink.
+
+## Audit Logs
+
+Categorias importantes incluem Admin Activity e outros tipos conforme serviço/configuração.
+
+Filtro útil:
+
+```bash
+gcloud logging read \
+  'logName:"cloudaudit.googleapis.com"' \
+  --limit=20
+```
+
+Pergunta de prova:
+
+> “Quem alterou/deletou o recurso?”
+
+Comece por **Cloud Audit Logs**, não por métrica de CPU.

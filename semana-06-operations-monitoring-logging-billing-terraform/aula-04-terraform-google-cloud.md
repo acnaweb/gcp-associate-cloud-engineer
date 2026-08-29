@@ -185,3 +185,34 @@ terraform destroy -var="project_id=$(gcloud config get-value project)" -auto-app
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — outras opções de Infrastructure as Code citadas no exam guide
+
+O guia cita exemplos como:
+
+```text
+Terraform
+Cloud Foundation Toolkit
+Config Connector
+Helm
+```
+
+Você não precisa dominar todos com a mesma profundidade para ACE, mas deve reconhecer a função:
+
+```text
+Terraform
+→ IaC multi-provider declarativa
+
+Cloud Foundation Toolkit
+→ templates/modules/referências para fundações e melhores práticas
+
+Config Connector
+→ gerenciar recursos Google Cloud por objetos Kubernetes
+
+Helm
+→ empacotar/configurar aplicações Kubernetes
+```
+
+A escolha depende do contexto. Se a equipe já opera Kubernetes e quer recursos GCP declarados como CRDs, Config Connector pode aparecer. Para infraestrutura geral, Terraform é uma opção comum.

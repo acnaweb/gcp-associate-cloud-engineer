@@ -420,3 +420,46 @@ gcloud sql instances delete "$INSTANCE" --quiet
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — Backup e Restore de Cloud SQL
+
+O exam guide exige criar backups e restaurar instâncias de banco.
+
+## Antes de restaurar, saiba listar backups
+
+```bash
+gcloud sql backups list --instance="$INSTANCE"
+```
+
+Criar backup on-demand:
+
+```bash
+gcloud sql backups create --instance="$INSTANCE"
+```
+
+Inspecione novamente:
+
+```bash
+gcloud sql backups list --instance="$INSTANCE"
+```
+
+### Modelo mental
+
+```text
+HA
+→ continuidade/disponibilidade da instância
+
+Backup
+→ cópia para recuperação
+
+PITR
+→ recuperação para ponto no tempo quando configurado
+```
+
+### Falha proposital segura
+
+Antes de apagar dados, crie uma tabela de laboratório e backup. Depois remova uma linha e valide que o backup existe. Em projeto descartável, pratique restore seguindo o fluxo suportado pelo Console/CLI para a versão atual.
+
+Na prova, não responda “HA” quando o requisito for recuperar dado apagado logicamente.

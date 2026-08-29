@@ -164,3 +164,46 @@ gcloud run services delete ace-web --region="$REGION" --quiet
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — Traffic Splitting e novas versões
+
+A prova inclui gerenciar novas versões/revisions e divisão de tráfego.
+
+Liste revisions:
+
+```bash
+gcloud run revisions list \
+  --service=ace-web \
+  --region=us-central1
+```
+
+Depois de criar duas revisions, distribua tráfego usando os nomes reais retornados:
+
+```bash
+gcloud run services update-traffic ace-web \
+  --region=us-central1 \
+  --to-revisions=REVISION_V1=90,REVISION_V2=10
+```
+
+Inspecione:
+
+```bash
+gcloud run services describe ace-web \
+  --region=us-central1 \
+  --format='yaml(status.traffic)'
+```
+
+Modelo mental:
+
+```text
+Revision
+→ versão imutável de código/configuração
+
+Traffic split
+→ percentual de requisições por revision
+
+Autoscaling
+→ quantidade de instâncias
+```

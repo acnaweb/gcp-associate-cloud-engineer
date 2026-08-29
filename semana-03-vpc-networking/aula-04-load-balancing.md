@@ -1205,3 +1205,32 @@ Quantas VMs o MIG deve manter
 ```
 
 Se você consegue explicar essas relações sem consultar o material, domina a parte central de Load Balancing para o nível Associate Cloud Engineer.
+
+---
+
+# Cobertura adicional — Network Service Tiers
+
+O exam guide inclui **Network Service Tiers**.
+
+Modelo mental para ACE:
+
+```text
+Premium Tier
+→ tráfego usa mais extensivamente a rede global do Google
+→ necessário/normal para vários recursos globais
+
+Standard Tier
+→ opção regional/custo diferente para casos suportados
+```
+
+Inspecione endereços e forwarding rules:
+
+```bash
+gcloud compute addresses list \
+  --format='table(name,address,region,networkTier,status)'
+
+gcloud compute forwarding-rules list \
+  --format='table(name,loadBalancingScheme,networkTier,IPAddress)'
+```
+
+Não escolha tier apenas por preço: valide escopo do recurso e requisito de rede.

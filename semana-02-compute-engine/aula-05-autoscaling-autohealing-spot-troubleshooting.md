@@ -193,3 +193,31 @@ rm -f startup.sh
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+# Cobertura adicional — VM Manager
+
+O exam guide inclui configuração de **VM Manager**. Ele reúne capacidades de gerenciamento do sistema operacional, como inventário e patching, dependendo da configuração/agentes e recursos habilitados.
+
+No Console:
+
+```text
+Compute Engine → VM Manager
+```
+
+Habilite APIs conforme o laboratório/documentação atual exigir e inspecione a VM:
+
+```bash
+gcloud compute instances describe INSTANCE --zone=ZONE
+```
+
+Para prova, diferencie:
+
+```text
+MIG
+→ ciclo de vida/escala de conjunto de VMs
+
+VM Manager
+→ gerenciamento do SO/inventário/patch/configuração operacional
+```
