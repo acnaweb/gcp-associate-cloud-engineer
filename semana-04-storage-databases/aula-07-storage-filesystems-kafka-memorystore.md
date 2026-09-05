@@ -37,6 +37,7 @@ Memorystore    → cache/in-memory
 Provisionar NetApp/Lustre/Kafka apenas para observação pode gerar custo relevante. Use inspeção:
 
 ```bash
+# Explicação: Lista APIs/serviços disponíveis ou habilitados, conforme os filtros informados.
 gcloud services list --available | grep -Ei 'file|lustre|kafka|redis|memorystore' | head -30
 ```
 

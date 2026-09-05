@@ -39,7 +39,9 @@ Cloud Workstations
 Esses produtos podem exigir APIs, configuração corporativa e custos. Faça laboratório de **inventário e decisão**, não provisionamento artificial.
 
 ```bash
+# Explicação: Lista APIs/serviços disponíveis ou habilitados, conforme os filtros informados.
 gcloud services list --available --filter='NAME:workstations.googleapis.com'
+# Explicação: Executa `gcloud workstations clusters list --region=us-central1 2>/dev/null || true` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud workstations clusters list --region=us-central1 2>/dev/null || true
 ```
 

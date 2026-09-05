@@ -63,13 +63,19 @@ AlloyDB
 > **Atenção:** Cloud SQL gera cobrança. Use uma instância pequena compatível com sua conta/região e exclua no final.
 
 ```bash
+# Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
 export REGION=us-central1
+# Explicação: Define `INSTANCE` com o nome da instância usada no laboratório.
 export INSTANCE=ace-sql
+# Explicação: Define a variável `DB` usada nas próximas etapas do laboratório.
 export DB=aceapp
+# Explicação: Define a variável `DB_USER` usada nas próximas etapas do laboratório.
 export DB_USER=aceuser
 
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable sqladmin.googleapis.com
 
+# Explicação: Cria uma instância Cloud SQL com engine, região, tier e demais parâmetros definidos.
 gcloud sql instances create "$INSTANCE" \
   --database-version=POSTGRES_16 \
   --cpu=1 \
@@ -77,9 +83,11 @@ gcloud sql instances create "$INSTANCE" \
   --region="$REGION" \
   --storage-size=10GB
 
+# Explicação: Cria um database lógico dentro da instância Cloud SQL.
 gcloud sql databases create "$DB" \
   --instance="$INSTANCE"
 
+# Explicação: Cria um usuário de banco na instância Cloud SQL.
 gcloud sql users create "$DB_USER" \
   --instance="$INSTANCE" \
   --password='Ace-Lab-12345!'
@@ -94,6 +102,7 @@ Antes de provocar qualquer erro, confirme a configuração criada. O troubleshoo
 ### 3.1 Estado, engine e região
 
 ```bash
+# Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
 gcloud sql instances describe "$INSTANCE" \
   --format="yaml(name,state,databaseVersion,region,settings.availabilityType)"
 ```
@@ -110,6 +119,7 @@ settings.availabilityType
 ### 3.2 IPs
 
 ```bash
+# Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
 gcloud sql instances describe "$INSTANCE" \
   --format="yaml(ipAddresses)"
 ```
@@ -119,6 +129,7 @@ Agora você sabe se há endereço público configurado.
 ### 3.3 Databases
 
 ```bash
+# Explicação: Lista databases existentes na instância Cloud SQL.
 gcloud sql databases list \
   --instance="$INSTANCE"
 ```
@@ -128,6 +139,7 @@ Confirme que `aceapp` existe.
 ### 3.4 Usuários
 
 ```bash
+# Explicação: Lista usuários configurados na instância Cloud SQL.
 gcloud sql users list \
   --instance="$INSTANCE"
 ```
@@ -137,6 +149,7 @@ Confirme que `aceuser` existe.
 ### 3.5 Backup
 
 ```bash
+# Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
 gcloud sql instances describe "$INSTANCE" \
   --format="yaml(settings.backupConfiguration)"
 ```
@@ -148,6 +161,7 @@ O objetivo é reconhecer se backup está habilitado/configurado. Não confunda b
 Para o laboratório, `gcloud sql connect` pode criar temporariamente a autorização necessária para o Cloud Shell e abrir o cliente PostgreSQL. Isso evita ensinar CIDRs de authorized networks antes da hora.
 
 ```bash
+# Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
 gcloud sql connect "$INSTANCE" \
   --user="$DB_USER" \
   --database="$DB"
@@ -162,18 +176,23 @@ Ace-Lab-12345!
 Dentro do `psql`:
 
 ```sql
+-- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
 SELECT current_database();
+-- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
 SELECT current_user;
 
+-- Explicação: Cria o objeto SQL definido pelo comando seguinte.
 CREATE TABLE clientes (
     id INTEGER PRIMARY KEY,
     nome TEXT NOT NULL
 );
 
+-- Explicação: Insere os registros de teste definidos pelo comando seguinte.
 INSERT INTO clientes VALUES
 (1, 'Ana'),
 (2, 'Bruno');
 
+-- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
 SELECT * FROM clientes;
 ```
 
@@ -192,6 +211,7 @@ Saia:
 Conecte novamente:
 
 ```bash
+# Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
 gcloud sql connect "$INSTANCE" \
   --user="$DB_USER" \
   --database="$DB"
@@ -200,6 +220,7 @@ gcloud sql connect "$INSTANCE" \
 Execute:
 
 ```sql
+-- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
 SELECT * FROM clientes;
 ```
 
@@ -208,6 +229,7 @@ Os dados devem continuar lá.
 ### Teste 2 — estado
 
 ```bash
+# Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
 gcloud sql instances describe "$INSTANCE" \
   --format="value(state)"
 ```
@@ -217,6 +239,7 @@ gcloud sql instances describe "$INSTANCE" \
 Confira simultaneamente:
 
 ```bash
+# Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
 gcloud sql instances describe "$INSTANCE" \
   --format="yaml(settings.availabilityType,settings.backupConfiguration)"
 ```
@@ -236,6 +259,7 @@ Vamos quebrar dois elementos **já ensinados**.
 ### Falha A — database incorreto
 
 ```bash
+# Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
 gcloud sql connect "$INSTANCE" \
   --user="$DB_USER" \
   --database=banco-que-nao-existe
@@ -244,6 +268,7 @@ gcloud sql connect "$INSTANCE" \
 ### Falha B — usuário incorreto
 
 ```bash
+# Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
 gcloud sql connect "$INSTANCE" \
   --user=usuario-que-nao-existe \
   --database="$DB"
@@ -265,6 +290,7 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidência:**
 ```bash
+# Explicação: Lista databases existentes na instância Cloud SQL.
 gcloud sql databases list --instance="$INSTANCE"
 ```
 
@@ -282,6 +308,7 @@ gcloud sql databases list --instance="$INSTANCE"
 
 **Evidência:**
 ```bash
+# Explicação: Lista usuários configurados na instância Cloud SQL.
 gcloud sql users list --instance="$INSTANCE"
 ```
 
@@ -299,6 +326,7 @@ gcloud sql users list --instance="$INSTANCE"
 
 **Evidências:**
 ```bash
+# Explicação: Lista usuários configurados na instância Cloud SQL.
 gcloud sql users list --instance="$INSTANCE"
 ```
 
@@ -309,6 +337,7 @@ Isso confirma que o usuário existe. A senha não é exibida pelo serviço.
 **Correção:** usar a senha correta ou redefini-la:
 
 ```bash
+# Explicação: Redefine a senha do usuário Cloud SQL indicado.
 gcloud sql users set-password "$DB_USER" \
   --instance="$INSTANCE" \
   --password='Ace-Lab-12345!'
@@ -352,6 +381,7 @@ Correção
 Conecte com os três valores corretos:
 
 ```bash
+# Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
 gcloud sql connect "$INSTANCE" \
   --user="$DB_USER" \
   --database="$DB"
@@ -366,7 +396,9 @@ Ace-Lab-12345!
 Valide:
 
 ```sql
+-- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
 SELECT current_database(), current_user;
+-- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
 SELECT * FROM clientes;
 ```
 
@@ -404,6 +436,7 @@ Para ACE, escolha pelo requisito; não transforme a questão em tuning avançado
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui a instância Cloud SQL e encerra sua cobrança.
 gcloud sql instances delete "$INSTANCE" --quiet
 ```
 
@@ -426,18 +459,21 @@ Read replica → leitura/escala e, conforme configuração, DR; não substitui b
 Liste backups:
 
 ```bash
+# Explicação: Lista backups disponíveis e seus estados/IDs.
 gcloud sql backups list --instance="$INSTANCE"
 ```
 
 Crie backup on-demand:
 
 ```bash
+# Explicação: Cria um backup on-demand da instância Cloud SQL.
 gcloud sql backups create --instance="$INSTANCE"
 ```
 
 Inspecione:
 
 ```bash
+# Explicação: Lista backups disponíveis e seus estados/IDs.
 gcloud sql backups list --instance="$INSTANCE"
 ```
 
@@ -482,18 +518,21 @@ O exam guide exige criar backups e restaurar instâncias de banco.
 ## Antes de restaurar, saiba listar backups
 
 ```bash
+# Explicação: Lista backups disponíveis e seus estados/IDs.
 gcloud sql backups list --instance="$INSTANCE"
 ```
 
 Criar backup on-demand:
 
 ```bash
+# Explicação: Cria um backup on-demand da instância Cloud SQL.
 gcloud sql backups create --instance="$INSTANCE"
 ```
 
 Inspecione novamente:
 
 ```bash
+# Explicação: Lista backups disponíveis e seus estados/IDs.
 gcloud sql backups list --instance="$INSTANCE"
 ```
 

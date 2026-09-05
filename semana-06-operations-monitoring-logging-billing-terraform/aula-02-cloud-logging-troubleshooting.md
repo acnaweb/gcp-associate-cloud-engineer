@@ -35,6 +35,7 @@ Log entry
 Crie e delete uma VM para gerar atividade administrativa:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-log-vm \
   --zone=us-central1-a \
   --machine-type=e2-micro \
@@ -49,11 +50,13 @@ gcloud compute instances create ace-log-vm \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read \
  'resource.type="gce_instance"' \
  --limit=20 \
  --format="table(timestamp,severity,logName)"
 
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read \
  'logName:"cloudaudit.googleapis.com"' \
  --limit=20
@@ -66,6 +69,7 @@ gcloud logging read \
 Faça uma operação inválida:
 
 ```bash
+# Explicação: Interrompe a VM sem excluir seus discos persistentes.
 gcloud compute instances stop vm-que-nao-existe \
   --zone=us-central1-a || true
 ```
@@ -90,7 +94,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read 'severity>=ERROR' --limit=20
 ```
 
@@ -119,6 +125,7 @@ Correção
 Use um recurso real:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-log-vm \
   --zone=us-central1-a
 ```
@@ -136,6 +143,7 @@ gcloud compute instances describe ace-log-vm \
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-log-vm \
   --zone=us-central1-a --quiet
 ```
@@ -204,12 +212,14 @@ Log Router
 Liste sinks:
 
 ```bash
+# Explicação: Lista log sinks existentes para verificar roteamento configurado.
 gcloud logging sinks list
 ```
 
 Liste buckets:
 
 ```bash
+# Explicação: Lista log buckets do Cloud Logging na localização informada.
 gcloud logging buckets list --location=global
 ```
 
@@ -222,6 +232,7 @@ Categorias importantes incluem Admin Activity e outros tipos conforme serviço/c
 Filtro útil:
 
 ```bash
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read \
   'logName:"cloudaudit.googleapis.com"' \
   --limit=20

@@ -32,20 +32,26 @@ Cloud Run / Cloud Functions
 Faça primeiro um laboratório de decisão e inspeção para evitar deployment desnecessário.
 
 ```bash
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable cloudfunctions.googleapis.com eventarc.googleapis.com pubsub.googleapis.com run.googleapis.com
+# Explicação: Executa `gcloud functions list --gen2 --regions=us-central1` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud functions list --gen2 --regions=us-central1
+# Explicação: Lista triggers do Eventarc para confirmar o roteamento de eventos configurado.
 gcloud eventarc triggers list --location=us-central1
 ```
 
 Crie um tópico Pub/Sub de laboratório para representar a origem:
 ```bash
+# Explicação: Cria um tópico Pub/Sub para receber mensagens dos produtores.
 gcloud pubsub topics create ace-events
 ```
 
 ## 3. Inspecionar
 
 ```bash
+# Explicação: Exibe a configuração do tópico Pub/Sub indicado.
 gcloud pubsub topics describe ace-events
+# Explicação: Lista triggers do Eventarc para confirmar o roteamento de eventos configurado.
 gcloud eventarc triggers list --location=us-central1
 ```
 
@@ -57,6 +63,7 @@ No Console compare o formulário de criação de Cloud Run/Cloud Functions e os 
 
 Publique um evento no tópico e explique que, sem trigger/destination configurado, não haverá aplicação consumidora automática.
 ```bash
+# Explicação: Publica uma mensagem no tópico Pub/Sub para testar o fluxo de eventos.
 gcloud pubsub topics publish ace-events --message='evento'
 ```
 
@@ -91,6 +98,7 @@ Desenhe a configuração completa antes de provisionar: source → trigger → d
 ## 9. Cleanup
 
 ```bash
+# Explicação: Exclui o tópico Pub/Sub criado no laboratório.
 gcloud pubsub topics delete ace-events --quiet
 ```
 
@@ -227,8 +235,10 @@ Cloud Run ou Cloud Functions
 ### 1. Criar código
 
 ```bash
+# Explicação: Cria o diretório usado pelos arquivos/configurações do laboratório.
 mkdir -p ~/ace-function && cd ~/ace-function
 
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > main.py <<'EOF'
 import base64
 
@@ -238,6 +248,7 @@ def hello_pubsub(event, context):
     print(f'ACE recebeu: {msg}')
 EOF
 
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > requirements.txt <<'EOF'
 functions-framework==3.*
 EOF
@@ -246,8 +257,10 @@ EOF
 ### 2. Criar tópico e deploy
 
 ```bash
+# Explicação: Cria um tópico Pub/Sub para receber mensagens dos produtores.
 gcloud pubsub topics create ace-events 2>/dev/null || true
 
+# Explicação: Implanta/atualiza uma Cloud Function com runtime, entrada e trigger definidos pelas flags.
 gcloud functions deploy ace-pubsub-function \
   --gen2 \
   --runtime=python312 \
@@ -260,22 +273,26 @@ gcloud functions deploy ace-pubsub-function \
 ### 3. Inspecionar
 
 ```bash
+# Explicação: Exibe a configuração e o estado da Cloud Function.
 gcloud functions describe ace-pubsub-function \
   --gen2 \
   --region=us-central1
 
+# Explicação: Lista triggers do Eventarc para confirmar o roteamento de eventos configurado.
 gcloud eventarc triggers list --location=us-central1
 ```
 
 ### 4. Testar
 
 ```bash
+# Explicação: Publica uma mensagem no tópico Pub/Sub para testar o fluxo de eventos.
 gcloud pubsub topics publish ace-events --message='evento ACE'
 ```
 
 Leia logs:
 
 ```bash
+# Explicação: Executa `gcloud functions logs read ace-pubsub-function --gen2 --region=us-central1 --limit=20` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud functions logs read ace-pubsub-function \
   --gen2 \
   --region=us-central1 \
@@ -289,7 +306,9 @@ Procure `ACE recebeu: evento ACE`.
 Publique em outro tópico que não é o trigger:
 
 ```bash
+# Explicação: Cria um tópico Pub/Sub para receber mensagens dos produtores.
 gcloud pubsub topics create ace-outro-topic
+# Explicação: Publica uma mensagem no tópico Pub/Sub para testar o fluxo de eventos.
 gcloud pubsub topics publish ace-outro-topic --message='nao deve acionar'
 ```
 
@@ -318,10 +337,14 @@ Cloud Run / Cloud Function
 ### Cleanup
 
 ```bash
+# Explicação: Exclui a Cloud Function criada no laboratório.
 gcloud functions delete ace-pubsub-function \
   --gen2 --region=us-central1 --quiet
 
+# Explicação: Exclui o tópico Pub/Sub criado no laboratório.
 gcloud pubsub topics delete ace-events --quiet
+# Explicação: Exclui o tópico Pub/Sub criado no laboratório.
 gcloud pubsub topics delete ace-outro-topic --quiet
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -rf ~/ace-function
 ```

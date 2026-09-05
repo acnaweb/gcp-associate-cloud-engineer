@@ -37,15 +37,25 @@ Troubleshooting
 Circuito:
 
 ```bash
+# Explicação: Exibe as propriedades da configuração `gcloud` ativa para conferência.
 gcloud config list
+# Explicação: Lista as identidades autenticadas e mostra qual conta está ativa no `gcloud`.
 gcloud auth list
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
+# Explicação: Lista VPCs existentes no projeto.
 gcloud compute networks list
+# Explicação: Lista regras de firewall para inspecionar a política efetiva da VPC.
 gcloud compute firewall-rules list
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list
+# Explicação: Lista buckets visíveis no projeto.
 gcloud storage buckets list
+# Explicação: Lista serviços Cloud Run existentes na região/projeto.
 gcloud run services list --region=us-central1
+# Explicação: Lista clusters GKE existentes e seus estados/localizações.
 gcloud container clusters list
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read 'severity>=ERROR' --limit=5
 ```
 

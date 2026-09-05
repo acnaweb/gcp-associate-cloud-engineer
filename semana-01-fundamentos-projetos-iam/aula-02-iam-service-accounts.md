@@ -31,15 +31,23 @@ User
 # 2. Criar
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Define a variável `SA_NAME` usada nas próximas etapas do laboratório.
 export SA_NAME=ace-storage-reader
+# Explicação: Define a variável `SA_EMAIL` usada nas próximas etapas do laboratório.
 export SA_EMAIL="$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"
+# Explicação: Define `BUCKET` com o nome do bucket usado no laboratório.
 export BUCKET="gs://$PROJECT_ID-ace-iam-$RANDOM"
 
+# Explicação: Cria uma Service Account que será usada como identidade de workload ou principal IAM.
 gcloud iam service-accounts create "$SA_NAME"
+# Explicação: Cria um bucket Cloud Storage com localização e opções informadas.
 gcloud storage buckets create "$BUCKET" --location=us-central1
 
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo "conteudo ACE" > dado.txt
+# Explicação: Copia arquivo(s) entre o ambiente local e Cloud Storage, ou entre localizações no Cloud Storage.
 gcloud storage cp dado.txt "$BUCKET/"
 ```
 
@@ -50,9 +58,13 @@ gcloud storage cp dado.txt "$BUCKET/"
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe detalhes da Service Account indicada.
 gcloud iam service-accounts describe "$SA_EMAIL"
+# Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
 gcloud storage buckets describe "$BUCKET"
+# Explicação: Exibe a política IAM do bucket para verificar quem possui acesso.
 gcloud storage buckets get-iam-policy "$BUCKET"
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
 ```
 
@@ -63,10 +75,12 @@ gcloud iam roles describe roles/storage.objectViewer
 Conceda leitura e depois teste:
 
 ```bash
+# Explicação: Adiciona uma concessão IAM diretamente ao bucket.
 gcloud storage buckets add-iam-policy-binding "$BUCKET" \
   --member="serviceAccount:$SA_EMAIL" \
   --role="roles/storage.objectViewer"
 
+# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
 gcloud storage cat "$BUCKET/dado.txt" \
   --impersonate-service-account="$SA_EMAIL"
 ```
@@ -78,10 +92,12 @@ gcloud storage cat "$BUCKET/dado.txt" \
 Remova a role que acabou de conceder:
 
 ```bash
+# Explicação: Remove uma concessão IAM diretamente do bucket.
 gcloud storage buckets remove-iam-policy-binding "$BUCKET" \
   --member="serviceAccount:$SA_EMAIL" \
   --role="roles/storage.objectViewer"
 
+# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
 gcloud storage cat "$BUCKET/dado.txt" \
   --impersonate-service-account="$SA_EMAIL"
 ```
@@ -100,7 +116,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Exibe a política IAM do bucket para verificar quem possui acesso.
 gcloud storage buckets get-iam-policy "$BUCKET"
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
 ```
 
@@ -129,10 +147,12 @@ Correção
 Recrie exatamente o binding mínimo:
 
 ```bash
+# Explicação: Adiciona uma concessão IAM diretamente ao bucket.
 gcloud storage buckets add-iam-policy-binding "$BUCKET" \
   --member="serviceAccount:$SA_EMAIL" \
   --role="roles/storage.objectViewer"
 
+# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
 gcloud storage cat "$BUCKET/dado.txt" \
   --impersonate-service-account="$SA_EMAIL"
 ```
@@ -150,9 +170,13 @@ gcloud storage cat "$BUCKET/dado.txt" \
 # 9. Cleanup
 
 ```bash
+# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
 gcloud storage rm "$BUCKET/dado.txt"
+# Explicação: Exclui o bucket; ele precisa estar vazio ou ser removido recursivamente conforme o comando.
 gcloud storage buckets delete "$BUCKET" --quiet
+# Explicação: Exclui a Service Account criada para o laboratório.
 gcloud iam service-accounts delete "$SA_EMAIL" --quiet
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f dado.txt
 ```
 
@@ -196,8 +220,11 @@ roles/owner   → Owner
 Inspecione:
 
 ```bash
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/viewer
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/editor
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/owner
 ```
 
@@ -218,15 +245,20 @@ roles/bigquery.dataViewer
 Descubra as roles existentes:
 
 ```bash
+# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
 gcloud iam roles list --filter='stage:GA' --limit=30
+# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
 gcloud iam roles list --filter='title:Compute'
+# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
 gcloud iam roles list --filter='title:Storage'
 ```
 
 Inspecione as permissions de uma role:
 
 ```bash
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/compute.viewer
 ```
 
@@ -343,23 +375,31 @@ IAM & Admin → Roles
 Pelo CLI:
 
 ```bash
+# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
 gcloud iam roles list
+# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
 gcloud iam roles list --filter='title:Compute'
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/viewer
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/editor
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/compute.viewer
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
 ```
 
 Para listar apenas custom roles do projeto:
 
 ```bash
+# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
 gcloud iam roles list --project="$(gcloud config get-value project)"
 ```
 
 ## Como descobrir as permissions de uma role
 
 ```bash
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
 ```
 

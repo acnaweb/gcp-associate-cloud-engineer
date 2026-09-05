@@ -34,10 +34,13 @@ SQL analytics
 # 2. Criar
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
 
+# Explicação: Cria um recurso BigQuery, como dataset ou tabela, conforme as flags.
 bq mk --dataset --location=US "$PROJECT_ID:ace_analytics"
 
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > vendas.csv <<'EOF'
 id,estado,valor
 1,SP,100
@@ -45,6 +48,7 @@ id,estado,valor
 3,SP,150
 EOF
 
+# Explicação: Carrega dados no BigQuery a partir do arquivo/origem e schema informados.
 bq load \
   --source_format=CSV \
   --skip_leading_rows=1 \
@@ -60,8 +64,11 @@ bq load \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe metadados e schema do recurso BigQuery indicado.
 bq show "$PROJECT_ID:ace_analytics"
+# Explicação: Exibe metadados e schema do recurso BigQuery indicado.
 bq show "$PROJECT_ID:ace_analytics.vendas"
+# Explicação: Lista datasets, tabelas ou jobs BigQuery conforme o argumento.
 bq ls "$PROJECT_ID:ace_analytics"
 ```
 
@@ -70,6 +77,7 @@ bq ls "$PROJECT_ID:ace_analytics"
 # 4. Testar
 
 ```bash
+# Explicação: Executa uma consulta SQL no BigQuery; as flags controlam Standard SQL, dry run e outros parâmetros.
 bq query --use_legacy_sql=false \
 'SELECT estado, SUM(valor) receita
  FROM `'"$PROJECT_ID"'.ace_analytics.vendas`
@@ -84,6 +92,7 @@ bq query --use_legacy_sql=false \
 Use uma tabela inexistente:
 
 ```bash
+# Explicação: Executa uma consulta SQL no BigQuery; as flags controlam Standard SQL, dry run e outros parâmetros.
 bq query --use_legacy_sql=false \
 'SELECT * FROM `'"$PROJECT_ID"'.ace_analytics.vendas_errada`'
 ```
@@ -100,7 +109,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Lista datasets, tabelas ou jobs BigQuery conforme o argumento.
 bq ls "$PROJECT_ID:ace_analytics"
+# Explicação: Exibe metadados e schema do recurso BigQuery indicado.
 bq show "$PROJECT_ID:ace_analytics.vendas"
 ```
 
@@ -150,7 +161,9 @@ BigQuery   → analytics/warehouse
 # 9. Cleanup
 
 ```bash
+# Explicação: Remove o recurso BigQuery indicado durante o cleanup.
 bq rm -r -f "$PROJECT_ID:ace_analytics"
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f vendas.csv
 ```
 
@@ -177,12 +190,14 @@ O exam guide inclui revisar status de jobs e estimar custos de storage/data proc
 ## Jobs
 
 ```bash
+# Explicação: Lista datasets, tabelas ou jobs BigQuery conforme o argumento.
 bq ls -j -a -n 20
 ```
 
 Para inspecionar um job específico:
 
 ```bash
+# Explicação: Exibe metadados e schema do recurso BigQuery indicado.
 bq show -j PROJECT_ID:LOCATION.JOB_ID
 ```
 
@@ -191,6 +206,7 @@ bq show -j PROJECT_ID:LOCATION.JOB_ID
 Antes de executar query analítica maior:
 
 ```bash
+# Explicação: Executa uma consulta SQL no BigQuery; as flags controlam Standard SQL, dry run e outros parâmetros.
 bq query \
   --use_legacy_sql=false \
   --dry_run \

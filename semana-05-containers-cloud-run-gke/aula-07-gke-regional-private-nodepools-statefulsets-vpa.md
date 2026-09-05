@@ -33,8 +33,11 @@ Cluster
 Use um cluster já existente ou apenas inspecione para reduzir custo.
 
 ```bash
+# Explicação: Lista clusters GKE existentes e seus estados/localizações.
 gcloud container clusters list
+# Explicação: Lista node pools do cluster para verificar tamanho e configuração.
 gcloud container node-pools list --cluster=CLUSTER --location=LOCATION
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get deployments,statefulsets,hpa -A
 ```
 
@@ -43,8 +46,11 @@ Se criar cluster, prefira um laboratório curto e delete ao final.
 ## 3. Inspecionar
 
 ```bash
+# Explicação: Exibe a configuração detalhada do cluster GKE.
 gcloud container clusters describe CLUSTER --location=LOCATION
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get nodes -o wide
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get pods -A
 ```
 
@@ -56,8 +62,11 @@ Identifique se o cluster é Autopilot/Standard e seus endpoints/configurações 
 
 Crie um StatefulSet simples apenas se já tiver cluster:
 ```bash
+# Explicação: Cria um Deployment Kubernetes usando a imagem de container informada.
 kubectl create deployment web --image=nginx:alpine
+# Explicação: Cria/configura Horizontal Pod Autoscaler para ajustar réplicas com base na métrica informada.
 kubectl autoscale deployment web --cpu-percent=60 --min=1 --max=3
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get hpa
 ```
 
@@ -84,7 +93,9 @@ Sintoma → Hipótese → Evidência → Causa → Correção
 ## 7. Corrigir
 
 ```bash
+# Explicação: Atualiza a imagem de um container no recurso Kubernetes e inicia um novo rollout.
 kubectl set image deployment/web nginx=nginx:alpine
+# Explicação: Executa uma operação de rollout do Deployment, como acompanhar status, histórico ou desfazer versão.
 kubectl rollout status deployment/web
 ```
 
@@ -98,6 +109,7 @@ kubectl rollout status deployment/web
 ## 9. Cleanup
 
 ```bash
+# Explicação: Exclui o recurso Kubernetes indicado para cleanup ou para induzir/corrigir o cenário do laboratório.
 kubectl delete deployment web --ignore-not-found
 # Exclua cluster se criado somente para o lab.
 ```
@@ -119,9 +131,13 @@ kubectl delete deployment web --ignore-not-found
 ## Inventário
 
 ```bash
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get nodes
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get pods -A
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get services -A
+# Explicação: Lista clusters GKE existentes e seus estados/localizações.
 gcloud container clusters list
 ```
 
@@ -130,6 +146,7 @@ gcloud container clusters list
 Em Standard clusters:
 
 ```bash
+# Explicação: Lista node pools do cluster para verificar tamanho e configuração.
 gcloud container node-pools list --cluster=CLUSTER --location=LOCATION
 ```
 
@@ -140,6 +157,7 @@ Operações cobradas incluem adicionar, editar, remover e configurar autoscaling
 Use StatefulSet quando Pods precisam de identidade estável/ordenação e storage persistente associado ao padrão stateful.
 
 ```bash
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get statefulsets
 ```
 
@@ -206,6 +224,7 @@ O guia exige **implantar um cluster com diferentes configurações**. Não crie 
 #### Regional Standard
 
 ```bash
+# Explicação: Cria um cluster GKE Standard com as opções de rede, localização e nodes informadas.
 gcloud container clusters create ace-regional \
   --region=us-central1 \
   --num-nodes=1
@@ -214,6 +233,7 @@ gcloud container clusters create ace-regional \
 #### Autopilot
 
 ```bash
+# Explicação: Cria um cluster GKE Autopilot; o Google gerencia os nodes e grande parte da infraestrutura do cluster.
 gcloud container clusters create-auto ace-autopilot \
   --region=us-central1
 ```
@@ -237,12 +257,14 @@ O objetivo é reconhecer e verificar a configuração, não manter três cluster
 ### Node pools — Standard cluster
 
 ```bash
+# Explicação: Cria um novo node pool no cluster GKE Standard.
 gcloud container node-pools create ace-extra-pool \
   --cluster=ace-regional \
   --region=us-central1 \
   --num-nodes=1 \
   --machine-type=e2-small
 
+# Explicação: Lista node pools do cluster para verificar tamanho e configuração.
 gcloud container node-pools list \
   --cluster=ace-regional \
   --region=us-central1
@@ -251,6 +273,7 @@ gcloud container node-pools list \
 Edite autoscaling do pool:
 
 ```bash
+# Explicação: Executa `gcloud container clusters update ace-regional --region=us-central1 --enable-autoscal…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud container clusters update ace-regional \
   --region=us-central1 \
   --enable-autoscaling \
@@ -262,6 +285,7 @@ gcloud container clusters update ace-regional \
 Remova:
 
 ```bash
+# Explicação: Remove o node pool especificado do cluster.
 gcloud container node-pools delete ace-extra-pool \
   --cluster=ace-regional \
   --region=us-central1 --quiet
@@ -270,6 +294,7 @@ gcloud container node-pools delete ace-extra-pool \
 ### StatefulSet — prática real
 
 ```bash
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > statefulset.yaml <<'EOF'
 apiVersion: apps/v1
 kind: StatefulSet
@@ -291,7 +316,9 @@ spec:
         image: nginx:alpine
 EOF
 
+# Explicação: Aplica declarativamente o manifesto Kubernetes indicado, criando ou atualizando os recursos.
 kubectl apply -f statefulset.yaml
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get statefulsets,pods
 ```
 
@@ -305,6 +332,7 @@ ace-stateful-1
 ### VPA — prática guiada/executável quando API disponível
 
 ```bash
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > vpa.yaml <<'EOF'
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
@@ -319,8 +347,11 @@ spec:
     updateMode: "Off"
 EOF
 
+# Explicação: Aplica declarativamente o manifesto Kubernetes indicado, criando ou atualizando os recursos.
 kubectl apply -f vpa.yaml
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get vpa
+# Explicação: Mostra detalhes e eventos do recurso Kubernetes, útil para troubleshooting.
 kubectl describe vpa web-vpa
 ```
 
@@ -336,8 +367,11 @@ VPA → recursos/request recommendation por Pod
 ### Cleanup
 
 ```bash
+# Explicação: Exclui o recurso Kubernetes indicado para cleanup ou para induzir/corrigir o cenário do laboratório.
 kubectl delete -f statefulset.yaml --ignore-not-found
+# Explicação: Exclui o recurso Kubernetes indicado para cleanup ou para induzir/corrigir o cenário do laboratório.
 kubectl delete -f vpa.yaml --ignore-not-found
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f statefulset.yaml vpa.yaml
 # Exclua clusters criados exclusivamente para o lab.
 ```

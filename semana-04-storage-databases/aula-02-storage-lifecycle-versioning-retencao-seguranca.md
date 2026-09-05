@@ -32,17 +32,26 @@ Bucket
 # 2. Criar
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Define `BUCKET` com o nome do bucket usado no laboratório.
 export BUCKET="gs://$PROJECT_ID-ace-lifecycle-$RANDOM"
 
+# Explicação: Cria um bucket Cloud Storage com localização e opções informadas.
 gcloud storage buckets create "$BUCKET" --location=us-central1
+# Explicação: Atualiza configurações do bucket, como versioning, lifecycle, retention ou outras opções informadas.
 gcloud storage buckets update "$BUCKET" --versioning
 
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo v1 > dado.txt
+# Explicação: Copia arquivo(s) entre o ambiente local e Cloud Storage, ou entre localizações no Cloud Storage.
 gcloud storage cp dado.txt "$BUCKET/dado.txt"
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo v2 > dado.txt
+# Explicação: Copia arquivo(s) entre o ambiente local e Cloud Storage, ou entre localizações no Cloud Storage.
 gcloud storage cp dado.txt "$BUCKET/dado.txt"
 
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > lifecycle.json <<'EOF'
 {
   "rule": [{
@@ -52,9 +61,11 @@ cat > lifecycle.json <<'EOF'
 }
 EOF
 
+# Explicação: Atualiza configurações do bucket, como versioning, lifecycle, retention ou outras opções informadas.
 gcloud storage buckets update "$BUCKET" \
   --lifecycle-file=lifecycle.json
 
+# Explicação: Atualiza configurações do bucket, como versioning, lifecycle, retention ou outras opções informadas.
 gcloud storage buckets update "$BUCKET" \
   --retention-period=60s
 ```
@@ -66,7 +77,9 @@ gcloud storage buckets update "$BUCKET" \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Lista buckets/objetos; flags podem incluir versões antigas e detalhes adicionais.
 gcloud storage ls --all-versions "$BUCKET"
+# Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
 gcloud storage buckets describe "$BUCKET"
 ```
 
@@ -77,6 +90,7 @@ gcloud storage buckets describe "$BUCKET"
 Anote as generations:
 
 ```bash
+# Explicação: Lista buckets/objetos; flags podem incluir versões antigas e detalhes adicionais.
 gcloud storage ls --all-versions "$BUCKET/dado.txt"
 ```
 
@@ -89,6 +103,7 @@ Confirme que existem versões e que a retention policy está configurada.
 Logo após configurar retenção, tente apagar:
 
 ```bash
+# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
 gcloud storage rm "$BUCKET/dado.txt"
 ```
 
@@ -106,7 +121,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
 gcloud storage buckets describe "$BUCKET"
+# Explicação: Exibe metadados de um objeto Cloud Storage, como geração, tamanho e storage class.
 gcloud storage objects describe "$BUCKET/dado.txt"
 ```
 
@@ -136,6 +153,7 @@ Aguarde o período curto de laboratório e tente novamente. Não aplique retenti
 
 Depois:
 ```bash
+# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
 gcloud storage rm "$BUCKET/dado.txt"
 ```
 
@@ -153,8 +171,11 @@ gcloud storage rm "$BUCKET/dado.txt"
 
 ```bash
 # Após a retenção mínima expirar:
+# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
 gcloud storage rm "$BUCKET/**" 2>/dev/null || true
+# Explicação: Exclui o bucket; ele precisa estar vazio ou ser removido recursivamente conforme o comando.
 gcloud storage buckets delete "$BUCKET" --quiet
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f dado.txt lifecycle.json
 ```
 
@@ -194,6 +215,7 @@ Cloud Storage
 Laboratório de inspeção:
 
 ```bash
+# Explicação: Lista jobs do Storage Transfer Service para acompanhar transferências configuradas.
 gcloud transfer jobs list 2>/dev/null || true
 ```
 

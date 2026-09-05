@@ -32,7 +32,9 @@ Execution
 # 2. Criar
 
 ```bash
+# Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
 export REGION=us-central1
+# Explicação: Cria um Cloud Run Job para executar uma tarefa finita sem servir requisições HTTP continuamente.
 gcloud run jobs create ace-job \
   --image=alpine \
   --region="$REGION" \
@@ -47,7 +49,9 @@ gcloud run jobs create ace-job \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Executa `gcloud run jobs describe ace-job --region="$REGION"` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud run jobs describe ace-job --region="$REGION"
+# Explicação: Lista ou descreve execuções do Cloud Run Job para verificar resultado e troubleshooting.
 gcloud run jobs executions list --job=ace-job --region="$REGION"
 ```
 
@@ -56,7 +60,9 @@ gcloud run jobs executions list --job=ace-job --region="$REGION"
 # 4. Testar
 
 ```bash
+# Explicação: Dispara uma execução do Cloud Run Job e, opcionalmente, aguarda sua conclusão.
 gcloud run jobs execute ace-job --region="$REGION" --wait
+# Explicação: Lista ou descreve execuções do Cloud Run Job para verificar resultado e troubleshooting.
 gcloud run jobs executions list --job=ace-job --region="$REGION"
 ```
 
@@ -67,11 +73,13 @@ gcloud run jobs executions list --job=ace-job --region="$REGION"
 Atualize o job para terminar com erro:
 
 ```bash
+# Explicação: Atualiza configuração, imagem ou parâmetros do Cloud Run Job.
 gcloud run jobs update ace-job \
   --region="$REGION" \
   --command=sh \
   --args=-c,'echo falha proposital; exit 1'
 
+# Explicação: Dispara uma execução do Cloud Run Job e, opcionalmente, aguarda sua conclusão.
 gcloud run jobs execute ace-job \
   --region="$REGION" \
   --wait || true
@@ -89,7 +97,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Lista ou descreve execuções do Cloud Run Job para verificar resultado e troubleshooting.
 gcloud run jobs executions list --job=ace-job --region="$REGION"
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read \
  'resource.type="cloud_run_job" AND resource.labels.job_name="ace-job"' \
  --limit=20
@@ -118,11 +128,13 @@ Correção
 Restaure comando:
 
 ```bash
+# Explicação: Atualiza configuração, imagem ou parâmetros do Cloud Run Job.
 gcloud run jobs update ace-job \
   --region="$REGION" \
   --command=sh \
   --args=-c,'echo corrigido; exit 0'
 
+# Explicação: Dispara uma execução do Cloud Run Job e, opcionalmente, aguarda sua conclusão.
 gcloud run jobs execute ace-job --region="$REGION" --wait
 ```
 
@@ -139,6 +151,7 @@ gcloud run jobs execute ace-job --region="$REGION" --wait
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui o Cloud Run Job criado no laboratório.
 gcloud run jobs delete ace-job --region="$REGION" --quiet
 ```
 

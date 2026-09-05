@@ -33,17 +33,24 @@ Service ── selector ──> Pods
 # 2. Criar
 
 ```bash
+# Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
 export REGION=us-central1
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable container.googleapis.com
 
+# Explicação: Cria um cluster GKE Autopilot; o Google gerencia os nodes e grande parte da infraestrutura do cluster.
 gcloud container clusters create-auto ace-gke \
   --region="$REGION"
 
+# Explicação: Obtém as credenciais do cluster e atualiza o kubeconfig para que o `kubectl` se conecte a ele.
 gcloud container clusters get-credentials ace-gke \
   --region="$REGION"
 
+# Explicação: Cria um Deployment Kubernetes usando a imagem de container informada.
 kubectl create deployment web --image=nginx:alpine
+# Explicação: Altera o número desejado de réplicas do Deployment.
 kubectl scale deployment web --replicas=2
+# Explicação: Cria um Service para expor os Pods gerenciados pelo Deployment na porta e tipo definidos.
 kubectl expose deployment web --port=80 --type=ClusterIP
 ```
 
@@ -54,10 +61,15 @@ kubectl expose deployment web --port=80 --type=ClusterIP
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get deployment web
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get pods -l app=web -o wide
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get service web
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get endpoints web
+# Explicação: Mostra detalhes e eventos do recurso Kubernetes, útil para troubleshooting.
 kubectl describe service web
 ```
 
@@ -66,6 +78,7 @@ kubectl describe service web
 # 4. Testar
 
 ```bash
+# Explicação: Cria um Pod temporário para executar o container/comando informado; neste material ele é usado principalmente como cliente de teste dentro do cluster.
 kubectl run curl --rm -it --restart=Never \
   --image=curlimages/curl -- \
   curl -s http://web
@@ -78,9 +91,11 @@ kubectl run curl --rm -it --restart=Never \
 Altere selector do Service para não corresponder aos Pods:
 
 ```bash
+# Explicação: Altera parcialmente um recurso Kubernetes existente sem reaplicar todo o manifesto.
 kubectl patch service web \
   -p '{"spec":{"selector":{"app":"nome-errado"}}}'
 
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get endpoints web
 ```
 
@@ -98,8 +113,11 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get service web -o yaml
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get pods --show-labels
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get endpoints web
 ```
 
@@ -124,9 +142,11 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Altera parcialmente um recurso Kubernetes existente sem reaplicar todo o manifesto.
 kubectl patch service web \
   -p '{"spec":{"selector":{"app":"web"}}}'
 
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get endpoints web
 ```
 
@@ -143,6 +163,7 @@ kubectl get endpoints web
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui o cluster GKE para encerrar a cobrança dos recursos associados.
 gcloud container clusters delete ace-gke \
   --region="$REGION" --quiet
 ```
@@ -170,6 +191,7 @@ gcloud container clusters delete ace-gke \
 Deployment é adequado para réplicas intercambiáveis/stateless. StatefulSet oferece identidade estável e ordenação apropriada para workloads stateful.
 
 ```bash
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get statefulsets
 ```
 
@@ -190,8 +212,10 @@ Pod
 Se ocorrer `ImagePullBackOff` com imagem privada, confirme em ordem:
 
 ```bash
+# Explicação: Mostra detalhes e eventos do recurso Kubernetes, útil para troubleshooting.
 kubectl describe pod POD
 
+# Explicação: Lista imagens Docker armazenadas no Artifact Registry.
 gcloud artifacts docker images list \
   REGION-docker.pkg.dev/PROJECT/REPOSITORY
 ```

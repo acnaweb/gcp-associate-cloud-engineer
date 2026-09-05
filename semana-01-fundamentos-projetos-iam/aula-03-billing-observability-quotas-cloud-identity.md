@@ -24,10 +24,15 @@ Observability → Monitoring + Logging
 Use um projeto de laboratório.
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Lista contas de faturamento acessíveis à identidade atual.
 gcloud billing accounts list
+# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
 gcloud billing projects describe "$PROJECT_ID"
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe --format='yaml(quotas)'
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable monitoring.googleapis.com logging.googleapis.com
 ```
 
@@ -36,8 +41,11 @@ Se sua conta tiver Organization, liste-a; caso contrário, documente por que Clo
 ## 3. Inspecionar
 
 ```bash
+# Explicação: Lista organizações visíveis para a identidade atual.
 gcloud organizations list
+# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
 gcloud billing projects describe "$PROJECT_ID"
+# Explicação: Lista as APIs já habilitadas no projeto para confirmar a configuração.
 gcloud services list --enabled --filter='monitoring.googleapis.com OR logging.googleapis.com'
 ```
 
@@ -103,7 +111,9 @@ Remova budgets de laboratório e recursos criados. APIs podem permanecer habilit
 ## Billing accounts e linkage
 
 ```bash
+# Explicação: Lista contas de faturamento acessíveis à identidade atual.
 gcloud billing accounts list
+# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
 gcloud billing projects describe $PROJECT_ID
 ```
 
@@ -136,6 +146,7 @@ A ativação é normalmente feita em **Billing → Billing export** no Console, 
 ## Quotas e aumento
 
 ```bash
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe --format='yaml(quotas)'
 ```
 
@@ -214,7 +225,9 @@ Automação de provisionamento deve ser reconhecida como alternativa ao gerencia
 Inspecione:
 
 ```bash
+# Explicação: Lista contas de faturamento acessíveis à identidade atual.
 gcloud billing accounts list
+# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
 gcloud billing projects describe "$PROJECT_ID"
 ```
 
@@ -265,6 +278,7 @@ Billing Account → BigQuery dataset → tabelas de custo → consulta SQL
 Primeiro inspecione quotas:
 
 ```bash
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe --format='yaml(quotas)'
 ```
 

@@ -23,8 +23,11 @@ External/GCS source → Storage Transfer Service → GCS
 Pub/Sub hands-on:
 
 ```bash
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable pubsub.googleapis.com dataflow.googleapis.com storagetransfer.googleapis.com
+# Explicação: Cria um tópico Pub/Sub para receber mensagens dos produtores.
 gcloud pubsub topics create ace-topic
+# Explicação: Cria uma subscription associada ao tópico Pub/Sub para permitir consumo das mensagens.
 gcloud pubsub subscriptions create ace-sub --topic=ace-topic
 ```
 
@@ -33,9 +36,13 @@ Para Dataflow/Storage Transfer, liste jobs/configurações antes de provisionar 
 ## 3. Inspecionar
 
 ```bash
+# Explicação: Lista tópicos Pub/Sub existentes para confirmar a criação e localizar o recurso do laboratório.
 gcloud pubsub topics list
+# Explicação: Exibe a configuração da subscription Pub/Sub, incluindo o tópico associado e parâmetros de entrega.
 gcloud pubsub subscriptions describe ace-sub
+# Explicação: Lista jobs Dataflow para verificar estado e identificar a execução do laboratório.
 gcloud dataflow jobs list --region=us-central1
+# Explicação: Lista jobs do Storage Transfer Service para acompanhar transferências configuradas.
 gcloud transfer jobs list 2>/dev/null || true
 ```
 
@@ -44,7 +51,9 @@ gcloud transfer jobs list 2>/dev/null || true
 ## 4. Testar
 
 ```bash
+# Explicação: Publica uma mensagem no tópico Pub/Sub para testar o fluxo de eventos.
 gcloud pubsub topics publish ace-topic --message='ACE'
+# Explicação: Consome mensagens disponíveis na subscription; `--auto-ack` confirma automaticamente o recebimento.
 gcloud pubsub subscriptions pull ace-sub --auto-ack --limit=1
 ```
 
@@ -82,7 +91,9 @@ Repita pull com a subscription correta. Registre a matriz: Pub/Sub=mensageria, D
 ## 9. Cleanup
 
 ```bash
+# Explicação: Exclui a subscription Pub/Sub do laboratório.
 gcloud pubsub subscriptions delete ace-sub --quiet
+# Explicação: Exclui o tópico Pub/Sub criado no laboratório.
 gcloud pubsub topics delete ace-topic --quiet
 ```
 
@@ -111,9 +122,13 @@ Publisher → Topic → Subscription → Subscriber
 Comandos básicos:
 
 ```bash
+# Explicação: Cria um tópico Pub/Sub para receber mensagens dos produtores.
 gcloud pubsub topics create ace-topic
+# Explicação: Cria uma subscription associada ao tópico Pub/Sub para permitir consumo das mensagens.
 gcloud pubsub subscriptions create ace-sub --topic=ace-topic
+# Explicação: Publica uma mensagem no tópico Pub/Sub para testar o fluxo de eventos.
 gcloud pubsub topics publish ace-topic --message='ACE'
+# Explicação: Consome mensagens disponíveis na subscription; `--auto-ack` confirma automaticamente o recebimento.
 gcloud pubsub subscriptions pull ace-sub --auto-ack --limit=1
 ```
 
@@ -128,12 +143,14 @@ Pub/Sub → Dataflow → BigQuery
 E saiba revisar job status:
 
 ```bash
+# Explicação: Lista jobs Dataflow para verificar estado e identificar a execução do laboratório.
 gcloud dataflow jobs list --region=us-central1
 ```
 
 ## BigQuery jobs
 
 ```bash
+# Explicação: Lista datasets, tabelas ou jobs BigQuery conforme o argumento.
 bq ls -j -a -n 10
 ```
 
@@ -165,14 +182,18 @@ Escolha pelo protocolo e workload, não apenas pela capacidade.
 Crie um bucket temporário:
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Define a variável `DF_BUCKET` usada nas próximas etapas do laboratório.
 export DF_BUCKET="gs://$PROJECT_ID-ace-dataflow-$RANDOM"
+# Explicação: Cria um bucket Cloud Storage com localização e opções informadas.
 gcloud storage buckets create "$DF_BUCKET" --location=us-central1
 ```
 
 Execute um template de exemplo suportado na região:
 
 ```bash
+# Explicação: Inicia um job Dataflow a partir do template e parâmetros informados.
 gcloud dataflow jobs run ace-wordcount \
   --gcs-location=gs://dataflow-templates-us-central1/latest/Word_Count \
   --region=us-central1 \
@@ -183,12 +204,14 @@ gcloud dataflow jobs run ace-wordcount \
 Inspecione:
 
 ```bash
+# Explicação: Lista jobs Dataflow para verificar estado e identificar a execução do laboratório.
 gcloud dataflow jobs list --region=us-central1
 ```
 
 Pegue o `JOB_ID` real e descreva:
 
 ```bash
+# Explicação: Exibe detalhes e estado do job Dataflow selecionado.
 gcloud dataflow jobs describe JOB_ID --region=us-central1
 ```
 
@@ -225,6 +248,8 @@ Não confunda `gcloud storage cp` (cópia direta pelo cliente) com Storage Trans
 Depois do job terminar:
 
 ```bash
+# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
 gcloud storage rm --recursive "$DF_BUCKET/**" 2>/dev/null || true
+# Explicação: Exclui o bucket; ele precisa estar vazio ou ser removido recursivamente conforme o comando.
 gcloud storage buckets delete "$DF_BUCKET" --quiet
 ```

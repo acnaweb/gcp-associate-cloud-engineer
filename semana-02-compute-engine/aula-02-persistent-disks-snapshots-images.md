@@ -32,20 +32,25 @@ VM ── attach ──> Persistent Disk
 # 2. Criar
 
 ```bash
+# Explicação: Define `ZONE` com o valor da zona padrão usada pelos recursos zonais do laboratório.
 export ZONE=us-central1-a
 
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-disk-vm \
   --zone="$ZONE" \
   --machine-type=e2-micro \
   --image-family=debian-12 \
   --image-project=debian-cloud
 
+# Explicação: Cria um Persistent Disk independente que poderá ser anexado a uma VM.
 gcloud compute disks create ace-data \
   --zone="$ZONE" --size=10GB --type=pd-balanced
 
+# Explicação: Executa `gcloud compute instances attach-disk ace-disk-vm --disk=ace-data --zone="$ZONE"` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute instances attach-disk ace-disk-vm \
   --disk=ace-data --zone="$ZONE"
 
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-disk-vm --zone="$ZONE" --command='
 sudo mkfs.ext4 -F /dev/disk/by-id/google-ace-data
 sudo mkdir -p /data
@@ -61,9 +66,12 @@ echo ACE | sudo tee /data/arquivo.txt
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe propriedades do Persistent Disk, como tipo, tamanho, zona/região e usuários.
 gcloud compute disks describe ace-data --zone="$ZONE"
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-disk-vm --zone="$ZONE" \
   --format="yaml(disks)"
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-disk-vm --zone="$ZONE" \
   --command="mount | grep /data; cat /data/arquivo.txt"
 ```
@@ -75,14 +83,17 @@ gcloud compute ssh ace-disk-vm --zone="$ZONE" \
 Crie snapshot e restaure:
 
 ```bash
+# Explicação: Executa uma operação de criação, listagem, inspeção ou exclusão de snapshots.
 gcloud compute snapshots create ace-data-snap \
   --source-disk=ace-data \
   --source-disk-zone="$ZONE"
 
+# Explicação: Cria um Persistent Disk independente que poderá ser anexado a uma VM.
 gcloud compute disks create ace-data-restored \
   --zone="$ZONE" \
   --source-snapshot=ace-data-snap
 
+# Explicação: Executa uma operação de criação, listagem, inspeção ou exclusão de snapshots.
 gcloud compute snapshots describe ace-data-snap
 ```
 
@@ -93,6 +104,7 @@ gcloud compute snapshots describe ace-data-snap
 Desmonte o volume sem apagar dados:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-disk-vm --zone="$ZONE" \
   --command="sudo umount /data; cat /data/arquivo.txt"
 ```
@@ -109,8 +121,10 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-disk-vm --zone="$ZONE" \
   --format="yaml(disks)"
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-disk-vm --zone="$ZONE" \
   --command="lsblk; mount | grep /data || true"
 ```
@@ -136,6 +150,7 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-disk-vm --zone="$ZONE" --command='
 sudo mount /dev/disk/by-id/google-ace-data /data
 cat /data/arquivo.txt
@@ -155,8 +170,11 @@ cat /data/arquivo.txt
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-disk-vm --zone="$ZONE" --quiet
+# Explicação: Exclui o Persistent Disk criado para o laboratório.
 gcloud compute disks delete ace-data ace-data-restored --zone="$ZONE" --quiet
+# Explicação: Executa uma operação de criação, listagem, inspeção ou exclusão de snapshots.
 gcloud compute snapshots delete ace-data-snap --quiet
 ```
 
@@ -184,6 +202,7 @@ Família de block storage do Google Cloud voltada a requisitos modernos de perfo
 O guia cobra agendamento de snapshots. Use resource policies:
 
 ```bash
+# Explicação: Cria uma Resource Policy, como uma política de agendamento de snapshots.
 gcloud compute resource-policies create snapshot-schedule ace-daily-snapshot \
   --region=us-central1 \
   --daily-schedule \
@@ -193,6 +212,7 @@ gcloud compute resource-policies create snapshot-schedule ace-daily-snapshot \
 Associe a um disco compatível:
 
 ```bash
+# Explicação: Associa uma resource policy ao disco, por exemplo uma agenda automática de snapshots.
 gcloud compute disks add-resource-policies DISK_NAME \
   --zone=us-central1-a \
   --resource-policies=ace-daily-snapshot
@@ -201,6 +221,7 @@ gcloud compute disks add-resource-policies DISK_NAME \
 Inspecione:
 
 ```bash
+# Explicação: Exibe a configuração da Resource Policy para conferir agenda e parâmetros.
 gcloud compute resource-policies describe ace-daily-snapshot --region=us-central1
 ```
 
@@ -247,12 +268,14 @@ Regional PD
 Snapshots são voltados a recuperação de disco. Images são usadas como origem padronizada para boot disks/VMs.
 
 ```bash
+# Explicação: Lista imagens disponíveis/filtradas para confirmar a custom image criada.
 gcloud compute images list --no-standard-images --limit=10
 ```
 
 Exemplo a partir de um disk:
 
 ```bash
+# Explicação: Cria uma custom image a partir da origem informada para reutilizar o conteúdo do disco em novas VMs.
 gcloud compute images create ace-custom-image \
   --source-disk=DISK_NAME \
   --source-disk-zone=us-central1-a
@@ -273,6 +296,7 @@ snapshots automáticos
 Liste policies:
 
 ```bash
+# Explicação: Executa `gcloud compute resource-policies list` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute resource-policies list
 ```
 
@@ -294,17 +318,21 @@ Image             → base para criar boot disks/VMs
 Depois de ter um disco disponível:
 
 ```bash
+# Explicação: Cria uma custom image a partir da origem informada para reutilizar o conteúdo do disco em novas VMs.
 gcloud compute images create ace-custom-image \
   --source-disk=ace-data \
   --source-disk-zone="$ZONE"
 
+# Explicação: Exibe detalhes da imagem selecionada.
 gcloud compute images describe ace-custom-image
+# Explicação: Lista imagens disponíveis/filtradas para confirmar a custom image criada.
 gcloud compute images list --no-standard-images
 ```
 
 Teste de uso:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-from-image \
   --zone="$ZONE" \
   --machine-type=e2-micro \
@@ -314,15 +342,18 @@ gcloud compute instances create ace-from-image \
 ### Snapshot schedule completo
 
 ```bash
+# Explicação: Cria uma Resource Policy, como uma política de agendamento de snapshots.
 gcloud compute resource-policies create snapshot-schedule ace-daily-snapshot \
   --region=us-central1 \
   --daily-schedule \
   --start-time=03:00
 
+# Explicação: Associa uma resource policy ao disco, por exemplo uma agenda automática de snapshots.
 gcloud compute disks add-resource-policies ace-data \
   --zone="$ZONE" \
   --resource-policies=ace-daily-snapshot
 
+# Explicação: Exibe a configuração da Resource Policy para conferir agenda e parâmetros.
 gcloud compute resource-policies describe ace-daily-snapshot \
   --region=us-central1
 ```
@@ -330,11 +361,15 @@ gcloud compute resource-policies describe ace-daily-snapshot \
 ### Cleanup adicional
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-from-image --zone="$ZONE" --quiet
+# Explicação: Exclui a custom image criada no laboratório.
 gcloud compute images delete ace-custom-image --quiet
+# Explicação: Executa `gcloud compute disks remove-resource-policies ace-data --zone="$ZONE" --resource-pol…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute disks remove-resource-policies ace-data \
   --zone="$ZONE" \
   --resource-policies=ace-daily-snapshot 2>/dev/null || true
+# Explicação: Exclui a Resource Policy usada no laboratório.
 gcloud compute resource-policies delete ace-daily-snapshot \
   --region=us-central1 --quiet 2>/dev/null || true
 ```

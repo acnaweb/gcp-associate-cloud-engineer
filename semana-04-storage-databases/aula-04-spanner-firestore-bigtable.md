@@ -34,6 +34,7 @@ Se o projeto não possui Firestore database, crie no Console em Native mode em u
 Inspecione:
 
 ```bash
+# Explicação: Executa `gcloud firestore databases list` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud firestore databases list
 ```
 
@@ -49,7 +50,9 @@ document:
 ### Spanner e Bigtable — inspeção sem provisionar cluster caro
 
 ```bash
+# Explicação: Executa `gcloud spanner instances list` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud spanner instances list
+# Explicação: Executa `gcloud bigtable instances list` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud bigtable instances list
 ```
 
@@ -70,6 +73,7 @@ Antes de provocar qualquer erro, confirme a configuração criada. O troubleshoo
 Para Firestore, confira database/mode/location no Console ou:
 
 ```bash
+# Explicação: Executa `gcloud firestore databases describe --database='(default)'` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud firestore databases describe --database='(default)'
 ```
 

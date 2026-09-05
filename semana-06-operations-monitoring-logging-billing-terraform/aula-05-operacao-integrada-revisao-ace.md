@@ -38,6 +38,7 @@ Correção mínima
 Crie VM com nginx:
 
 ```bash
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > startup.sh <<'EOF'
 #!/bin/bash
 apt-get update
@@ -45,6 +46,7 @@ apt-get install -y nginx
 systemctl enable --now nginx
 EOF
 
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-ops-vm \
   --zone=us-central1-a \
   --machine-type=e2-micro \
@@ -60,8 +62,10 @@ gcloud compute instances create ace-ops-vm \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-ops-vm \
   --zone=us-central1-a
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-ops-vm \
   --zone=us-central1-a \
   --command="systemctl is-active nginx; curl -s localhost | head"
@@ -85,6 +89,7 @@ localhost:80 = responde
 Pare apenas nginx:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-ops-vm \
   --zone=us-central1-a \
   --command="sudo systemctl stop nginx"
@@ -104,10 +109,12 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-ops-vm \
   --zone=us-central1-a \
   --format="value(status)"
 
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-ops-vm \
   --zone=us-central1-a \
   --command="systemctl is-active nginx || true; sudo ss -lntp | grep :80 || true"
@@ -136,6 +143,7 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-ops-vm \
   --zone=us-central1-a \
   --command="sudo systemctl start nginx; curl -s localhost | head"
@@ -154,8 +162,10 @@ gcloud compute ssh ace-ops-vm \
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-ops-vm \
   --zone=us-central1-a --quiet
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f startup.sh
 ```
 

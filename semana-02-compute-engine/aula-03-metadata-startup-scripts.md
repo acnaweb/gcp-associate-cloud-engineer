@@ -30,6 +30,7 @@ VM metadata
 # 2. Criar
 
 ```bash
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > startup-ok.sh <<'EOF'
 #!/bin/bash
 apt-get update
@@ -38,6 +39,7 @@ echo "ACE $(hostname)" > /var/www/html/index.html
 systemctl enable --now nginx
 EOF
 
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-startup \
   --zone=us-central1-a \
   --machine-type=e2-micro \
@@ -54,10 +56,12 @@ gcloud compute instances create ace-startup \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-startup \
   --zone=us-central1-a \
   --format="yaml(metadata)"
 
+# Explicação: Lê a saída da porta serial da VM, útil quando o sistema não inicializa ou o SSH não funciona.
 gcloud compute instances get-serial-port-output ace-startup \
   --zone=us-central1-a | tail -80
 ```
@@ -67,6 +71,7 @@ gcloud compute instances get-serial-port-output ace-startup \
 # 4. Testar
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-startup --zone=us-central1-a \
   --command="curl -s localhost; systemctl is-active nginx"
 ```
@@ -78,12 +83,14 @@ gcloud compute ssh ace-startup --zone=us-central1-a \
 Crie uma segunda VM com pacote inválido:
 
 ```bash
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > startup-fail.sh <<'EOF'
 #!/bin/bash
 apt-get update
 apt-get install -y pacote-que-nao-existe-ace
 EOF
 
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-startup-fail \
   --zone=us-central1-a \
   --machine-type=e2-micro \
@@ -104,6 +111,7 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidência ensinada nesta aula:**
 ```bash
+# Explicação: Lê a saída da porta serial da VM, útil quando o sistema não inicializa ou o SSH não funciona.
 gcloud compute instances get-serial-port-output ace-startup-fail \
   --zone=us-central1-a | tail -100
 ```
@@ -133,10 +141,12 @@ Correção
 Atualize metadata com script válido ou recrie a VM.
 
 ```bash
+# Explicação: Executa `gcloud compute instances add-metadata ace-startup-fail --zone=us-central1-a --metada…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute instances add-metadata ace-startup-fail \
   --zone=us-central1-a \
   --metadata-from-file=startup-script=startup-ok.sh
 
+# Explicação: Reinicializa a VM de forma semelhante a um reset de hardware, sem desligamento gracioso do sistema operacional.
 gcloud compute instances reset ace-startup-fail --zone=us-central1-a
 ```
 
@@ -155,8 +165,10 @@ Depois confira serial output novamente.
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-startup ace-startup-fail \
   --zone=us-central1-a --quiet
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f startup-ok.sh startup-fail.sh
 ```
 
@@ -193,13 +205,16 @@ OS Login
 Verifique metadata:
 
 ```bash
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe --format='yaml(commonInstanceMetadata)'
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe INSTANCE --zone=ZONE --format='yaml(metadata)'
 ```
 
 Habilitar OS Login por metadata de projeto em laboratório controlado:
 
 ```bash
+# Explicação: Adiciona metadata em nível de projeto, tornando o valor disponível às VMs conforme as regras do Compute Engine.
 gcloud compute project-info add-metadata \
   --metadata enable-oslogin=TRUE
 ```

@@ -283,34 +283,47 @@ Abra o Cloud Shell.
 Confira o projeto:
 
 ```bash
+# Explicação: Consulta o projeto atualmente ativo na configuração `gcloud`.
 gcloud config get-value project
 ```
 
 Defina variáveis:
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
 export REGION=us-central1
+# Explicação: Define `ZONE` com o valor da zona padrão usada pelos recursos zonais do laboratório.
 export ZONE=us-central1-a
 
+# Explicação: Define `NETWORK` com o nome da VPC usada no laboratório.
 export NETWORK=ace-private-vpc
+# Explicação: Define `SUBNET` com o nome da sub-rede usada no laboratório.
 export SUBNET=ace-private-subnet
+# Explicação: Define a variável `ROUTER` usada nas próximas etapas do laboratório.
 export ROUTER=ace-nat-router
+# Explicação: Define a variável `NAT` usada nas próximas etapas do laboratório.
 export NAT=ace-public-nat
+# Explicação: Define a variável `DNS_ZONE` usada nas próximas etapas do laboratório.
 export DNS_ZONE=ace-private-zone
 ```
 
 Veja:
 
 ```bash
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $PROJECT_ID
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $REGION
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $ZONE
 ```
 
 Habilite as APIs:
 
 ```bash
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable \
   compute.googleapis.com \
   dns.googleapis.com \
@@ -324,6 +337,7 @@ gcloud services enable \
 Crie uma VPC customizada:
 
 ```bash
+# Explicação: Cria uma VPC; as flags definem, entre outros pontos, se a rede será custom mode ou auto mode.
 gcloud compute networks create $NETWORK \
   --subnet-mode=custom
 ```
@@ -331,6 +345,7 @@ gcloud compute networks create $NETWORK \
 Verifique:
 
 ```bash
+# Explicação: Exibe propriedades da VPC para confirmar modo de subnet, roteamento e demais configurações.
 gcloud compute networks describe $NETWORK
 ```
 
@@ -341,6 +356,7 @@ gcloud compute networks describe $NETWORK
 Crie:
 
 ```bash
+# Explicação: Cria uma sub-rede regional dentro da VPC com o intervalo CIDR informado.
 gcloud compute networks subnets create $SUBNET \
   --network=$NETWORK \
   --region=$REGION \
@@ -352,6 +368,7 @@ Observe que **ainda não habilitamos Private Google Access**.
 Verifique:
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe $SUBNET \
   --region=$REGION
 ```
@@ -365,6 +382,7 @@ Vamos usar IAP para acessar VMs sem IP externo.
 Crie:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-allow-iap-ssh \
   --network=$NETWORK \
   --direction=INGRESS \
@@ -383,6 +401,7 @@ Isso permite SSH originado da faixa usada pelo IAP TCP forwarding.
 Crie:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-private \
   --zone=$ZONE \
   --machine-type=e2-micro \
@@ -396,6 +415,7 @@ gcloud compute instances create vm-private \
 Liste:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
@@ -415,6 +435,7 @@ Essa VM não possui IP externo.
 Execute:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-private \
   --zone=$ZONE \
   --tunnel-through-iap
@@ -423,12 +444,14 @@ gcloud compute ssh vm-private \
 Dentro da VM, veja os endereços:
 
 ```bash
+# Explicação: Consulta ou altera informações de rede do sistema Linux conforme o subcomando informado.
 ip addr
 ```
 
 Teste internet:
 
 ```bash
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl --connect-timeout 5 https://example.com
 ```
 
@@ -444,6 +467,7 @@ VM sem IP externo
 Saia:
 
 ```bash
+# Explicação: Encerra a sessão atual do shell/SSH e retorna ao terminal anterior.
 exit
 ```
 
@@ -456,6 +480,7 @@ Cloud NAT é configurado associado a um Cloud Router.
 Crie:
 
 ```bash
+# Explicação: Cria um Cloud Router, necessário para recursos que usam roteamento dinâmico/BGP e também como componente do Cloud NAT.
 gcloud compute routers create $ROUTER \
   --network=$NETWORK \
   --region=$REGION
@@ -464,6 +489,7 @@ gcloud compute routers create $ROUTER \
 Liste:
 
 ```bash
+# Explicação: Lista Cloud Routers existentes no projeto/região.
 gcloud compute routers list
 ```
 
@@ -476,6 +502,7 @@ gcloud compute routers list
 Crie:
 
 ```bash
+# Explicação: Cria uma configuração de Cloud NAT no Cloud Router para permitir saída à internet sem IP externo nas VMs.
 gcloud compute routers nats create $NAT \
   --router=$ROUTER \
   --region=$REGION \
@@ -488,6 +515,7 @@ Esse comando configura NAT para todas as faixas IPv4 das subnets elegíveis na r
 Verifique:
 
 ```bash
+# Explicação: Exibe a configuração do Cloud NAT para confirmar sub-redes e alocação de endereços.
 gcloud compute routers nats describe $NAT \
   --router=$ROUTER \
   --region=$REGION
@@ -524,6 +552,7 @@ A VM continua sem IP externo próprio.
 Entre novamente:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-private \
   --zone=$ZONE \
   --tunnel-through-iap
@@ -532,6 +561,7 @@ gcloud compute ssh vm-private \
 Teste:
 
 ```bash
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl https://example.com
 ```
 
@@ -540,6 +570,7 @@ Agora deve funcionar.
 Teste o IP de saída:
 
 ```bash
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl https://ifconfig.me
 ```
 
@@ -548,10 +579,12 @@ Esse endereço é o IP utilizado na tradução NAT, e não um IP externo associa
 Confirme que a VM continua sem IP externo:
 
 ```bash
+# Explicação: Encerra a sessão atual do shell/SSH e retorna ao terminal anterior.
 exit
 ```
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe vm-private \
   --zone=$ZONE \
   --format="get(networkInterfaces[0].accessConfigs)"
@@ -595,6 +628,7 @@ Cloud NAT não cria uma entrada pública para a VM.
 Atualize:
 
 ```bash
+# Explicação: Executa `gcloud compute routers nats update $NAT --router=$ROUTER --region=$REGION --enable-l…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute routers nats update $NAT \
   --router=$ROUTER \
   --region=$REGION \
@@ -613,6 +647,7 @@ Para ACE, lembre que logs podem ajudar no troubleshooting.
 Veja:
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe $SUBNET \
   --region=$REGION \
   --format="get(privateIpGoogleAccess)"
@@ -633,6 +668,7 @@ ou valor equivalente indicando que está desabilitado.
 Execute:
 
 ```bash
+# Explicação: Atualiza propriedades da sub-rede, como expansão do intervalo IPv4 ou Private Google Access.
 gcloud compute networks subnets update $SUBNET \
   --region=$REGION \
   --enable-private-ip-google-access
@@ -641,6 +677,7 @@ gcloud compute networks subnets update $SUBNET \
 Verifique:
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe $SUBNET \
   --region=$REGION \
   --format="get(privateIpGoogleAccess)"
@@ -667,6 +704,7 @@ Então vamos temporariamente remover o NAT.
 Delete:
 
 ```bash
+# Explicação: Remove a configuração de Cloud NAT do router.
 gcloud compute routers nats delete $NAT \
   --router=$ROUTER \
   --region=$REGION \
@@ -695,6 +733,7 @@ VM privada ----------
 Entre:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-private \
   --zone=$ZONE \
   --tunnel-through-iap
@@ -703,6 +742,7 @@ gcloud compute ssh vm-private \
 Teste:
 
 ```bash
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl --connect-timeout 5 https://example.com
 ```
 
@@ -711,6 +751,7 @@ A tendência é falhar porque removemos a saída geral via NAT.
 Agora teste uma API Google:
 
 ```bash
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl -I https://storage.googleapis.com
 ```
 
@@ -719,12 +760,14 @@ O importante não é receber HTTP 200; respostas como `400`, `403` ou outra resp
 Podemos também testar resolução:
 
 ```bash
+# Explicação: Consulta a resolução de nomes usando os mecanismos configurados no sistema, útil para validar DNS.
 getent hosts storage.googleapis.com
 ```
 
 Saia:
 
 ```bash
+# Explicação: Encerra a sessão atual do shell/SSH e retorna ao terminal anterior.
 exit
 ```
 
@@ -760,6 +803,7 @@ Essa diferença é uma excelente questão de ACE.
 Execute:
 
 ```bash
+# Explicação: Atualiza propriedades da sub-rede, como expansão do intervalo IPv4 ou Private Google Access.
 gcloud compute networks subnets update $SUBNET \
   --region=$REGION \
   --no-enable-private-ip-google-access
@@ -768,6 +812,7 @@ gcloud compute networks subnets update $SUBNET \
 Verifique:
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe $SUBNET \
   --region=$REGION \
   --format="get(privateIpGoogleAccess)"
@@ -776,6 +821,7 @@ gcloud compute networks subnets describe $SUBNET \
 Agora teste novamente a partir da VM:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-private \
   --zone=$ZONE \
   --tunnel-through-iap \
@@ -801,6 +847,7 @@ Portanto não existe caminho de saída apropriado.
 Execute:
 
 ```bash
+# Explicação: Atualiza propriedades da sub-rede, como expansão do intervalo IPv4 ou Private Google Access.
 gcloud compute networks subnets update $SUBNET \
   --region=$REGION \
   --enable-private-ip-google-access
@@ -813,6 +860,7 @@ gcloud compute networks subnets update $SUBNET \
 Para as próximas etapas, recrie:
 
 ```bash
+# Explicação: Cria uma configuração de Cloud NAT no Cloud Router para permitir saída à internet sem IP externo nas VMs.
 gcloud compute routers nats create $NAT \
   --router=$ROUTER \
   --region=$REGION \
@@ -827,6 +875,7 @@ gcloud compute routers nats create $NAT \
 Crie:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-db \
   --zone=$ZONE \
   --machine-type=e2-micro \
@@ -840,16 +889,19 @@ gcloud compute instances create vm-db \
 Liste:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
 Capture os IPs privados:
 
 ```bash
+# Explicação: Define a variável `VM_APP_IP` usada nas próximas etapas do laboratório.
 export VM_APP_IP=$(gcloud compute instances describe vm-private \
   --zone=$ZONE \
   --format="value(networkInterfaces[0].networkIP)")
 
+# Explicação: Define a variável `VM_DB_IP` usada nas próximas etapas do laboratório.
 export VM_DB_IP=$(gcloud compute instances describe vm-db \
   --zone=$ZONE \
   --format="value(networkInterfaces[0].networkIP)")
@@ -858,7 +910,9 @@ export VM_DB_IP=$(gcloud compute instances describe vm-db \
 Veja:
 
 ```bash
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $VM_APP_IP
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $VM_DB_IP
 ```
 
@@ -875,6 +929,7 @@ ace.internal.
 Execute:
 
 ```bash
+# Explicação: Cria uma Managed Zone do Cloud DNS com o nome DNS e visibilidade definidos.
 gcloud dns managed-zones create $DNS_ZONE \
   --dns-name=ace.internal. \
   --description="ACE private DNS zone" \
@@ -885,12 +940,14 @@ gcloud dns managed-zones create $DNS_ZONE \
 Liste:
 
 ```bash
+# Explicação: Lista Managed Zones existentes no projeto.
 gcloud dns managed-zones list
 ```
 
 Descreva:
 
 ```bash
+# Explicação: Exibe a configuração da Managed Zone do Cloud DNS.
 gcloud dns managed-zones describe $DNS_ZONE
 ```
 
@@ -922,6 +979,7 @@ db.ace.internal  -> IP da vm-db
 Inicie uma transação:
 
 ```bash
+# Explicação: Inicia uma transação para alterar registros DNS de forma atômica.
 gcloud dns record-sets transaction start \
   --zone=$DNS_ZONE
 ```
@@ -929,6 +987,7 @@ gcloud dns record-sets transaction start \
 Adicione o registro da aplicação:
 
 ```bash
+# Explicação: Adiciona uma alteração de criação de registro à transação DNS em andamento.
 gcloud dns record-sets transaction add $VM_APP_IP \
   --name=app.ace.internal. \
   --ttl=300 \
@@ -939,6 +998,7 @@ gcloud dns record-sets transaction add $VM_APP_IP \
 Adicione o banco:
 
 ```bash
+# Explicação: Adiciona uma alteração de criação de registro à transação DNS em andamento.
 gcloud dns record-sets transaction add $VM_DB_IP \
   --name=db.ace.internal. \
   --ttl=300 \
@@ -949,6 +1009,7 @@ gcloud dns record-sets transaction add $VM_DB_IP \
 Execute a transação:
 
 ```bash
+# Explicação: Executa a transação DNS e aplica as alterações pendentes na zona.
 gcloud dns record-sets transaction execute \
   --zone=$DNS_ZONE
 ```
@@ -956,6 +1017,7 @@ gcloud dns record-sets transaction execute \
 Liste:
 
 ```bash
+# Explicação: Lista os registros DNS existentes na zona gerenciada.
 gcloud dns record-sets list \
   --zone=$DNS_ZONE
 ```
@@ -967,6 +1029,7 @@ gcloud dns record-sets list \
 Entre na VM privada:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-private \
   --zone=$ZONE \
   --tunnel-through-iap
@@ -975,18 +1038,21 @@ gcloud compute ssh vm-private \
 Teste:
 
 ```bash
+# Explicação: Consulta a resolução de nomes usando os mecanismos configurados no sistema, útil para validar DNS.
 getent hosts db.ace.internal
 ```
 
 ou:
 
 ```bash
+# Explicação: Consulta o servidor DNS configurado para verificar a resolução do nome informado.
 nslookup db.ace.internal
 ```
 
 Se `dig` estiver disponível:
 
 ```bash
+# Explicação: Consulta DNS e exibe a resposta detalhada para validar resolução de nomes.
 dig db.ace.internal
 ```
 
@@ -995,12 +1061,14 @@ O resultado deverá apontar para o IP privado da `vm-db`.
 Teste também:
 
 ```bash
+# Explicação: Consulta a resolução de nomes usando os mecanismos configurados no sistema, útil para validar DNS.
 getent hosts app.ace.internal
 ```
 
 Saia:
 
 ```bash
+# Explicação: Encerra a sessão atual do shell/SSH e retorna ao terminal anterior.
 exit
 ```
 
@@ -1041,6 +1109,7 @@ Firewall e aplicação respondem:
 Crie:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-allow-internal-icmp \
   --network=$NETWORK \
   --allow=icmp \
@@ -1050,6 +1119,7 @@ gcloud compute firewall-rules create ace-allow-internal-icmp \
 Agora:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-private \
   --zone=$ZONE \
   --tunnel-through-iap \
@@ -1083,6 +1153,7 @@ Vamos alterar o registro do banco para um IP incorreto.
 Primeiro descubra o registro atual:
 
 ```bash
+# Explicação: Lista os registros DNS existentes na zona gerenciada.
 gcloud dns record-sets list \
   --zone=$DNS_ZONE \
   --name=db.ace.internal. \
@@ -1092,6 +1163,7 @@ gcloud dns record-sets list \
 Inicie transação:
 
 ```bash
+# Explicação: Inicia uma transação para alterar registros DNS de forma atômica.
 gcloud dns record-sets transaction start \
   --zone=$DNS_ZONE
 ```
@@ -1099,6 +1171,7 @@ gcloud dns record-sets transaction start \
 Remova o registro correto:
 
 ```bash
+# Explicação: Adiciona uma remoção de registro à transação DNS em andamento.
 gcloud dns record-sets transaction remove $VM_DB_IP \
   --name=db.ace.internal. \
   --ttl=300 \
@@ -1109,6 +1182,7 @@ gcloud dns record-sets transaction remove $VM_DB_IP \
 Adicione um IP incorreto:
 
 ```bash
+# Explicação: Adiciona uma alteração de criação de registro à transação DNS em andamento.
 gcloud dns record-sets transaction add 10.10.0.250 \
   --name=db.ace.internal. \
   --ttl=300 \
@@ -1119,6 +1193,7 @@ gcloud dns record-sets transaction add 10.10.0.250 \
 Execute:
 
 ```bash
+# Explicação: Executa a transação DNS e aplica as alterações pendentes na zona.
 gcloud dns record-sets transaction execute \
   --zone=$DNS_ZONE
 ```
@@ -1126,6 +1201,7 @@ gcloud dns record-sets transaction execute \
 Teste:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-private \
   --zone=$ZONE \
   --tunnel-through-iap \
@@ -1155,6 +1231,7 @@ aplicação falha
 Inicie:
 
 ```bash
+# Explicação: Inicia uma transação para alterar registros DNS de forma atômica.
 gcloud dns record-sets transaction start \
   --zone=$DNS_ZONE
 ```
@@ -1162,6 +1239,7 @@ gcloud dns record-sets transaction start \
 Remova:
 
 ```bash
+# Explicação: Adiciona uma remoção de registro à transação DNS em andamento.
 gcloud dns record-sets transaction remove 10.10.0.250 \
   --name=db.ace.internal. \
   --ttl=300 \
@@ -1172,6 +1250,7 @@ gcloud dns record-sets transaction remove 10.10.0.250 \
 Adicione novamente:
 
 ```bash
+# Explicação: Adiciona uma alteração de criação de registro à transação DNS em andamento.
 gcloud dns record-sets transaction add $VM_DB_IP \
   --name=db.ace.internal. \
   --ttl=300 \
@@ -1182,6 +1261,7 @@ gcloud dns record-sets transaction add $VM_DB_IP \
 Execute:
 
 ```bash
+# Explicação: Executa a transação DNS e aplica as alterações pendentes na zona.
 gcloud dns record-sets transaction execute \
   --zone=$DNS_ZONE
 ```
@@ -1297,21 +1377,25 @@ Use esta sequência:
 Comandos:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe vm-private \
   --zone=$ZONE
 ```
 
 ```bash
+# Explicação: Lista Cloud Routers existentes no projeto/região.
 gcloud compute routers list
 ```
 
 ```bash
+# Explicação: Lista configurações de Cloud NAT associadas ao Cloud Router.
 gcloud compute routers nats list \
   --router=$ROUTER \
   --region=$REGION
 ```
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list \
   --filter="network:$NETWORK"
 ```
@@ -1339,6 +1423,7 @@ Firewall/políticas permitem saída?
 Veja:
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe $SUBNET \
   --region=$REGION \
   --format="get(privateIpGoogleAccess)"
@@ -1362,14 +1447,17 @@ Pergunte:
 Comandos:
 
 ```bash
+# Explicação: Lista Managed Zones existentes no projeto.
 gcloud dns managed-zones list
 ```
 
 ```bash
+# Explicação: Exibe a configuração da Managed Zone do Cloud DNS.
 gcloud dns managed-zones describe $DNS_ZONE
 ```
 
 ```bash
+# Explicação: Lista os registros DNS existentes na zona gerenciada.
 gcloud dns record-sets list \
   --zone=$DNS_ZONE
 ```
@@ -1646,18 +1734,21 @@ Sem consultar os passos anteriores, faça:
 ## VPC
 
 ```bash
+# Explicação: Lista VPCs existentes no projeto.
 gcloud compute networks list
 ```
 
 ## Subnets
 
 ```bash
+# Explicação: Lista sub-redes para verificar região, VPC e intervalos de IP.
 gcloud compute networks subnets list
 ```
 
 ## Private Google Access
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe $SUBNET \
   --region=$REGION \
   --format="get(privateIpGoogleAccess)"
@@ -1666,12 +1757,14 @@ gcloud compute networks subnets describe $SUBNET \
 ## Cloud Router
 
 ```bash
+# Explicação: Lista Cloud Routers existentes no projeto/região.
 gcloud compute routers list
 ```
 
 ## Cloud NAT
 
 ```bash
+# Explicação: Lista configurações de Cloud NAT associadas ao Cloud Router.
 gcloud compute routers nats list \
   --router=$ROUTER \
   --region=$REGION
@@ -1680,10 +1773,12 @@ gcloud compute routers nats list \
 ## Cloud DNS
 
 ```bash
+# Explicação: Lista Managed Zones existentes no projeto.
 gcloud dns managed-zones list
 ```
 
 ```bash
+# Explicação: Lista os registros DNS existentes na zona gerenciada.
 gcloud dns record-sets list \
   --zone=$DNS_ZONE
 ```
@@ -1697,6 +1792,7 @@ Delete a zona diretamente depois de remover seus registros customizados, se nece
 Inicie:
 
 ```bash
+# Explicação: Inicia uma transação para alterar registros DNS de forma atômica.
 gcloud dns record-sets transaction start \
   --zone=$DNS_ZONE
 ```
@@ -1704,6 +1800,7 @@ gcloud dns record-sets transaction start \
 Remova `app`:
 
 ```bash
+# Explicação: Adiciona uma remoção de registro à transação DNS em andamento.
 gcloud dns record-sets transaction remove $VM_APP_IP \
   --name=app.ace.internal. \
   --ttl=300 \
@@ -1714,6 +1811,7 @@ gcloud dns record-sets transaction remove $VM_APP_IP \
 Remova `db`:
 
 ```bash
+# Explicação: Adiciona uma remoção de registro à transação DNS em andamento.
 gcloud dns record-sets transaction remove $VM_DB_IP \
   --name=db.ace.internal. \
   --ttl=300 \
@@ -1724,6 +1822,7 @@ gcloud dns record-sets transaction remove $VM_DB_IP \
 Execute:
 
 ```bash
+# Explicação: Executa a transação DNS e aplica as alterações pendentes na zona.
 gcloud dns record-sets transaction execute \
   --zone=$DNS_ZONE
 ```
@@ -1733,6 +1832,7 @@ gcloud dns record-sets transaction execute \
 # 51. Limpeza — Cloud DNS
 
 ```bash
+# Explicação: Exclui a Managed Zone depois de remover seus registros não obrigatórios.
 gcloud dns managed-zones delete $DNS_ZONE \
   --quiet
 ```
@@ -1742,6 +1842,7 @@ gcloud dns managed-zones delete $DNS_ZONE \
 # 52. Limpeza — VMs
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete vm-private vm-db \
   --zone=$ZONE \
   --quiet
@@ -1752,6 +1853,7 @@ gcloud compute instances delete vm-private vm-db \
 # 53. Limpeza — Cloud NAT
 
 ```bash
+# Explicação: Remove a configuração de Cloud NAT do router.
 gcloud compute routers nats delete $NAT \
   --router=$ROUTER \
   --region=$REGION \
@@ -1765,6 +1867,7 @@ Caso ele já tenha sido excluído durante algum teste, apenas prossiga.
 # 54. Limpeza — Cloud Router
 
 ```bash
+# Explicação: Exclui o Cloud Router depois de remover dependências como NAT/VPN.
 gcloud compute routers delete $ROUTER \
   --region=$REGION \
   --quiet
@@ -1775,6 +1878,7 @@ gcloud compute routers delete $ROUTER \
 # 55. Limpeza — Firewall
 
 ```bash
+# Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
 gcloud compute firewall-rules delete \
   ace-allow-iap-ssh \
   ace-allow-internal-icmp \
@@ -1786,6 +1890,7 @@ gcloud compute firewall-rules delete \
 # 56. Limpeza — Subnet
 
 ```bash
+# Explicação: Exclui a sub-rede indicada.
 gcloud compute networks subnets delete $SUBNET \
   --region=$REGION \
   --quiet
@@ -1796,6 +1901,7 @@ gcloud compute networks subnets delete $SUBNET \
 # 57. Limpeza — VPC
 
 ```bash
+# Explicação: Exclui a VPC depois que os recursos dependentes foram removidos.
 gcloud compute networks delete $NETWORK \
   --quiet
 ```

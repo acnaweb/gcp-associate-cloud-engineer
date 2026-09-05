@@ -35,8 +35,10 @@ state
 # 2. Criar
 
 ```bash
+# Explicação: Cria o diretório usado pelos arquivos/configurações do laboratório.
 mkdir -p ~/ace-tf && cd ~/ace-tf
 
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > main.tf <<'EOF'
 terraform {
   required_providers {
@@ -67,10 +69,15 @@ resource "google_storage_bucket" "lab" {
 }
 EOF
 
+# Explicação: Inicializa o diretório Terraform, baixa providers/modules e prepara o backend de state.
 terraform init
+# Explicação: Formata os arquivos Terraform de acordo com o padrão da ferramenta.
 terraform fmt
+# Explicação: Valida sintaxe e consistência interna da configuração Terraform.
 terraform validate
+# Explicação: Calcula e exibe o plano de mudanças sem aplicá-las, permitindo revisar o impacto.
 terraform plan -var="project_id=$(gcloud config get-value project)"
+# Explicação: Aplica o plano/configuração Terraform e cria/altera recursos no provedor.
 terraform apply -var="project_id=$(gcloud config get-value project)" -auto-approve
 ```
 
@@ -81,8 +88,11 @@ terraform apply -var="project_id=$(gcloud config get-value project)" -auto-appro
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Inspeciona ou manipula entradas do state Terraform conforme o subcomando.
 terraform state list
+# Explicação: Inspeciona ou manipula entradas do state Terraform conforme o subcomando.
 terraform state show google_storage_bucket.lab
+# Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
 gcloud storage buckets describe \
  "gs://$(gcloud config get-value project)-ace-tf-2026"
 ```
@@ -92,6 +102,7 @@ gcloud storage buckets describe \
 # 4. Testar
 
 ```bash
+# Explicação: Calcula e exibe o plano de mudanças sem aplicá-las, permitindo revisar o impacto.
 terraform plan -var="project_id=$(gcloud config get-value project)"
 ```
 
@@ -104,6 +115,7 @@ O resultado deve indicar nenhuma mudança relevante imediatamente após apply.
 Altere manualmente uma label do bucket no Console ou via `gcloud`, por exemplo adicionando uma label extra. Depois:
 
 ```bash
+# Explicação: Calcula e exibe o plano de mudanças sem aplicá-las, permitindo revisar o impacto.
 terraform plan -var="project_id=$(gcloud config get-value project)"
 ```
 
@@ -119,9 +131,12 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Inspeciona ou manipula entradas do state Terraform conforme o subcomando.
 terraform state show google_storage_bucket.lab
+# Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
 gcloud storage buckets describe \
  "gs://$(gcloud config get-value project)-ace-tf-2026"
+# Explicação: Calcula e exibe o plano de mudanças sem aplicá-las, permitindo revisar o impacto.
 terraform plan -var="project_id=$(gcloud config get-value project)"
 ```
 
@@ -152,6 +167,7 @@ Escolha uma estratégia consciente:
 Para o lab, remova o drift com:
 
 ```bash
+# Explicação: Aplica o plano/configuração Terraform e cria/altera recursos no provedor.
 terraform apply -var="project_id=$(gcloud config get-value project)" -auto-approve
 ```
 
@@ -168,7 +184,9 @@ terraform apply -var="project_id=$(gcloud config get-value project)" -auto-appro
 # 9. Cleanup
 
 ```bash
+# Explicação: Altera o diretório de trabalho do shell para executar os próximos comandos no local correto.
 cd ~/ace-tf
+# Explicação: Destrói os recursos gerenciados pela configuração Terraform para cleanup.
 terraform destroy -var="project_id=$(gcloud config get-value project)" -auto-approve
 ```
 

@@ -39,14 +39,21 @@ gcloud configuration
 # 2. Criar
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
 
+# Explicação: Cria uma configuração nomeada do `gcloud` para isolar projeto, região, zona e outras propriedades.
 gcloud config configurations create ace-base
+# Explicação: Ativa a configuração nomeada do `gcloud` que será usada nos próximos comandos.
 gcloud config configurations activate ace-base
+# Explicação: Define o projeto ativo da configuração `gcloud`, evitando informar `--project` em cada comando.
 gcloud config set project "$PROJECT_ID"
+# Explicação: Define a região padrão da configuração `gcloud` para comandos regionais.
 gcloud config set compute/region us-central1
+# Explicação: Define a zona padrão da configuração `gcloud` para comandos zonais.
 gcloud config set compute/zone us-central1-a
 
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable compute.googleapis.com
 ```
 
@@ -57,12 +64,19 @@ gcloud services enable compute.googleapis.com
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Lista as identidades autenticadas e mostra qual conta está ativa no `gcloud`.
 gcloud auth list
+# Explicação: Exibe as propriedades da configuração `gcloud` ativa para conferência.
 gcloud config list
+# Explicação: Lista as configurações do `gcloud` existentes na máquina/Cloud Shell.
 gcloud config configurations list
+# Explicação: Exibe metadados do projeto para confirmar ID, número e demais propriedades.
 gcloud projects describe "$PROJECT_ID"
+# Explicação: Executa `gcloud compute regions describe us-central1` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute regions describe us-central1
+# Explicação: Executa `gcloud compute zones describe us-central1-a` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute zones describe us-central1-a
+# Explicação: Lista as APIs já habilitadas no projeto para confirmar a configuração.
 gcloud services list --enabled --filter="NAME:compute.googleapis.com"
 ```
 
@@ -71,7 +85,9 @@ gcloud services list --enabled --filter="NAME:compute.googleapis.com"
 # 4. Testar
 
 ```bash
+# Explicação: Executa `gcloud compute zones list --filter="region:us-central1"` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute zones list --filter="region:us-central1"
+# Explicação: Lista tipos de máquina disponíveis na zona/região para comparar CPU e memória.
 gcloud compute machine-types list --zones=us-central1-a --limit=5
 ```
 
@@ -82,8 +98,11 @@ gcloud compute machine-types list --zones=us-central1-a --limit=5
 Crie uma segunda configuration sem definir projeto:
 
 ```bash
+# Explicação: Cria uma configuração nomeada do `gcloud` para isolar projeto, região, zona e outras propriedades.
 gcloud config configurations create ace-sem-projeto
+# Explicação: Executa `gcloud config unset project` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud config unset project
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
@@ -119,7 +138,9 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Define o projeto ativo da configuração `gcloud`, evitando informar `--project` em cada comando.
 gcloud config set project "$PROJECT_ID"
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
@@ -136,7 +157,9 @@ gcloud compute instances list
 # 9. Cleanup
 
 ```bash
+# Explicação: Ativa a configuração nomeada do `gcloud` que será usada nos próximos comandos.
 gcloud config configurations activate ace-base
+# Explicação: Remove a configuração do `gcloud` criada para o laboratório.
 gcloud config configurations delete ace-sem-projeto --quiet
 ```
 
@@ -165,8 +188,11 @@ Organization
 Inspecione, quando aplicável:
 
 ```bash
+# Explicação: Lista organizações visíveis para a identidade atual.
 gcloud organizations list
+# Explicação: Executa uma operação sobre folders da hierarquia de recursos do Google Cloud.
 gcloud resource-manager folders list --organization=ORG_ID
+# Explicação: Executa `gcloud projects list` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud projects list
 ```
 
@@ -182,6 +208,7 @@ Organization Policy → quais configurações/ações são permitidas como guard
 Exemplos comuns de constraints incluem restrições de localização, uso de IP externo ou criação de chaves, dependendo do ambiente.
 
 ```bash
+# Explicação: Executa uma operação de consulta ou configuração de Organization Policy.
 gcloud org-policies list --project=$PROJECT_ID
 ```
 
@@ -192,6 +219,7 @@ gcloud org-policies list --project=$PROJECT_ID
 Cloud Asset Inventory ajuda a pesquisar e inventariar recursos e políticas.
 
 ```bash
+# Explicação: Executa `gcloud asset search-all-resources --scope=projects/$PROJECT_ID --limit=20` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud asset search-all-resources --scope=projects/$PROJECT_ID --limit=20
 ```
 
@@ -271,8 +299,11 @@ Organization Policy
 Em uma conta com Organization:
 
 ```bash
+# Explicação: Lista organizações visíveis para a identidade atual.
 gcloud organizations list
+# Explicação: Executa uma operação sobre folders da hierarquia de recursos do Google Cloud.
 gcloud resource-manager folders list --organization=ORGANIZATION_ID
+# Explicação: Executa uma operação de consulta ou configuração de Organization Policy.
 gcloud org-policies list --organization=ORGANIZATION_ID
 ```
 
@@ -293,8 +324,11 @@ Para muitos usuários com a mesma responsabilidade, prefira conceder IAM ao **gr
 ## APIs e Services
 
 ```bash
+# Explicação: Lista APIs/serviços disponíveis ou habilitados, conforme os filtros informados.
 gcloud services list --available --limit=20
+# Explicação: Lista as APIs já habilitadas no projeto para confirmar a configuração.
 gcloud services list --enabled
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable compute.googleapis.com
 ```
 
@@ -303,6 +337,7 @@ Habilitar API ≠ conceder IAM ≠ criar recurso.
 ## Quotas
 
 ```bash
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe --format='yaml(quotas)'
 ```
 
@@ -328,12 +363,14 @@ O guia não pede apenas reconhecer Organization Policy; ele fala em **aplicar po
 Em uma Organization de laboratório, primeiro inspecione constraints disponíveis:
 
 ```bash
+# Explicação: Executa uma operação de consulta ou configuração de Organization Policy.
 gcloud org-policies list --organization=ORGANIZATION_ID
 ```
 
 Escolha uma constraint apropriada para laboratório e leia o estado atual antes de alterar:
 
 ```bash
+# Explicação: Executa uma operação de consulta ou configuração de Organization Policy.
 gcloud org-policies describe CONSTRAINT_NAME \
   --organization=ORGANIZATION_ID
 ```

@@ -32,6 +32,7 @@ MIG
 # 2. Criar
 
 ```bash
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > startup.sh <<'EOF'
 #!/bin/bash
 apt-get update
@@ -39,30 +40,36 @@ apt-get install -y nginx
 systemctl enable --now nginx
 EOF
 
+# Explicação: Cria um Instance Template reutilizável para padronizar as VMs de um Managed Instance Group.
 gcloud compute instance-templates create ace-auto-template \
   --machine-type=e2-micro \
   --tags=ace-health \
   --metadata-from-file=startup-script=startup.sh \
   --image-family=debian-12 --image-project=debian-cloud
 
+# Explicação: Cria um Managed Instance Group baseado no template informado.
 gcloud compute instance-groups managed create ace-auto-mig \
   --zone=us-central1-a \
   --template=ace-auto-template \
   --size=1
 
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-health-allow \
   --network=default \
   --allow=tcp:80 \
   --source-ranges=130.211.0.0/22,35.191.0.0/16 \
   --target-tags=ace-health
 
+# Explicação: Cria o health check que o load balancer/MIG usará para determinar se backends estão saudáveis.
 gcloud compute health-checks create http ace-auto-hc --port=80
 
+# Explicação: Executa `gcloud compute instance-groups managed update ace-auto-mig --zone=us-central1-a --he…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute instance-groups managed update ace-auto-mig \
   --zone=us-central1-a \
   --health-check=ace-auto-hc \
   --initial-delay=90
 
+# Explicação: Configura autoscaling do Managed Instance Group conforme a métrica/alvo e limites definidos.
 gcloud compute instance-groups managed set-autoscaling ace-auto-mig \
   --zone=us-central1-a \
   --min-num-replicas=1 \
@@ -77,9 +84,12 @@ gcloud compute instance-groups managed set-autoscaling ace-auto-mig \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe configuração, target size, políticas e estado do Managed Instance Group.
 gcloud compute instance-groups managed describe ace-auto-mig \
   --zone=us-central1-a
+# Explicação: Exibe parâmetros do health check, como protocolo, porta e caminho.
 gcloud compute health-checks describe ace-auto-hc
+# Explicação: Lista as VMs pertencentes ao Managed Instance Group e seus estados.
 gcloud compute instance-groups managed list-instances ace-auto-mig \
   --zone=us-central1-a
 ```
@@ -91,9 +101,11 @@ gcloud compute instance-groups managed list-instances ace-auto-mig \
 Verifique que nginx está ativo na VM atual:
 
 ```bash
+# Explicação: Define `VM` com o nome da VM usada no laboratório.
 VM=$(gcloud compute instance-groups managed list-instances ace-auto-mig \
  --zone=us-central1-a --format="value(instance.basename())" | head -1)
 
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh "$VM" --zone=us-central1-a \
  --command="systemctl is-active nginx"
 ```
@@ -105,6 +117,7 @@ gcloud compute ssh "$VM" --zone=us-central1-a \
 Pare nginx:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh "$VM" --zone=us-central1-a \
   --command="sudo systemctl stop nginx"
 ```
@@ -123,8 +136,10 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Lista as VMs pertencentes ao Managed Instance Group e seus estados.
 gcloud compute instance-groups managed list-instances ace-auto-mig \
   --zone=us-central1-a
+# Explicação: Exibe configuração, target size, políticas e estado do Managed Instance Group.
 gcloud compute instance-groups managed describe ace-auto-mig \
   --zone=us-central1-a \
   --format="yaml(currentActions)"
@@ -155,6 +170,7 @@ Correção
 O MIG deverá reparar/recriar automaticamente. Confirme nova instância e nginx ativo.
 
 ```bash
+# Explicação: Lista as VMs pertencentes ao Managed Instance Group e seus estados.
 gcloud compute instance-groups managed list-instances ace-auto-mig \
   --zone=us-central1-a
 ```
@@ -172,11 +188,16 @@ gcloud compute instance-groups managed list-instances ace-auto-mig \
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui o Managed Instance Group e as instâncias gerenciadas por ele.
 gcloud compute instance-groups managed delete ace-auto-mig \
   --zone=us-central1-a --quiet
+# Explicação: Exclui o Instance Template após remover os recursos que dependem dele.
 gcloud compute instance-templates delete ace-auto-template --quiet
+# Explicação: Exclui o health check usado no laboratório.
 gcloud compute health-checks delete ace-auto-hc --quiet
+# Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
 gcloud compute firewall-rules delete ace-health-allow --quiet
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f startup.sh
 ```
 
@@ -209,6 +230,7 @@ Compute Engine → VM Manager
 Habilite APIs conforme o laboratório/documentação atual exigir e inspecione a VM:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe INSTANCE --zone=ZONE
 ```
 

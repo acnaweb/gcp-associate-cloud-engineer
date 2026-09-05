@@ -20,18 +20,23 @@ VM Manager → inventory / patch / OS management
 ## 2. Criar / Configurar
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-opslogin \
  --zone=us-central1-a --machine-type=e2-micro \
  --image-family=debian-12 --image-project=debian-cloud
 
+# Explicação: Adiciona metadata em nível de projeto, tornando o valor disponível às VMs conforme as regras do Compute Engine.
 gcloud compute project-info add-metadata --metadata enable-oslogin=TRUE
 ```
 
 ## 3. Inspecionar
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-opslogin --zone=us-central1-a
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe --format='yaml(commonInstanceMetadata)'
+# Explicação: Executa `gcloud compute os-login describe-profile 2>/dev/null || true` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute os-login describe-profile 2>/dev/null || true
 ```
 
@@ -42,6 +47,7 @@ No Console, abra Compute Engine → VM Manager e identifique as funcionalidades 
 ## 4. Testar
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-opslogin --zone=us-central1-a --command='id; hostname'
 ```
 
@@ -76,6 +82,7 @@ Restaure a role mínima e repita SSH. Não desabilite OS Login para “resolver�
 ## 9. Cleanup
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-opslogin --zone=us-central1-a --quiet
 # reverta metadata enable-oslogin se foi alterada apenas para o laboratório e isso for apropriado
 ```
@@ -104,12 +111,14 @@ OS Login          → acesso SSH vinculado à identidade IAM
 Inspecione OS Login:
 
 ```bash
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe --format='yaml(commonInstanceMetadata)'
 ```
 
 Habilitação em projeto de laboratório:
 
 ```bash
+# Explicação: Adiciona metadata em nível de projeto, tornando o valor disponível às VMs conforme as regras do Compute Engine.
 gcloud compute project-info add-metadata --metadata=enable-oslogin=TRUE
 ```
 
@@ -138,12 +147,14 @@ VM Manager → gerenciamento operacional do sistema operacional
 Habilite a API do OS Config:
 
 ```bash
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable osconfig.googleapis.com
 ```
 
 Habilite OS Config via metadata de projeto para o laboratório:
 
 ```bash
+# Explicação: Adiciona metadata em nível de projeto, tornando o valor disponível às VMs conforme as regras do Compute Engine.
 gcloud compute project-info add-metadata \
   --metadata=enable-osconfig=TRUE
 ```
@@ -151,6 +162,7 @@ gcloud compute project-info add-metadata \
 Inspecione:
 
 ```bash
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe \
   --format='yaml(commonInstanceMetadata)'
 ```

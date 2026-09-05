@@ -519,32 +519,44 @@ Abra o Cloud Shell.
 Veja o projeto:
 
 ```bash
+# Explicação: Consulta o projeto atualmente ativo na configuração `gcloud`.
 gcloud config get-value project
 ```
 
 Defina:
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Define a variável `REGION_US` usada nas próximas etapas do laboratório.
 export REGION_US=us-central1
+# Explicação: Define a variável `ZONE_US` usada nas próximas etapas do laboratório.
 export ZONE_US=us-central1-a
+# Explicação: Define a variável `REGION_BR` usada nas próximas etapas do laboratório.
 export REGION_BR=southamerica-east1
+# Explicação: Define a variável `ZONE_BR` usada nas próximas etapas do laboratório.
 export ZONE_BR=southamerica-east1-b
 ```
 
 Veja:
 
 ```bash
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $PROJECT_ID
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $REGION_US
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $ZONE_US
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $REGION_BR
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $ZONE_BR
 ```
 
 Habilite Compute Engine:
 
 ```bash
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable compute.googleapis.com
 ```
 
@@ -555,34 +567,40 @@ gcloud services enable compute.googleapis.com
 Crie:
 
 ```bash
+# Explicação: Cria uma configuração nomeada do `gcloud` para isolar projeto, região, zona e outras propriedades.
 gcloud config configurations create ace-vpc-lab
 ```
 
 Ative:
 
 ```bash
+# Explicação: Ativa a configuração nomeada do `gcloud` que será usada nos próximos comandos.
 gcloud config configurations activate ace-vpc-lab
 ```
 
 Defina o projeto:
 
 ```bash
+# Explicação: Define o projeto ativo da configuração `gcloud`, evitando informar `--project` em cada comando.
 gcloud config set project $PROJECT_ID
 ```
 
 Defina região e zona padrão:
 
 ```bash
+# Explicação: Define a região padrão da configuração `gcloud` para comandos regionais.
 gcloud config set compute/region $REGION_US
 ```
 
 ```bash
+# Explicação: Define a zona padrão da configuração `gcloud` para comandos zonais.
 gcloud config set compute/zone $ZONE_US
 ```
 
 Veja:
 
 ```bash
+# Explicação: Exibe as propriedades da configuração `gcloud` ativa para conferência.
 gcloud config list
 ```
 
@@ -597,6 +615,7 @@ Lembre:
 Execute:
 
 ```bash
+# Explicação: Cria uma VPC; as flags definem, entre outros pontos, se a rede será custom mode ou auto mode.
 gcloud compute networks create ace-vpc \
   --subnet-mode=custom
 ```
@@ -604,12 +623,14 @@ gcloud compute networks create ace-vpc \
 Liste:
 
 ```bash
+# Explicação: Lista VPCs existentes no projeto.
 gcloud compute networks list
 ```
 
 Descreva:
 
 ```bash
+# Explicação: Exibe propriedades da VPC para confirmar modo de subnet, roteamento e demais configurações.
 gcloud compute networks describe ace-vpc
 ```
 
@@ -626,6 +647,7 @@ subnet mode = CUSTOM
 Execute:
 
 ```bash
+# Explicação: Cria uma sub-rede regional dentro da VPC com o intervalo CIDR informado.
 gcloud compute networks subnets create subnet-us \
   --network=ace-vpc \
   --region=$REGION_US \
@@ -635,6 +657,7 @@ gcloud compute networks subnets create subnet-us \
 Descreva:
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe subnet-us \
   --region=$REGION_US
 ```
@@ -646,6 +669,7 @@ gcloud compute networks subnets describe subnet-us \
 Execute:
 
 ```bash
+# Explicação: Cria uma sub-rede regional dentro da VPC com o intervalo CIDR informado.
 gcloud compute networks subnets create subnet-br \
   --network=ace-vpc \
   --region=$REGION_BR \
@@ -655,6 +679,7 @@ gcloud compute networks subnets create subnet-br \
 Liste:
 
 ```bash
+# Explicação: Lista sub-redes para verificar região, VPC e intervalos de IP.
 gcloud compute networks subnets list \
   --network=ace-vpc
 ```
@@ -681,6 +706,7 @@ Vamos provocar um erro proposital.
 Tente criar:
 
 ```bash
+# Explicação: Cria uma sub-rede regional dentro da VPC com o intervalo CIDR informado.
 gcloud compute networks subnets create subnet-overlap \
   --network=ace-vpc \
   --region=$REGION_US \
@@ -708,6 +734,7 @@ Esse é um excelente exemplo de erro de planejamento de endereçamento.
 Crie:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-vpc-allow-ssh \
   --network=ace-vpc \
   --direction=INGRESS \
@@ -727,6 +754,7 @@ gcloud compute firewall-rules create ace-vpc-allow-ssh \
 Execute:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-us \
   --zone=$ZONE_US \
   --machine-type=e2-micro \
@@ -739,6 +767,7 @@ gcloud compute instances create vm-us \
 Liste:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
@@ -749,6 +778,7 @@ gcloud compute instances list
 Execute:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-br \
   --zone=$ZONE_BR \
   --machine-type=e2-micro \
@@ -761,6 +791,7 @@ gcloud compute instances create vm-br \
 Liste:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
@@ -771,6 +802,7 @@ gcloud compute instances list
 Execute:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list \
   --format="table(name,zone,networkInterfaces[0].networkIP:label=INTERNAL_IP,networkInterfaces[0].accessConfigs[0].natIP:label=EXTERNAL_IP)"
 ```
@@ -798,6 +830,7 @@ IP externo
 Execute:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe vm-us \
   --zone=$ZONE_US
 ```
@@ -825,12 +858,14 @@ natIP
 Execute:
 
 ```bash
+# Explicação: Define a variável `VM_US_IP` usada nas próximas etapas do laboratório.
 export VM_US_IP=$(gcloud compute instances describe vm-us \
   --zone=$ZONE_US \
   --format="value(networkInterfaces[0].networkIP)")
 ```
 
 ```bash
+# Explicação: Define a variável `VM_BR_IP` usada nas próximas etapas do laboratório.
 export VM_BR_IP=$(gcloud compute instances describe vm-br \
   --zone=$ZONE_BR \
   --format="value(networkInterfaces[0].networkIP)")
@@ -839,7 +874,9 @@ export VM_BR_IP=$(gcloud compute instances describe vm-br \
 Veja:
 
 ```bash
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $VM_US_IP
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $VM_BR_IP
 ```
 
@@ -874,6 +911,7 @@ Porém firewall continua sendo aplicado.
 Entre na VM dos EUA:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-us \
   --zone=$ZONE_US
 ```
@@ -881,6 +919,7 @@ gcloud compute ssh vm-us \
 Teste:
 
 ```bash
+# Explicação: Envia pacotes ICMP para testar alcance IP entre origem e destino.
 ping -c 4 IP_INTERNO_VM_BR
 ```
 
@@ -889,6 +928,7 @@ Pode falhar porque ainda não liberamos ICMP.
 Saia:
 
 ```bash
+# Explicação: Encerra a sessão atual do shell/SSH e retorna ao terminal anterior.
 exit
 ```
 
@@ -899,6 +939,7 @@ exit
 Execute:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-vpc-allow-icmp \
   --network=ace-vpc \
   --direction=INGRESS \
@@ -911,6 +952,7 @@ gcloud compute firewall-rules create ace-vpc-allow-icmp \
 Teste:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-us \
   --zone=$ZONE_US \
   --command="ping -c 4 $VM_BR_IP"
@@ -947,6 +989,7 @@ firewall permita
 Execute:
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list \
   --filter="network:ace-vpc"
 ```
@@ -969,6 +1012,7 @@ Agora vamos criar uma VM privada.
 Execute:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-private \
   --zone=$ZONE_US \
   --machine-type=e2-micro \
@@ -981,6 +1025,7 @@ gcloud compute instances create vm-private \
 Liste:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
@@ -1036,6 +1081,7 @@ Agora vamos praticar endereços estáticos.
 Crie um IP regional:
 
 ```bash
+# Explicação: Reserva um endereço IP estático interno ou externo conforme escopo e flags informados.
 gcloud compute addresses create ace-static-ip \
   --region=$REGION_US
 ```
@@ -1043,12 +1089,14 @@ gcloud compute addresses create ace-static-ip \
 Liste:
 
 ```bash
+# Explicação: Lista endereços IP estáticos reservados no projeto.
 gcloud compute addresses list
 ```
 
 Veja o endereço:
 
 ```bash
+# Explicação: Exibe o endereço IP reservado e suas propriedades.
 gcloud compute addresses describe ace-static-ip \
   --region=$REGION_US \
   --format="value(address)"
@@ -1057,6 +1105,7 @@ gcloud compute addresses describe ace-static-ip \
 Salve:
 
 ```bash
+# Explicação: Define a variável `STATIC_IP` usada nas próximas etapas do laboratório.
 export STATIC_IP=$(gcloud compute addresses describe ace-static-ip \
   --region=$REGION_US \
   --format="value(address)")
@@ -1065,6 +1114,7 @@ export STATIC_IP=$(gcloud compute addresses describe ace-static-ip \
 Veja:
 
 ```bash
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $STATIC_IP
 ```
 
@@ -1100,6 +1150,7 @@ Para simplificar o laboratório, vamos criar uma nova VM já usando o IP reserva
 Execute:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-static \
   --zone=$ZONE_US \
   --machine-type=e2-micro \
@@ -1113,6 +1164,7 @@ gcloud compute instances create vm-static \
 Liste:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
@@ -1155,6 +1207,7 @@ Esses três casos são importantes.
 Execute:
 
 ```bash
+# Explicação: Lista endereços IP estáticos reservados no projeto.
 gcloud compute addresses list
 ```
 
@@ -1190,6 +1243,7 @@ Como verificar?
 Execute:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe vm-us \
   --zone=$ZONE_US \
   --format="yaml(networkInterfaces)"
@@ -1267,36 +1321,42 @@ A VPC do Google Cloud é global.
 ## Redes
 
 ```bash
+# Explicação: Lista VPCs existentes no projeto.
 gcloud compute networks list
 ```
 
 ## Subnets
 
 ```bash
+# Explicação: Lista sub-redes para verificar região, VPC e intervalos de IP.
 gcloud compute networks subnets list
 ```
 
 ## VMs
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
 ## IPs reservados
 
 ```bash
+# Explicação: Lista endereços IP estáticos reservados no projeto.
 gcloud compute addresses list
 ```
 
 ## Rotas
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list
 ```
 
 ## Firewall
 
 ```bash
+# Explicação: Lista regras de firewall para inspecionar a política efetiva da VPC.
 gcloud compute firewall-rules list
 ```
 
@@ -1679,24 +1739,28 @@ Interconnect
 Remova:
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete vm-us \
   --zone=$ZONE_US \
   --quiet
 ```
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete vm-private \
   --zone=$ZONE_US \
   --quiet
 ```
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete vm-static \
   --zone=$ZONE_US \
   --quiet
 ```
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete vm-br \
   --zone=$ZONE_BR \
   --quiet
@@ -1707,6 +1771,7 @@ gcloud compute instances delete vm-br \
 # 53. Limpeza — IP estático
 
 ```bash
+# Explicação: Libera o endereço IP estático reservado no laboratório.
 gcloud compute addresses delete ace-static-ip \
   --region=$REGION_US \
   --quiet
@@ -1717,6 +1782,7 @@ gcloud compute addresses delete ace-static-ip \
 # 54. Limpeza — firewall
 
 ```bash
+# Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
 gcloud compute firewall-rules delete \
   ace-vpc-allow-ssh \
   ace-vpc-allow-icmp \
@@ -1728,12 +1794,14 @@ gcloud compute firewall-rules delete \
 # 55. Limpeza — subnets
 
 ```bash
+# Explicação: Exclui a sub-rede indicada.
 gcloud compute networks subnets delete subnet-us \
   --region=$REGION_US \
   --quiet
 ```
 
 ```bash
+# Explicação: Exclui a sub-rede indicada.
 gcloud compute networks subnets delete subnet-br \
   --region=$REGION_BR \
   --quiet
@@ -1744,6 +1812,7 @@ gcloud compute networks subnets delete subnet-br \
 # 56. Limpeza — VPC
 
 ```bash
+# Explicação: Exclui a VPC depois que os recursos dependentes foram removidos.
 gcloud compute networks delete ace-vpc \
   --quiet
 ```
@@ -1755,18 +1824,21 @@ gcloud compute networks delete ace-vpc \
 Ative outra configuração:
 
 ```bash
+# Explicação: Ativa a configuração nomeada do `gcloud` que será usada nos próximos comandos.
 gcloud config configurations activate default
 ```
 
 Depois:
 
 ```bash
+# Explicação: Remove a configuração do `gcloud` criada para o laboratório.
 gcloud config configurations delete ace-vpc-lab
 ```
 
 Liste:
 
 ```bash
+# Explicação: Lista as configurações do `gcloud` existentes na máquina/Cloud Shell.
 gcloud config configurations list
 ```
 
@@ -1882,6 +1954,7 @@ O primary IPv4 range pode ser expandido, não reduzido.
 Exemplo após validar ausência de conflito:
 
 ```bash
+# Explicação: Executa `gcloud compute networks subnets expand-ip-range subnet-us --region=us-central1 --pre…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute networks subnets expand-ip-range subnet-us \
   --region=us-central1 \
   --prefix-length=23
@@ -1902,6 +1975,7 @@ Depois:
 Inspecione:
 
 ```bash
+# Explicação: Exibe detalhes da sub-rede, incluindo CIDR, região e recursos de acesso privado.
 gcloud compute networks subnets describe subnet-us \
   --region=us-central1 \
   --format='value(ipCidrRange)'
@@ -1910,11 +1984,13 @@ gcloud compute networks subnets describe subnet-us \
 ## Reservar IP interno estático
 
 ```bash
+# Explicação: Reserva um endereço IP estático interno ou externo conforme escopo e flags informados.
 gcloud compute addresses create ace-internal-ip \
   --region=us-central1 \
   --subnet=subnet-us \
   --addresses=10.10.0.50
 
+# Explicação: Exibe o endereço IP reservado e suas propriedades.
 gcloud compute addresses describe ace-internal-ip \
   --region=us-central1
 ```
@@ -1933,6 +2009,7 @@ O guia cobra resize da faixa IPv4. A expansão deve usar um prefixo maior em cap
 Exemplo:
 
 ```bash
+# Explicação: Executa `gcloud compute networks subnets expand-ip-range subnet-us --region=us-central1 --pre…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute networks subnets expand-ip-range subnet-us \
   --region=us-central1 \
   --prefix-length=23
@@ -1945,6 +2022,7 @@ gcloud compute networks subnets expand-ip-range subnet-us \
 Além de IP externo estático, você pode reservar endereço interno regional:
 
 ```bash
+# Explicação: Reserva um endereço IP estático interno ou externo conforme escopo e flags informados.
 gcloud compute addresses create ace-internal-ip \
   --region=us-central1 \
   --subnet=subnet-us \
@@ -1954,6 +2032,7 @@ gcloud compute addresses create ace-internal-ip \
 Inspecione:
 
 ```bash
+# Explicação: Exibe o endereço IP reservado e suas propriedades.
 gcloud compute addresses describe ace-internal-ip --region=us-central1
 ```
 

@@ -35,8 +35,10 @@ principal + role + scope = grant
 # 2. Criar
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
 
+# Explicação: Exibe conteúdo de arquivo ou cria conteúdo via redirecionamento/heredoc, conforme a sintaxe usada.
 cat > role.yaml <<'EOF'
 title: "ACE Bucket Metadata Reader"
 description: "Role de laboratório"
@@ -46,6 +48,7 @@ includedPermissions:
 - storage.buckets.list
 EOF
 
+# Explicação: Cria uma Custom Role IAM com as permissões definidas para o laboratório.
 gcloud iam roles create aceBucketMetadataReader \
   --project="$PROJECT_ID" \
   --file=role.yaml
@@ -58,9 +61,11 @@ gcloud iam roles create aceBucketMetadataReader \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe aceBucketMetadataReader \
   --project="$PROJECT_ID"
 
+# Explicação: Exibe a política IAM do projeto para inspecionar principals, roles e bindings.
 gcloud projects get-iam-policy "$PROJECT_ID"
 ```
 
@@ -71,8 +76,11 @@ gcloud projects get-iam-policy "$PROJECT_ID"
 Compare:
 
 ```bash
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.admin
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe aceBucketMetadataReader \
   --project="$PROJECT_ID"
 ```
@@ -143,8 +151,10 @@ Não é necessário aplicar binding amplo só para provar o conceito.
 # 9. Cleanup
 
 ```bash
+# Explicação: Remove a Custom Role IAM criada durante o laboratório.
 gcloud iam roles delete aceBucketMetadataReader \
   --project="$PROJECT_ID"
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f role.yaml
 ```
 
@@ -169,11 +179,17 @@ rm -f role.yaml
 A prova cita explicitamente os três tipos.
 
 ```bash
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/viewer
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/editor
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/owner
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/compute.viewer
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/compute.admin
+# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
 gcloud iam roles list --project="$(gcloud config get-value project)"
 ```
 

@@ -35,6 +35,7 @@ Use o cluster da aula anterior se ainda existir ou crie um pequeno Autopilot de 
 Crie Deployment quebrado:
 
 ```bash
+# Explicação: Cria um Deployment Kubernetes usando a imagem de container informada.
 kubectl create deployment quebrado \
   --image=nginx:tag-que-nao-existe-ace
 ```
@@ -46,9 +47,13 @@ kubectl create deployment quebrado \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get deployment quebrado
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get pods -l app=quebrado
+# Explicação: Mostra detalhes e eventos do recurso Kubernetes, útil para troubleshooting.
 kubectl describe pod -l app=quebrado
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get events --sort-by=.lastTimestamp | tail -30
 ```
 
@@ -59,6 +64,7 @@ kubectl get events --sort-by=.lastTimestamp | tail -30
 Observe o pod por alguns minutos:
 
 ```bash
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get pods -l app=quebrado -w
 ```
 
@@ -82,7 +88,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Mostra detalhes e eventos do recurso Kubernetes, útil para troubleshooting.
 kubectl describe pod -l app=quebrado
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get events --sort-by=.lastTimestamp | tail -30
 ```
 
@@ -109,10 +117,13 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Atualiza a imagem de um container no recurso Kubernetes e inicia um novo rollout.
 kubectl set image deployment/quebrado \
   nginx=nginx:alpine
 
+# Explicação: Executa uma operação de rollout do Deployment, como acompanhar status, histórico ou desfazer versão.
 kubectl rollout status deployment/quebrado
+# Explicação: Lista/consulta recursos Kubernetes; filtros e flags controlam namespace, labels e formato da saída.
 kubectl get pods -l app=quebrado
 ```
 
@@ -129,6 +140,7 @@ kubectl get pods -l app=quebrado
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui o recurso Kubernetes indicado para cleanup ou para induzir/corrigir o cenário do laboratório.
 kubectl delete deployment quebrado --ignore-not-found
 # Exclua o cluster se foi criado exclusivamente para esta aula.
 ```
@@ -175,6 +187,7 @@ GKE Enterprise
 No Standard:
 
 ```bash
+# Explicação: Lista node pools do cluster para verificar tamanho e configuração.
 gcloud container node-pools list \
   --cluster=CLUSTER \
   --location=LOCATION

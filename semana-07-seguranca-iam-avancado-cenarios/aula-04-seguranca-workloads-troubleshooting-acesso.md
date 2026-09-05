@@ -31,13 +31,20 @@ Request
 # 2. Criar
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Define a variável `SA` usada nas próximas etapas do laboratório.
 export SA="ace-noaccess@$PROJECT_ID.iam.gserviceaccount.com"
+# Explicação: Define `BUCKET` com o nome do bucket usado no laboratório.
 export BUCKET="gs://$PROJECT_ID-ace-sec-$RANDOM"
 
+# Explicação: Cria uma Service Account que será usada como identidade de workload ou principal IAM.
 gcloud iam service-accounts create ace-noaccess
+# Explicação: Cria um bucket Cloud Storage com localização e opções informadas.
 gcloud storage buckets create "$BUCKET" --location=us-central1
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo dado > arquivo.txt
+# Explicação: Copia arquivo(s) entre o ambiente local e Cloud Storage, ou entre localizações no Cloud Storage.
 gcloud storage cp arquivo.txt "$BUCKET/"
 ```
 
@@ -48,8 +55,11 @@ gcloud storage cp arquivo.txt "$BUCKET/"
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe detalhes da Service Account indicada.
 gcloud iam service-accounts describe "$SA"
+# Explicação: Exibe a política IAM do bucket para verificar quem possui acesso.
 gcloud storage buckets get-iam-policy "$BUCKET"
+# Explicação: Lista as identidades autenticadas e mostra qual conta está ativa no `gcloud`.
 gcloud auth list
 ```
 
@@ -60,6 +70,7 @@ gcloud auth list
 Tente ler via SA sem role:
 
 ```bash
+# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
 gcloud storage cat "$BUCKET/arquivo.txt" \
   --impersonate-service-account="$SA"
 ```
@@ -86,7 +97,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Exibe a política IAM do bucket para verificar quem possui acesso.
 gcloud storage buckets get-iam-policy "$BUCKET"
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
 ```
 
@@ -117,10 +130,12 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Adiciona uma concessão IAM diretamente ao bucket.
 gcloud storage buckets add-iam-policy-binding "$BUCKET" \
   --member="serviceAccount:$SA" \
   --role="roles/storage.objectViewer"
 
+# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
 gcloud storage cat "$BUCKET/arquivo.txt" \
   --impersonate-service-account="$SA"
 ```
@@ -138,9 +153,13 @@ gcloud storage cat "$BUCKET/arquivo.txt" \
 # 9. Cleanup
 
 ```bash
+# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
 gcloud storage rm "$BUCKET/arquivo.txt"
+# Explicação: Exclui o bucket; ele precisa estar vazio ou ser removido recursivamente conforme o comando.
 gcloud storage buckets delete "$BUCKET" --quiet
+# Explicação: Exclui a Service Account criada para o laboratório.
 gcloud iam service-accounts delete "$SA" --quiet
+# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -f arquivo.txt
 ```
 

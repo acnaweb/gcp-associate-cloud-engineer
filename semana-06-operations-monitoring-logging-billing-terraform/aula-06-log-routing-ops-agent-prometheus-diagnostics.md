@@ -25,15 +25,20 @@ Crie uma VM pequena e instale Ops Agent pelo fluxo recomendado no Console/docume
 
 Inspeção de routing:
 ```bash
+# Explicação: Lista log sinks existentes para verificar roteamento configurado.
 gcloud logging sinks list
+# Explicação: Lista log buckets do Cloud Logging na localização informada.
 gcloud logging buckets list --location=global
 ```
 
 ## 3. Inspecionar
 
 ```bash
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read 'resource.type="gce_instance"' --limit=20
+# Explicação: Lista log sinks existentes para verificar roteamento configurado.
 gcloud logging sinks list
+# Explicação: Lista log buckets do Cloud Logging na localização informada.
 gcloud logging buckets list --location=global
 ```
 
@@ -114,6 +119,7 @@ Agente recomendado para coletar métricas/logs de VMs em cenários suportados.
 Inspeção em VM configurada:
 
 ```bash
+# Explicação: Consulta o estado do serviço systemd indicado sem alterar sua execução.
 sudo systemctl status google-cloud-ops-agent
 ```
 
@@ -178,6 +184,7 @@ Sink
 ### Exemplo: sink para BigQuery
 
 ```bash
+# Explicação: Cria um log sink para rotear entradas que correspondem ao filtro até o destino configurado.
 gcloud logging sinks create ace-bq-sink \
   bigquery.googleapis.com/projects/PROJECT_ID/datasets/DATASET_ID \
   --log-filter='severity>=ERROR'
@@ -186,6 +193,7 @@ gcloud logging sinks create ace-bq-sink \
 Inspecione:
 
 ```bash
+# Explicação: Exibe configuração e writer identity do log sink.
 gcloud logging sinks describe ace-bq-sink
 ```
 
@@ -226,7 +234,9 @@ Log Router
 Inspeção:
 
 ```bash
+# Explicação: Lista log sinks existentes para verificar roteamento configurado.
 gcloud logging sinks list
+# Explicação: Lista log buckets do Cloud Logging na localização informada.
 gcloud logging buckets list --location=global
 ```
 
@@ -310,6 +320,7 @@ quando?
 Exemplo de consulta:
 
 ```bash
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read \
   'logName:"cloudaudit.googleapis.com"' \
   --limit=20
@@ -320,6 +331,7 @@ gcloud logging read \
 Se criou o sink:
 
 ```bash
+# Explicação: Exclui o log sink criado no laboratório.
 gcloud logging sinks delete ace-bq-sink
 ```
 
@@ -335,12 +347,14 @@ Crie/ reutilize uma VM de laboratório e instale o agente pelo fluxo recomendado
 Depois valide na VM:
 
 ```bash
+# Explicação: Consulta o estado do serviço systemd indicado sem alterar sua execução.
 sudo systemctl status google-cloud-ops-agent --no-pager
 ```
 
 Gere uma linha de syslog:
 
 ```bash
+# Explicação: Executa `logger 'ACE OPS AGENT TEST'` nesta etapa para aplicar ou inspecionar a configuração indicada.
 logger 'ACE OPS AGENT TEST'
 ```
 
@@ -349,12 +363,14 @@ No Logs Explorer, pesquise pela VM e pela mensagem.
 **Falha proposital:** pare o agent:
 
 ```bash
+# Explicação: Interrompe propositalmente o serviço systemd indicado para simular a falha do laboratório.
 sudo systemctl stop google-cloud-ops-agent
 ```
 
 Gere outra mensagem e compare ingestão. Antes de alterar IAM ou firewall, confirme:
 
 ```bash
+# Explicação: Consulta o estado do serviço systemd indicado sem alterar sua execução.
 sudo systemctl status google-cloud-ops-agent --no-pager
 ```
 
@@ -363,13 +379,16 @@ sudo systemctl status google-cloud-ops-agent --no-pager
 Para tornar a exportação prática, primeiro crie um dataset:
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Cria um recurso BigQuery, como dataset ou tabela, conforme as flags.
 bq mk --dataset --location=US "$PROJECT_ID:ace_logs"
 ```
 
 Crie o sink:
 
 ```bash
+# Explicação: Cria um log sink para rotear entradas que correspondem ao filtro até o destino configurado.
 gcloud logging sinks create ace-bq-sink \
   "bigquery.googleapis.com/projects/$PROJECT_ID/datasets/ace_logs" \
   --log-filter='severity>=ERROR'
@@ -378,6 +397,7 @@ gcloud logging sinks create ace-bq-sink \
 Inspecione a identidade escritora:
 
 ```bash
+# Explicação: Exibe configuração e writer identity do log sink.
 gcloud logging sinks describe ace-bq-sink
 ```
 
@@ -386,6 +406,7 @@ Conceda ao writer identity a permissão necessária no dataset conforme o valor 
 Gere um erro:
 
 ```bash
+# Explicação: Grava uma entrada de log de teste no Cloud Logging.
 gcloud logging write ace-export-test 'ERRO EXPORTADO' --severity=ERROR
 ```
 

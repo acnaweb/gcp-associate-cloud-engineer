@@ -223,22 +223,29 @@ Abra o Cloud Shell.
 Defina:
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
+# Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
 export REGION=us-central1
+# Explicação: Define `ZONE` com o valor da zona padrão usada pelos recursos zonais do laboratório.
 export ZONE=us-central1-a
 ```
 
 Veja:
 
 ```bash
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $PROJECT_ID
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $REGION
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $ZONE
 ```
 
 Habilite Compute Engine:
 
 ```bash
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable compute.googleapis.com
 ```
 
@@ -249,6 +256,7 @@ gcloud services enable compute.googleapis.com
 Crie:
 
 ```bash
+# Explicação: Cria uma VPC; as flags definem, entre outros pontos, se a rede será custom mode ou auto mode.
 gcloud compute networks create ace-firewall-vpc \
   --subnet-mode=custom
 ```
@@ -256,6 +264,7 @@ gcloud compute networks create ace-firewall-vpc \
 Verifique:
 
 ```bash
+# Explicação: Exibe propriedades da VPC para confirmar modo de subnet, roteamento e demais configurações.
 gcloud compute networks describe ace-firewall-vpc
 ```
 
@@ -266,6 +275,7 @@ gcloud compute networks describe ace-firewall-vpc
 Subnet A:
 
 ```bash
+# Explicação: Cria uma sub-rede regional dentro da VPC com o intervalo CIDR informado.
 gcloud compute networks subnets create subnet-a \
   --network=ace-firewall-vpc \
   --region=$REGION \
@@ -275,6 +285,7 @@ gcloud compute networks subnets create subnet-a \
 Subnet B:
 
 ```bash
+# Explicação: Cria uma sub-rede regional dentro da VPC com o intervalo CIDR informado.
 gcloud compute networks subnets create subnet-b \
   --network=ace-firewall-vpc \
   --region=$REGION \
@@ -284,6 +295,7 @@ gcloud compute networks subnets create subnet-b \
 Liste:
 
 ```bash
+# Explicação: Lista sub-redes para verificar região, VPC e intervalos de IP.
 gcloud compute networks subnets list \
   --network=ace-firewall-vpc
 ```
@@ -305,6 +317,7 @@ ace-firewall-vpc
 Crie VM A:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-a \
   --zone=$ZONE \
   --machine-type=e2-micro \
@@ -317,6 +330,7 @@ gcloud compute instances create vm-a \
 Crie VM B:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create vm-b \
   --zone=$ZONE \
   --machine-type=e2-micro \
@@ -329,16 +343,19 @@ gcloud compute instances create vm-b \
 Liste:
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
 Capture IPs internos:
 
 ```bash
+# Explicação: Define a variável `VM_A_IP` usada nas próximas etapas do laboratório.
 export VM_A_IP=$(gcloud compute instances describe vm-a \
   --zone=$ZONE \
   --format="value(networkInterfaces[0].networkIP)")
 
+# Explicação: Define a variável `VM_B_IP` usada nas próximas etapas do laboratório.
 export VM_B_IP=$(gcloud compute instances describe vm-b \
   --zone=$ZONE \
   --format="value(networkInterfaces[0].networkIP)")
@@ -347,7 +364,9 @@ export VM_B_IP=$(gcloud compute instances describe vm-b \
 Veja:
 
 ```bash
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $VM_A_IP
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo $VM_B_IP
 ```
 
@@ -358,6 +377,7 @@ echo $VM_B_IP
 Crie:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-allow-ssh \
   --network=ace-firewall-vpc \
   --direction=INGRESS \
@@ -377,6 +397,7 @@ gcloud compute firewall-rules create ace-allow-ssh \
 Entre na VM A:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE
 ```
@@ -384,6 +405,7 @@ gcloud compute ssh vm-a \
 Teste:
 
 ```bash
+# Explicação: Envia pacotes ICMP para testar alcance IP entre origem e destino.
 ping -c 4 $VM_B_IP
 ```
 
@@ -407,6 +429,7 @@ firewall pode bloquear
 Saia:
 
 ```bash
+# Explicação: Encerra a sessão atual do shell/SSH e retorna ao terminal anterior.
 exit
 ```
 
@@ -417,6 +440,7 @@ exit
 Crie:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-allow-icmp-internal \
   --network=ace-firewall-vpc \
   --direction=INGRESS \
@@ -429,6 +453,7 @@ gcloud compute firewall-rules create ace-allow-icmp-internal \
 Liste:
 
 ```bash
+# Explicação: Lista regras de firewall para inspecionar a política efetiva da VPC.
 gcloud compute firewall-rules list \
   --filter="network:ace-firewall-vpc"
 ```
@@ -436,6 +461,7 @@ gcloud compute firewall-rules list \
 Teste novamente:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="ping -c 4 $VM_B_IP"
@@ -450,6 +476,7 @@ Agora deverá funcionar.
 Execute:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-b \
   --zone=$ZONE \
   --command="sudo apt-get update && sudo apt-get install -y nginx"
@@ -458,6 +485,7 @@ gcloud compute ssh vm-b \
 Verifique:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-b \
   --zone=$ZONE \
   --command="curl -s localhost | head"
@@ -470,6 +498,7 @@ gcloud compute ssh vm-b \
 Da VM A:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="curl --connect-timeout 5 http://$VM_B_IP"
@@ -494,6 +523,7 @@ firewall tcp:80 = NÃO
 Crie:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-allow-http-from-subnet-a \
   --network=ace-firewall-vpc \
   --direction=INGRESS \
@@ -507,6 +537,7 @@ gcloud compute firewall-rules create ace-allow-http-from-subnet-a \
 Teste:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="curl -s http://$VM_B_IP | head"
@@ -545,6 +576,7 @@ Se removermos a tag da VM B, a regra deixa de atingir aquele recurso.
 Execute:
 
 ```bash
+# Explicação: Executa `gcloud compute instances remove-tags vm-b --zone=$ZONE --tags=web` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute instances remove-tags vm-b \
   --zone=$ZONE \
   --tags=web
@@ -553,6 +585,7 @@ gcloud compute instances remove-tags vm-b \
 Teste novamente:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="curl --connect-timeout 5 http://$VM_B_IP"
@@ -576,6 +609,7 @@ mas target não corresponde
 Execute:
 
 ```bash
+# Explicação: Executa `gcloud compute instances add-tags vm-b --zone=$ZONE --tags=web` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute instances add-tags vm-b \
   --zone=$ZONE \
   --tags=web
@@ -584,6 +618,7 @@ gcloud compute instances add-tags vm-b \
 Teste:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="curl -s http://$VM_B_IP | head"
@@ -596,6 +631,7 @@ gcloud compute ssh vm-a \
 Liste:
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list \
   --filter="network:ace-firewall-vpc"
 ```
@@ -647,6 +683,7 @@ Quanto menor o valor, maior a preferência, considerando o algoritmo de seleçã
 Você pode visualizar:
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list
 ```
 
@@ -685,6 +722,7 @@ Primeiro habilite IP forwarding na VM B exigiria recriação/configuração apro
 Crie:
 
 ```bash
+# Explicação: Cria uma rota estática na VPC com destino e próximo salto definidos nas flags.
 gcloud compute routes create ace-route-10-99 \
   --network=ace-firewall-vpc \
   --destination-range=10.99.0.0/24 \
@@ -696,6 +734,7 @@ gcloud compute routes create ace-route-10-99 \
 Liste:
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list \
   --filter="name:ace-route-10-99"
 ```
@@ -769,6 +808,7 @@ Esse conceito é fundamental em roteamento.
 Delete a regra HTTP:
 
 ```bash
+# Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
 gcloud compute firewall-rules delete \
   ace-allow-http-from-subnet-a \
   --quiet
@@ -777,6 +817,7 @@ gcloud compute firewall-rules delete \
 Teste:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="curl --connect-timeout 5 http://$VM_B_IP"
@@ -793,6 +834,7 @@ Existe rota para 10.20.0.0/24?
 Verifique:
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list \
   --filter="network:ace-firewall-vpc"
 ```
@@ -811,6 +853,7 @@ FIREWALL = FAIL
 # 28. Recriando a regra HTTP
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-allow-http-from-subnet-a \
   --network=ace-firewall-vpc \
   --direction=INGRESS \
@@ -830,6 +873,7 @@ Teste novamente.
 Agora pare o nginx:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-b \
   --zone=$ZONE \
   --command="sudo systemctl stop nginx"
@@ -838,6 +882,7 @@ gcloud compute ssh vm-b \
 Teste da VM A:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="curl --connect-timeout 5 http://$VM_B_IP"
@@ -862,6 +907,7 @@ Isso mostra por que troubleshooting não pode parar no firewall.
 Na VM B:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-b \
   --zone=$ZONE \
   --command="sudo systemctl status nginx --no-pager"
@@ -870,6 +916,7 @@ gcloud compute ssh vm-b \
 Inicie novamente:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-b \
   --zone=$ZONE \
   --command="sudo systemctl start nginx"
@@ -884,6 +931,7 @@ Agora vamos criar uma regra de negação com prioridade maior.
 Crie:
 
 ```bash
+# Explicação: Cria uma regra de firewall VPC; direção, origem/destino, alvo e protocolos/portas são definidos pelas flags.
 gcloud compute firewall-rules create ace-deny-http-priority \
   --network=ace-firewall-vpc \
   --direction=INGRESS \
@@ -904,6 +952,7 @@ ALLOW priority 1000
 Teste:
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh vm-a \
   --zone=$ZONE \
   --command="curl --connect-timeout 5 http://$VM_B_IP"
@@ -926,6 +975,7 @@ A regra de prioridade 500 é considerada antes.
 # 32. Removendo a regra de negação
 
 ```bash
+# Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
 gcloud compute firewall-rules delete \
   ace-deny-http-priority \
   --quiet
@@ -1030,30 +1080,35 @@ Quando uma conexão falhar:
 ## VMs
 
 ```bash
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
 ```
 
 ## Firewall
 
 ```bash
+# Explicação: Lista regras de firewall para inspecionar a política efetiva da VPC.
 gcloud compute firewall-rules list
 ```
 
 ## Rota
 
 ```bash
+# Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
 gcloud compute routes list
 ```
 
 ## Subnets
 
 ```bash
+# Explicação: Lista sub-redes para verificar região, VPC e intervalos de IP.
 gcloud compute networks subnets list
 ```
 
 ## VPCs
 
 ```bash
+# Explicação: Lista VPCs existentes no projeto.
 gcloud compute networks list
 ```
 
@@ -1311,6 +1366,7 @@ HTTP
 # 43. Limpeza — rota customizada
 
 ```bash
+# Explicação: Exclui a rota estática criada no laboratório.
 gcloud compute routes delete ace-route-10-99 \
   --quiet
 ```
@@ -1320,6 +1376,7 @@ gcloud compute routes delete ace-route-10-99 \
 # 44. Limpeza — VMs
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete vm-a vm-b \
   --zone=$ZONE \
   --quiet
@@ -1330,6 +1387,7 @@ gcloud compute instances delete vm-a vm-b \
 # 45. Limpeza — firewall rules
 
 ```bash
+# Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
 gcloud compute firewall-rules delete \
   ace-allow-ssh \
   ace-allow-icmp-internal \
@@ -1340,6 +1398,7 @@ gcloud compute firewall-rules delete \
 Caso ainda exista:
 
 ```bash
+# Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
 gcloud compute firewall-rules delete \
   ace-deny-http-priority \
   --quiet
@@ -1350,12 +1409,14 @@ gcloud compute firewall-rules delete \
 # 46. Limpeza — subnets
 
 ```bash
+# Explicação: Exclui a sub-rede indicada.
 gcloud compute networks subnets delete subnet-a \
   --region=$REGION \
   --quiet
 ```
 
 ```bash
+# Explicação: Exclui a sub-rede indicada.
 gcloud compute networks subnets delete subnet-b \
   --region=$REGION \
   --quiet
@@ -1366,6 +1427,7 @@ gcloud compute networks subnets delete subnet-b \
 # 47. Limpeza — VPC
 
 ```bash
+# Explicação: Exclui a VPC depois que os recursos dependentes foram removidos.
 gcloud compute networks delete ace-firewall-vpc \
   --quiet
 ```

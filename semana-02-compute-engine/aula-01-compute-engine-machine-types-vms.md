@@ -33,8 +33,10 @@ Project
 # 2. Criar
 
 ```bash
+# Explicação: Define `ZONE` com o valor da zona padrão usada pelos recursos zonais do laboratório.
 export ZONE=us-central1-a
 
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-vm \
   --zone="$ZONE" \
   --machine-type=e2-micro \
@@ -49,8 +51,11 @@ gcloud compute instances create ace-vm \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-vm --zone="$ZONE"
+# Explicação: Lista VMs do projeto para verificar inventário, zona, IPs e estado.
 gcloud compute instances list
+# Explicação: Executa `gcloud compute machine-types describe e2-micro --zone="$ZONE"` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud compute machine-types describe e2-micro --zone="$ZONE"
 ```
 
@@ -59,9 +64,13 @@ gcloud compute machine-types describe e2-micro --zone="$ZONE"
 # 4. Testar
 
 ```bash
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-vm --zone="$ZONE" --command="hostname && uptime"
+# Explicação: Interrompe a VM sem excluir seus discos persistentes.
 gcloud compute instances stop ace-vm --zone="$ZONE"
+# Explicação: Inicia uma VM que está parada.
 gcloud compute instances start ace-vm --zone="$ZONE"
+# Explicação: Reinicializa a VM de forma semelhante a um reset de hardware, sem desligamento gracioso do sistema operacional.
 gcloud compute instances reset ace-vm --zone="$ZONE"
 ```
 
@@ -72,7 +81,9 @@ gcloud compute instances reset ace-vm --zone="$ZONE"
 Pare a VM:
 
 ```bash
+# Explicação: Interrompe a VM sem excluir seus discos persistentes.
 gcloud compute instances stop ace-vm --zone="$ZONE"
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-vm --zone="$ZONE"
 ```
 
@@ -88,6 +99,7 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidência:**
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-vm \
   --zone="$ZONE" \
   --format="value(status)"
@@ -114,7 +126,9 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Inicia uma VM que está parada.
 gcloud compute instances start ace-vm --zone="$ZONE"
+# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
 gcloud compute ssh ace-vm --zone="$ZONE" --command="hostname"
 ```
 
@@ -131,6 +145,7 @@ gcloud compute ssh ace-vm --zone="$ZONE" --command="hostname"
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-vm --zone="$ZONE" --quiet
 ```
 
@@ -156,12 +171,14 @@ gcloud compute instances delete ace-vm --zone="$ZONE" --quiet
 Quando predefined machine types não atendem à combinação desejada de vCPU/memória, avalie custom machine type.
 
 ```bash
+# Explicação: Lista tipos de máquina disponíveis na zona/região para comparar CPU e memória.
 gcloud compute machine-types list --zones=us-central1-a --filter='name:n2'
 ```
 
 Exemplo de criação (não é necessário executar se gerar custo):
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-custom-vm \
   --zone=us-central1-a \
   --custom-cpu=2 \
@@ -217,6 +234,7 @@ Quando tipos predefinidos não atendem bem à relação vCPU/memória, um custom
 Exemplo:
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-custom-vm \
   --zone=us-central1-a \
   --custom-cpu=2 \
@@ -228,6 +246,7 @@ gcloud compute instances create ace-custom-vm \
 Inspecione:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-custom-vm \
   --zone=us-central1-a \
   --format='value(machineType)'
@@ -242,6 +261,7 @@ Spot VMs têm preço reduzido, mas podem ser interrompidas pelo Google Cloud. S�
 Inspecione:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-vm \
   --zone=us-central1-a \
   --format='yaml(scheduling)'
@@ -259,6 +279,7 @@ O guia exige usar **Spot VMs** e **custom machine types**, não apenas reconhec�
 ### Custom Machine Type
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-custom-vm \
   --zone=us-central1-a \
   --custom-cpu=2 \
@@ -266,6 +287,7 @@ gcloud compute instances create ace-custom-vm \
   --image-family=debian-12 \
   --image-project=debian-cloud
 
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-custom-vm \
   --zone=us-central1-a \
   --format='yaml(machineType,status)'
@@ -274,6 +296,7 @@ gcloud compute instances describe ace-custom-vm \
 ### Spot VM
 
 ```bash
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-spot-vm \
   --zone=us-central1-a \
   --machine-type=e2-micro \
@@ -282,6 +305,7 @@ gcloud compute instances create ace-spot-vm \
   --image-family=debian-12 \
   --image-project=debian-cloud
 
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-spot-vm \
   --zone=us-central1-a \
   --format='yaml(scheduling.provisioningModel,scheduling.instanceTerminationAction,status)'
@@ -292,6 +316,7 @@ gcloud compute instances describe ace-spot-vm \
 Inspecione:
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-custom-vm \
   --zone=us-central1-a \
   --format='yaml(scheduling)'
@@ -302,6 +327,7 @@ Saiba interpretar opções de manutenção/restart compatíveis com a VM.
 ### Cleanup adicional
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-custom-vm ace-spot-vm \
   --zone=us-central1-a --quiet
 ```

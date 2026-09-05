@@ -58,10 +58,15 @@ Antes de provocar qualquer erro, confirme a configuração criada. O troubleshoo
 Use comandos já aprendidos:
 
 ```bash
+# Explicação: Lista as identidades autenticadas e mostra qual conta está ativa no `gcloud`.
 gcloud auth list
+# Explicação: Exibe a política IAM do projeto para inspecionar principals, roles e bindings.
 gcloud projects get-iam-policy "$(gcloud config get-value project)"
+# Explicação: Lista Service Accounts para confirmar que a identidade foi criada.
 gcloud iam service-accounts list
+# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
 gcloud iam roles describe roles/storage.objectViewer
+# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
 gcloud logging read 'protoPayload.status.code=7' --limit=10
 ```
 

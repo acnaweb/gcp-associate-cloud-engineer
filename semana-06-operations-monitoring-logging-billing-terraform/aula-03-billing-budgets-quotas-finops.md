@@ -29,11 +29,15 @@ Quota → limite técnico
 # 2. Criar
 
 ```bash
+# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
 export PROJECT_ID=$(gcloud config get-value project)
 
+# Explicação: Lista contas de faturamento acessíveis à identidade atual.
 gcloud billing accounts list
+# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
 gcloud billing projects describe "$PROJECT_ID"
 
+# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
 gcloud compute instances create ace-finops-vm \
   --zone=us-central1-a \
   --machine-type=e2-micro \
@@ -49,10 +53,12 @@ gcloud compute instances create ace-finops-vm \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe a configuração e o estado detalhado da VM para inspeção/troubleshooting.
 gcloud compute instances describe ace-finops-vm \
   --zone=us-central1-a \
   --format="yaml(labels)"
 
+# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
 gcloud compute project-info describe \
   --format="yaml(quotas)"
 ```
@@ -129,6 +135,7 @@ Atualize sua folha de decisão e, se quiser testar quota real, faça isso apenas
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
 gcloud compute instances delete ace-finops-vm \
   --zone=us-central1-a --quiet
 ```
@@ -161,7 +168,9 @@ O exam guide inclui:
 Inspecione:
 
 ```bash
+# Explicação: Lista contas de faturamento acessíveis à identidade atual.
 gcloud billing accounts list
+# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
 gcloud billing projects describe "$(gcloud config get-value project)"
 ```
 

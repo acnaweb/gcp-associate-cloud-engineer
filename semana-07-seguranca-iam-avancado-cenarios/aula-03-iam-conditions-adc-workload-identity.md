@@ -30,9 +30,13 @@ External IdP ── WIF ──> short-lived Google credentials
 ### ADC
 
 ```bash
+# Explicação: Lista as identidades autenticadas e mostra qual conta está ativa no `gcloud`.
 gcloud auth list
+# Explicação: Cria credenciais Application Default Credentials para aplicações locais usarem APIs do Google Cloud.
 gcloud auth application-default login
+# Explicação: Gera/exibe um access token das Application Default Credentials para testar a identidade efetiva.
 gcloud auth application-default print-access-token | head -c 20
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo
 ```
 
@@ -67,9 +71,13 @@ Google API
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Lista as identidades autenticadas e mostra qual conta está ativa no `gcloud`.
 gcloud auth list
+# Explicação: Executa `gcloud config get-value account` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud config get-value account
+# Explicação: Gera/exibe um access token das Application Default Credentials para testar a identidade efetiva.
 gcloud auth application-default print-access-token | head -c 20
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo
 ```
 
@@ -90,12 +98,14 @@ Se tiver Python com `google-auth`, execute uma pequena aplicação que use ADC o
 Revogue ADC local:
 
 ```bash
+# Explicação: Executa `gcloud auth application-default revoke` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud auth application-default revoke
 ```
 
 Depois:
 
 ```bash
+# Explicação: Gera/exibe um access token das Application Default Credentials para testar a identidade efetiva.
 gcloud auth application-default print-access-token
 ```
 
@@ -111,7 +121,9 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidência:**
 ```bash
+# Explicação: Lista as identidades autenticadas e mostra qual conta está ativa no `gcloud`.
 gcloud auth list
+# Explicação: Gera/exibe um access token das Application Default Credentials para testar a identidade efetiva.
 gcloud auth application-default print-access-token
 ```
 
@@ -138,8 +150,11 @@ Correção
 # 7. Corrigir
 
 ```bash
+# Explicação: Cria credenciais Application Default Credentials para aplicações locais usarem APIs do Google Cloud.
 gcloud auth application-default login
+# Explicação: Gera/exibe um access token das Application Default Credentials para testar a identidade efetiva.
 gcloud auth application-default print-access-token | head -c 20
+# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
 echo
 ```
 

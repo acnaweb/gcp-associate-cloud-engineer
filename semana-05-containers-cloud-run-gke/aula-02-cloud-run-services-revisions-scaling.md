@@ -40,9 +40,12 @@ Cloud Run Service
 # 2. Criar
 
 ```bash
+# Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
 export REGION=us-central1
+# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable run.googleapis.com
 
+# Explicação: Implanta uma nova revisão do serviço Cloud Run a partir da imagem/configuração informada.
 gcloud run deploy ace-web \
   --image=us-docker.pkg.dev/cloudrun/container/hello \
   --region="$REGION" \
@@ -56,7 +59,9 @@ gcloud run deploy ace-web \
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
 ```bash
+# Explicação: Exibe configuração e status do serviço Cloud Run, incluindo URL, revisão e parâmetros de scaling.
 gcloud run services describe ace-web --region="$REGION"
+# Explicação: Lista revisões de um serviço Cloud Run para acompanhar versões implantadas.
 gcloud run revisions list --service=ace-web --region="$REGION"
 ```
 
@@ -65,15 +70,19 @@ gcloud run revisions list --service=ace-web --region="$REGION"
 # 4. Testar
 
 ```bash
+# Explicação: Define a variável `URL` usada nas próximas etapas do laboratório.
 URL=$(gcloud run services describe ace-web \
   --region="$REGION" --format="value(status.url)")
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl "$URL"
 
+# Explicação: Atualiza a configuração do serviço Cloud Run, como variáveis, min/max instances ou concurrency.
 gcloud run services update ace-web \
   --region="$REGION" \
   --set-env-vars=VERSAO=v2 \
   --min=0 --max=3
 
+# Explicação: Lista revisões de um serviço Cloud Run para acompanhar versões implantadas.
 gcloud run revisions list --service=ace-web --region="$REGION"
 ```
 
@@ -84,11 +93,13 @@ gcloud run revisions list --service=ace-web --region="$REGION"
 Remova acesso público:
 
 ```bash
+# Explicação: Executa `gcloud run services remove-iam-policy-binding ace-web --region="$REGION" --member="a…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud run services remove-iam-policy-binding ace-web \
   --region="$REGION" \
   --member="allUsers" \
   --role="roles/run.invoker"
 
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl -i "$URL"
 ```
 
@@ -104,8 +115,10 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 
 **Evidências:**
 ```bash
+# Explicação: Exibe configuração e status do serviço Cloud Run, incluindo URL, revisão e parâmetros de scaling.
 gcloud run services describe ace-web --region="$REGION" \
   --format="value(status.conditions[0].status)"
+# Explicação: Executa `gcloud run services get-iam-policy ace-web --region="$REGION"` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud run services get-iam-policy ace-web --region="$REGION"
 ```
 
@@ -134,11 +147,13 @@ Correção
 Restaure acesso público:
 
 ```bash
+# Explicação: Executa `gcloud run services add-iam-policy-binding ace-web --region="$REGION" --member="allU…` nesta etapa para aplicar ou inspecionar a configuração indicada.
 gcloud run services add-iam-policy-binding ace-web \
   --region="$REGION" \
   --member="allUsers" \
   --role="roles/run.invoker"
 
+# Explicação: Envia uma requisição HTTP ao endpoint informado para testar conectividade, resposta ou comportamento da aplicação.
 curl "$URL"
 ```
 
@@ -155,6 +170,7 @@ curl "$URL"
 # 9. Cleanup
 
 ```bash
+# Explicação: Exclui o serviço Cloud Run e suas revisões do laboratório.
 gcloud run services delete ace-web --region="$REGION" --quiet
 ```
 
@@ -170,12 +186,14 @@ gcloud run services delete ace-web --region="$REGION" --quiet
 Liste revisions:
 
 ```bash
+# Explicação: Lista revisões de um serviço Cloud Run para acompanhar versões implantadas.
 gcloud run revisions list --service=ace-web --region=$REGION
 ```
 
 Depois de possuir duas revisions, você pode dividir tráfego por percentuais:
 
 ```bash
+# Explicação: Redistribui o tráfego do Cloud Run entre revisões conforme percentuais/tags informados.
 gcloud run services update-traffic ace-web \
   --region=$REGION \
   --to-revisions=REVISION_V1=90,REVISION_V2=10
@@ -215,6 +233,7 @@ A prova inclui gerenciar novas versões/revisions e divisão de tráfego.
 Liste revisions:
 
 ```bash
+# Explicação: Lista revisões de um serviço Cloud Run para acompanhar versões implantadas.
 gcloud run revisions list \
   --service=ace-web \
   --region=us-central1
@@ -223,6 +242,7 @@ gcloud run revisions list \
 Depois de criar duas revisions, distribua tráfego usando os nomes reais retornados:
 
 ```bash
+# Explicação: Redistribui o tráfego do Cloud Run entre revisões conforme percentuais/tags informados.
 gcloud run services update-traffic ace-web \
   --region=us-central1 \
   --to-revisions=REVISION_V1=90,REVISION_V2=10
@@ -231,6 +251,7 @@ gcloud run services update-traffic ace-web \
 Inspecione:
 
 ```bash
+# Explicação: Exibe configuração e status do serviço Cloud Run, incluindo URL, revisão e parâmetros de scaling.
 gcloud run services describe ace-web \
   --region=us-central1 \
   --format='yaml(status.traffic)'
@@ -285,8 +306,10 @@ concurrency
 ### 2. Configurar
 
 ```bash
+# Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
 export REGION=us-central1
 
+# Explicação: Atualiza a configuração do serviço Cloud Run, como variáveis, min/max instances ou concurrency.
 gcloud run services update ace-web \
   --region="$REGION" \
   --min=1 \
@@ -297,6 +320,7 @@ gcloud run services update ace-web \
 ### 3. Inspecionar
 
 ```bash
+# Explicação: Exibe configuração e status do serviço Cloud Run, incluindo URL, revisão e parâmetros de scaling.
 gcloud run services describe ace-web \
   --region="$REGION" \
   --format='yaml(spec.template.metadata.annotations,spec.template.spec.containerConcurrency)'
@@ -315,10 +339,12 @@ Confirme `min`, `max` e concurrency.
 Faça várias requisições em paralelo:
 
 ```bash
+# Explicação: Define a variável `URL` usada nas próximas etapas do laboratório.
 URL=$(gcloud run services describe ace-web \
   --region="$REGION" \
   --format='value(status.url)')
 
+# Explicação: Executa `seq 1 30 | xargs -n1 -P10 -I{} curl -s -o /dev/null "$URL"` nesta etapa para aplicar ou inspecionar a configuração indicada.
 seq 1 30 | xargs -n1 -P10 -I{} curl -s -o /dev/null "$URL"
 ```
 
@@ -331,6 +357,7 @@ Depois inspecione métricas de request/instance no Cloud Monitoring/Cloud Run Me
 Reduza `max` para 1:
 
 ```bash
+# Explicação: Atualiza a configuração do serviço Cloud Run, como variáveis, min/max instances ou concurrency.
 gcloud run services update ace-web \
   --region="$REGION" \
   --max=1
@@ -361,6 +388,7 @@ Correção
 ### 7. Corrigir
 
 ```bash
+# Explicação: Atualiza a configuração do serviço Cloud Run, como variáveis, min/max instances ou concurrency.
 gcloud run services update ace-web \
   --region="$REGION" \
   --min=0 \
