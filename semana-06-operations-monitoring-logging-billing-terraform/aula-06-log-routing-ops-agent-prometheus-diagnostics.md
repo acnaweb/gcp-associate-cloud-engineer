@@ -308,23 +308,21 @@ incidente da plataforma
 
 ## Audit Logs
 
-Audit Logs ajudam a responder perguntas como:
+A prática completa de **Cloud Audit Logs** está na **Semana 6 / Aula 2 — Cloud Logging e Troubleshooting**, onde são ensinados e testados:
 
 ```text
-quem?
-fez o quê?
-em qual recurso?
-quando?
+Admin Activity
+Data Access
+System Event
+Policy Denied
+protoPayload
+principalEmail
+methodName
+resourceName
+configuração auditConfigs (P*)
 ```
 
-Exemplo de consulta:
-
-```bash
-# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
-gcloud logging read \
-  'logName:"cloudaudit.googleapis.com"' \
-  --limit=20
-```
+Nesta aula, retome Audit Logs apenas para correlacionar auditoria com roteamento, buckets e diagnóstico. Não considere esta seção isoladamente como evidência `P`; a evidência prática está na Aula 2.
 
 ## Cleanup do sink de laboratório
 
@@ -430,10 +428,10 @@ Não marque este tópico como `P` se você apenas leu a definição.
 
 ---
 
-<!-- MEP-ACCEPTANCE-V8 -->
+<!-- MEP-ACCEPTANCE-V9 -->
 # Critério de aceite M/E/P desta aula
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
 
 Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
 

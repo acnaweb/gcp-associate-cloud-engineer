@@ -150,6 +150,44 @@ gcloud container node-pools list \
   --region="$REGION"
 ```
 
+
+## 3.1 Testar o cluster regional
+
+Criar o cluster e descrevê-lo não é suficiente para `P`; valide que o control plane aceita uma workload e que os Nodes estão prontos.
+
+```bash
+# Explicação: Cria um Deployment mínimo no cluster regional para validar scheduling e execução de Pods.
+kubectl create deployment regional-web \
+  --image=nginx:alpine
+
+# Explicação: Aguarda o Deployment ficar disponível; sucesso confirma que a workload foi agendada e os Pods ficaram Ready.
+kubectl wait deployment/regional-web \
+  --for=condition=Available \
+  --timeout=180s
+
+# Explicação: Mostra em quais Nodes os Pods foram agendados e ajuda a observar a topologia do cluster.
+kubectl get pods -o wide
+
+# Explicação: Exibe labels de topologia dos Nodes, incluindo informações de zona/região quando presentes.
+kubectl get nodes \
+  -L topology.kubernetes.io/region,topology.kubernetes.io/zone
+```
+
+Comportamento esperado:
+
+```text
+Deployment Available
+Pods Ready
+Nodes associados à região configurada
+```
+
+Cleanup dessa workload de validação:
+
+```bash
+# Explicação: Remove somente o Deployment usado para testar o cluster regional.
+kubectl delete deployment regional-web
+```
+
 ---
 
 # 4. Node pools — conceito e prática
@@ -703,10 +741,10 @@ gcloud container clusters delete ace-regional \
 
 ---
 
-<!-- MEP-ACCEPTANCE-V8 -->
+<!-- MEP-ACCEPTANCE-V9 -->
 # Critério de aceite M/E/P desta aula
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
 
 Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
 

@@ -34,4 +34,4 @@ Uma futura versão não pode transformar um item `P` em `E` ou `M` sem justifica
 
 # Revisão v8 — evidência real
 
-A baseline v8 substitui o critério antigo de presença por um critério de evidência. Em especial, HPA e VPA foram reclassificados/reconstruídos com explicação e prática efetiva. Veja `AUDITORIA-MEP-EVIDENCIAS.md`.
+A baseline v9 substitui o critério antigo de presença por um critério de evidência. Em especial, HPA e VPA foram reclassificados/reconstruídos com explicação e prática efetiva. Veja `AUDITORIA-MEP-EVIDENCIAS.md`.

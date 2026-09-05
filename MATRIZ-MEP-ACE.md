@@ -21,7 +21,7 @@ Guia diz “criar / configurar / implantar / gerenciar / trabalhar com” → P 
 `P*` não deve ser confundido com `P`: ele indica que existe um roteiro de prática, mas a execução pode depender de pré-requisitos que não devem ser forçados apenas para estudo.
 
 
-### Critério reforçado da baseline v8
+### Critério reforçado da baseline v9
 
 `P` só é aceito quando o arquivo contém evidência de **conceito operacional + configuração/comando + inspeção + teste/comportamento observável**. Um comando isolado não é prática suficiente.
 
@@ -56,10 +56,10 @@ Para troubleshooting, o tópico precisa ainda apresentar **Sintoma → Hipótese
 | 3.1 | Inicializar VM + discos + availability policy + SSH keys | `P` | S2 A1/A2/A6 | `P` | Criação/inspeção/SSH/scheduling |
 | 3.1 | MIG + autoscaling + instance template | `P` | S2 A4/A5 | `P` | Hands-on completo |
 | 3.1 | OS Login | `P` | S2 A6 | `P` | Habilitar/testar/troubleshoot |
-| 3.1 | VM Manager | `P` | S2 A6 | `P` | API/metadata/Console/inventário |
+| 3.1 | VM Manager | `P` | S2 A6 | `P` | feature settings + OS inventory CLI + troubleshooting |
 | 3.2 | kubectl | `P` | S5 A4 | `P` | Configuração e uso |
 | 3.2 | Autopilot | `P` | S5 A4/A7 | `P` | Cluster create-auto |
-| 3.2 | Regional cluster | `P` | S5 A7 | `P` | Comando de criação |
+| 3.2 | Regional cluster | `P` | S5 A7 | `P` | create + describe + workload + wait + topology inspection |
 | 3.2 | Private cluster | `P` | S5 A7 | `P*` | Prática guiada por custo/rede |
 | 3.2 | GKE Enterprise | `P` | S5 A7 | `P*` | Explicado + prática condicional |
 | 3.2 | Deploy app containerizada no GKE | `P` | S5 A4 | `P` | Deployment + Service |
@@ -125,7 +125,7 @@ Para troubleshooting, o tópico precisa ainda apresentar **Sintoma → Hipótese
 | 4.6 | Google Cloud status | `P` | S6 A6 | `P*` | status check guided |
 | 4.6 | Ops Agent | `P` | S6 A6 | `P` | install/stop/test flow |
 | 4.6 | Managed Service for Prometheus | `P` | S6 A6 | `P*` | GKE-dependent guided practice |
-| 4.6 | Audit Logs | `P` | S6 A2/A6 | `P` | query/audit evidence |
+| 4.6 | Audit Logs | `P` | S6 A2/A6 | `P/P*` | 4 tipos + protoPayload + Admin Activity lab + Data Access auditConfigs P* |
 | 5.1 | View/create IAM policies | `P` | S1 A2/S7 A1 | `P` | get/add/remove policy binding |
 | 5.1 | Basic/predefined/custom roles | `P` | S1 A2/S7 A1 | `P` | list/describe/create custom |
 | 5.2 | Criar Service Accounts | `P` | S1 A2/S7 A2 | `P` | create |

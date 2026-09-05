@@ -112,7 +112,7 @@ A auditoria desta versão não usa mais apenas `✅`. Cada item informa o nível
 | 4.6 | Google Cloud status | S6 A6 | `P` | `P*` |
 | 4.6 | Ops Agent | S6 A6 | `P` | `P` |
 | 4.6 | Managed Service for Prometheus | S6 A6 | `P` | `P*` |
-| 4.6 | Audit Logs | S6 A2/A6 | `P` | `P` |
+| 4.6 | Audit Logs | S6 A2/A6 | `P` | `P/P*` |
 | 5.1 | View/create IAM policies | S1 A2/S7 A1 | `P` | `P` |
 | 5.1 | Basic/predefined/custom roles | S1 A2/S7 A1 | `P` | `P` |
 | 5.2 | Criar Service Accounts | S1 A2/S7 A2 | `P` | `P` |

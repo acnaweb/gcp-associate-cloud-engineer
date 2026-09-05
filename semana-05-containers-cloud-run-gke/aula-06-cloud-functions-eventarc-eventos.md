@@ -34,8 +34,8 @@ Faça primeiro um laboratório de decisão e inspeção para evitar deployment d
 ```bash
 # Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable cloudfunctions.googleapis.com eventarc.googleapis.com pubsub.googleapis.com run.googleapis.com
-# Explicação: Executa `gcloud functions list --gen2 --regions=us-central1` nesta etapa para aplicar ou inspecionar a configuração indicada.
-gcloud functions list --gen2 --regions=us-central1
+# Explicação: Executa `gcloud functions list --v2 --regions=us-central1` nesta etapa para aplicar ou inspecionar a configuração indicada.
+gcloud functions list --v2 --regions=us-central1
 # Explicação: Lista triggers do Eventarc para confirmar o roteamento de eventos configurado.
 gcloud eventarc triggers list --location=us-central1
 ```
@@ -351,10 +351,10 @@ rm -rf ~/ace-function
 
 ---
 
-<!-- MEP-ACCEPTANCE-V8 -->
+<!-- MEP-ACCEPTANCE-V9 -->
 # Critério de aceite M/E/P desta aula
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
 
 Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
 

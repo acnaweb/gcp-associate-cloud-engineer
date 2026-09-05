@@ -376,10 +376,10 @@ gcloud compute resource-policies delete ace-daily-snapshot \
 
 ---
 
-<!-- MEP-ACCEPTANCE-V8 -->
+<!-- MEP-ACCEPTANCE-V9 -->
 # Critério de aceite M/E/P desta aula
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
 
 Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
 

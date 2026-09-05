@@ -193,10 +193,91 @@ Não transforme uma falha do VM Manager em problema de firewall sem evidência.
 
 ---
 
-<!-- MEP-ACCEPTANCE-V8 -->
+
+## Prática verificável — VM Manager e OS Inventory
+
+Apenas abrir o Console não é suficiente para classificar VM Manager como `P`. Use a CLI para confirmar configuração e inventário.
+
+```bash
+# Explicação: Obtém o Project ID atual para reutilizar nos comandos do VM Manager.
+PROJECT_ID="$(gcloud config get-value project)"
+
+# Explicação: Exibe o conjunto de funcionalidades do VM Manager habilitado no projeto.
+gcloud compute os-config project-feature-settings describe \
+  --project="$PROJECT_ID"
+```
+
+Se o projeto de laboratório permitir habilitar o conjunto completo:
+
+```bash
+# Explicação: Habilita o conjunto completo de funcionalidades de patch/configuração do VM Manager no projeto. Pode haver cobrança conforme uso; execute apenas em laboratório apropriado.
+gcloud compute os-config project-feature-settings update \
+  --project="$PROJECT_ID" \
+  --patch-and-config-feature-set=full
+```
+
+Agora valide o inventário do sistema operacional:
+
+```bash
+# Explicação: Lista dados de inventário coletados pelo OS Config nas VMs da zona. O resultado confirma que o agente está reportando ao serviço.
+gcloud compute os-config inventories list \
+  --location=us-central1-a
+
+# Explicação: Exibe detalhes de inventário da VM do laboratório, como SO, kernel e versão do agente OS Config.
+gcloud compute os-config inventories describe ace-opslogin \
+  --location=us-central1-a
+```
+
+> Pode levar algum tempo após habilitar o OS Config para o primeiro inventário aparecer.
+
+### Falha proposital — inventário ausente
+
+Se o comando de inventário não retornar a VM:
+
+```text
+Sintoma
+→ ace-opslogin não aparece no inventário
+
+Hipótese
+→ OS Config não está habilitado/reportando para a VM
+
+Evidência
+→ API, metadata, feature settings e inventário CLI
+
+Causa possível no laboratório
+→ enable-osconfig ausente/incorreto ou agente ainda não reportou
+
+Correção
+→ restaurar enable-osconfig=TRUE, confirmar feature settings e aguardar nova coleta
+```
+
+Inspecione as evidências antes de alterar qualquer outra camada:
+
+```bash
+# Explicação: Confirma se a API OS Config está habilitada no projeto.
+gcloud services list \
+  --enabled \
+  --filter='NAME:osconfig.googleapis.com'
+
+# Explicação: Confirma o valor de enable-osconfig no metadata de projeto.
+gcloud compute project-info describe \
+  --format='yaml(commonInstanceMetadata.items)'
+
+# Explicação: Verifica novamente as feature settings do VM Manager.
+gcloud compute os-config project-feature-settings describe \
+  --project="$PROJECT_ID"
+```
+
+Referências oficiais:
+- https://cloud.google.com/compute/vm-manager/docs/setup
+- https://cloud.google.com/compute/vm-manager/docs/os-inventory/view-os-details
+
+---
+
+<!-- MEP-ACCEPTANCE-V9 -->
 # Critério de aceite M/E/P desta aula
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
 
 Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
 

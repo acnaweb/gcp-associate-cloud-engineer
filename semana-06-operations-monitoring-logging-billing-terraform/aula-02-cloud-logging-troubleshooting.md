@@ -196,60 +196,270 @@ No Logs Explorer, abra uma entrada e identifique:
 
 ---
 
-# Cobertura adicional — Log Router, Sinks, Buckets, Views e Audit Logs
+---
 
-Fluxo:
+# 10. Cloud Audit Logs — conceito, tipos, consulta e configuração
+
+O **Cloud Audit Logs** registra ações administrativas, acessos a dados, eventos gerados pelo próprio Google Cloud e negações causadas por políticas de segurança. Uma entrada de auditoria é uma entrada do Cloud Logging cujo `protoPayload` contém um objeto de auditoria.
+
+## 10.1 Modelo mental
 
 ```text
-Log entries
-   ↓
-Log Router
-   ├─ _Required bucket
-   ├─ _Default bucket
-   └─ Sink → BigQuery / Storage / Pub/Sub / projeto etc.
+Ação sobre recurso Google Cloud
+          ↓
+Cloud Audit Logs
+          ↓
+LogEntry
+├── logName
+├── timestamp
+├── resource
+└── protoPayload
+    ├── authenticationInfo.principalEmail
+    ├── serviceName
+    ├── methodName
+    ├── resourceName
+    └── status
 ```
 
-Liste sinks:
+Use as perguntas:
 
-```bash
-# Explicação: Lista log sinks existentes para verificar roteamento configurado.
-gcloud logging sinks list
+```text
+Quem?             → principalEmail
+Fez o quê?        → methodName
+Em qual serviço?  → serviceName
+Em qual recurso?  → resourceName
+Quando?           → timestamp
+Ocorreu erro?     → protoPayload.status
 ```
 
-Liste buckets:
+## 10.2 Os quatro tipos de Audit Logs
 
-```bash
-# Explicação: Lista log buckets do Cloud Logging na localização informada.
-gcloud logging buckets list --location=global
+| Tipo | O que registra | Comportamento importante |
+|---|---|---|
+| Admin Activity | ações que alteram configuração ou metadata | sempre gerado; não pode ser desabilitado |
+| Data Access | leitura de metadata/configuração e acesso a dados do usuário, conforme permission type | geralmente desabilitado por padrão; BigQuery é exceção importante |
+| System Event | alterações feitas por sistemas do Google Cloud | sempre gerado; não decorre diretamente de ação do usuário |
+| Policy Denied | acesso negado por violação de política de segurança | gerado por padrão; pode ser excluído do armazenamento por filtros |
+
+Os nomes lógicos usados nos filtros incluem:
+
+```text
+activity      → Admin Activity
+data_access   → Data Access
+system_event  → System Event
+policy        → Policy Denied
 ```
 
-Exemplo de sink para BigQuery exige dataset previamente criado e permissões da writer identity retornada pelo sink.
+## 10.3 Criar uma ação auditável
 
-## Audit Logs
-
-Categorias importantes incluem Admin Activity e outros tipos conforme serviço/configuração.
-
-Filtro útil:
+A VM criada no início da aula já produz **Admin Activity**. Para gerar mais uma alteração auditável sem criar outro recurso, adicione uma label:
 
 ```bash
-# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
+# Explicação: Adiciona uma label à VM existente. Essa alteração modifica metadata/configuração do recurso e deve gerar uma entrada de Admin Activity.
+gcloud compute instances add-labels ace-log-vm \
+  --zone=us-central1-a \
+  --labels=audit-demo=true
+```
+
+## 10.4 Consultar Audit Logs do projeto
+
+```bash
+# Explicação: Obtém o Project ID atualmente selecionado para montar filtros de Audit Logs sem hardcode.
+PROJECT_ID="$(gcloud config get-value project)"
+
+# Explicação: Lê entradas de Cloud Audit Logs do projeto atual. O filtro procura qualquer log cujo nome pertença a cloudaudit.googleapis.com.
 gcloud logging read \
-  'logName:"cloudaudit.googleapis.com"' \
+  "logName:projects/${PROJECT_ID}/logs/cloudaudit.googleapis.com" \
+  --project="$PROJECT_ID" \
   --limit=20
 ```
 
-Pergunta de prova:
+Agora filtre especificamente **Admin Activity**:
 
-> “Quem alterou/deletou o recurso?”
+```bash
+# Explicação: Filtra somente Admin Activity. `%2Factivity` é a forma codificada do sufixo `/activity` no logName.
+gcloud logging read \
+  "logName=projects/${PROJECT_ID}/logs/cloudaudit.googleapis.com%2Factivity" \
+  --project="$PROJECT_ID" \
+  --limit=20
+```
 
-Comece por **Cloud Audit Logs**, não por métrica de CPU.
+## 10.5 Inspecionar quem fez o quê
+
+```bash
+# Explicação: Mostra os campos mais úteis de uma entrada de auditoria: horário, principal, serviço, método e recurso afetado.
+gcloud logging read \
+  "logName=projects/${PROJECT_ID}/logs/cloudaudit.googleapis.com%2Factivity" \
+  --project="$PROJECT_ID" \
+  --limit=10 \
+  --format='table(timestamp,protoPayload.authenticationInfo.principalEmail,protoPayload.serviceName,protoPayload.methodName,protoPayload.resourceName)'
+```
+
+Procure uma entrada relacionada ao Compute Engine:
+
+```bash
+# Explicação: Restringe a consulta ao serviço Compute Engine para facilitar a correlação com a alteração feita na VM.
+gcloud logging read \
+  'protoPayload.serviceName="compute.googleapis.com" AND logName:"cloudaudit.googleapis.com%2Factivity"' \
+  --project="$PROJECT_ID" \
+  --limit=20
+```
+
+O comportamento esperado é encontrar uma ação administrativa recente associada ao principal autenticado e a um método do Compute Engine.
+
+## 10.6 Teste positivo
+
+Confirme três evidências na mesma entrada:
+
+```text
+principalEmail  → sua identidade ou identidade que executou a ação
+methodName      → método correspondente à alteração
+resourceName    → recurso afetado
+```
+
+No Logs Explorer, faça a mesma consulta e expanda `protoPayload` para conferir os campos estruturados.
+
+## 10.7 Quebrar propositalmente — filtro errado
+
+Use deliberadamente o tipo errado de Audit Log:
+
+```bash
+# Explicação: Procura System Event para uma ação manual que deveria aparecer em Admin Activity. O resultado pode ser vazio e isso é proposital.
+gcloud logging read \
+  "logName=projects/${PROJECT_ID}/logs/cloudaudit.googleapis.com%2Fsystem_event AND protoPayload.serviceName=\"compute.googleapis.com\"" \
+  --project="$PROJECT_ID" \
+  --limit=20
+```
+
+### Troubleshooting
+
+```text
+Sintoma
+→ não encontro a alteração manual da VM
+
+Hipótese
+→ estou consultando a categoria errada de Audit Log
+
+Evidência
+→ a ação foi feita por usuário/CLI e modificou configuração do recurso
+
+Causa
+→ filtro usa system_event, mas a ação pertence a Admin Activity
+
+Correção
+→ consultar activity e então filtrar por serviceName/methodName/resourceName
+```
+
+Corrija:
+
+```bash
+# Explicação: Volta para Admin Activity, categoria adequada para a alteração administrativa realizada pelo usuário.
+gcloud logging read \
+  "logName=projects/${PROJECT_ID}/logs/cloudaudit.googleapis.com%2Factivity" \
+  --project="$PROJECT_ID" \
+  --limit=20
+```
+
+## 10.8 Data Access — configuração P* e impacto de custo
+
+**Data Access** merece tratamento separado porque pode aumentar o volume de logs e, em muitos serviços, não vem habilitado por padrão. A configuração é feita no `auditConfigs` da IAM policy do projeto, pasta ou organização.
+
+> **Nível P\***: execute a alteração somente em um projeto de laboratório e com permissão apropriada. Alterar uma IAM policy incorretamente pode remover acessos. Preserve `bindings` e `etag` exatamente como recebidos.
+
+Primeiro faça backup da policy atual:
+
+```bash
+# Explicação: Salva a IAM policy atual em YAML. Esse arquivo contém bindings e etag e será usado como base segura para a alteração.
+gcloud projects get-iam-policy "$PROJECT_ID" > /tmp/policy-before-audit.yaml
+
+# Explicação: Cria uma segunda cópia editável, preservando o backup original para eventual restauração.
+cp /tmp/policy-before-audit.yaml /tmp/policy-audit.yaml
+```
+
+No arquivo `/tmp/policy-audit.yaml`, adicione somente a seção `auditConfigs`. Exemplo didático para habilitar Data Access de todos os serviços:
+
+```yaml
+auditConfigs:
+- service: allServices
+  auditLogConfigs:
+  - logType: ADMIN_READ
+  - logType: DATA_READ
+  - logType: DATA_WRITE
+```
+
+Depois de conferir que `bindings` e `etag` continuam intactos, aplique **somente se estiver em projeto de laboratório**:
+
+```bash
+# Explicação: Substitui a IAM policy do projeto pelo arquivo editado. Execute apenas depois de revisar bindings, etag e auditConfigs.
+gcloud projects set-iam-policy "$PROJECT_ID" /tmp/policy-audit.yaml
+```
+
+Inspecione a configuração efetiva no projeto:
+
+```bash
+# Explicação: Mostra somente a seção auditConfigs da IAM policy para confirmar os tipos de Data Access configurados.
+gcloud projects get-iam-policy "$PROJECT_ID" \
+  --format='yaml(auditConfigs)'
+```
+
+Para desfazer o laboratório, restaure o backup original:
+
+```bash
+# Explicação: Restaura a IAM policy salva antes da alteração. Use apenas se você realmente aplicou a configuração de Data Access neste laboratório.
+gcloud projects set-iam-policy "$PROJECT_ID" /tmp/policy-before-audit.yaml
+```
+
+## 10.9 IAM para visualizar Audit Logs
+
+Para prova, associe:
+
+```text
+roles/logging.viewer
+→ leitura de Admin Activity, System Event e Policy Denied, conforme acesso ao recurso
+
+roles/logging.privateLogViewer
+→ inclui capacidade necessária para visualizar Data Access no _Default bucket
+```
+
+Evite conceder permissões amplas apenas para investigar logs.
+
+## 10.10 Questões estilo ACE — Audit Logs
+
+1. Um administrador quer descobrir quem alterou uma regra de IAM. Qual sinal deve consultar primeiro?  
+   **Cloud Audit Logs / Admin Activity**.
+
+2. Uma equipe quer auditar leituras de dados que não aparecem nos logs atuais. O que verificar?  
+   **Configuração de Data Access audit logs** para o serviço relevante.
+
+3. Uma VM foi adicionada automaticamente a um MIG por ação interna do Google Cloud. Qual categoria pode registrar a alteração?  
+   **System Event**.
+
+4. Uma solicitação foi negada por uma política de segurança. Qual categoria investigar?  
+   **Policy Denied**.
+
+## 10.11 Cleanup específico
+
+```bash
+# Explicação: Remove a label de laboratório para devolver a VM ao estado anterior antes do cleanup geral da aula.
+gcloud compute instances remove-labels ace-log-vm \
+  --zone=us-central1-a \
+  --labels=audit-demo
+```
+
+> Se você habilitou Data Access, restaure a policy original conforme mostrado acima antes de sair do laboratório.
+
+## Referências oficiais usadas nesta seção
+
+- Cloud Audit Logs overview: https://cloud.google.com/logging/docs/audit
+- Understanding audit logs: https://cloud.google.com/logging/docs/audit/understanding-audit-logs
+- Enable Data Access audit logs: https://cloud.google.com/logging/docs/audit/configure-data-access
 
 ---
 
-<!-- MEP-ACCEPTANCE-V8 -->
+<!-- MEP-ACCEPTANCE-V9 -->
 # Critério de aceite M/E/P desta aula
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
 
 Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
 
