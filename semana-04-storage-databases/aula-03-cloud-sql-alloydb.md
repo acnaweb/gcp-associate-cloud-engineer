@@ -554,3 +554,33 @@ PITR
 Antes de apagar dados, crie uma tabela de laboratório e backup. Depois remova uma linha e valide que o backup existe. Em projeto descartável, pratique restore seguindo o fluxo suportado pelo Console/CLI para a versão atual.
 
 Na prova, não responda “HA” quando o requisito for recuperar dado apagado logicamente.
+
+---
+
+<!-- MEP-ACCEPTANCE-V8 -->
+# Critério de aceite M/E/P desta aula
+
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+
+Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+
+```text
+conceito operacional
+   ↓
+configuração/comando
+   ↓
+inspeção
+   ↓
+teste ou comportamento observável
+```
+
+Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+
+## Tópicos do guia mapeados para esta aula
+
+| Seção | Tópico | Esperado | Nível da matriz |
+|---|---|---:|---:|
+| 3.4 | AlloyDB | `P` | `E/P*` |
+| 4.4 | Queries Cloud SQL | `P` | `P` |
+| 4.4 | Queries AlloyDB | `P` | `E/P*` |
+| 4.4 | Backup/restore Cloud SQL | `P` | `P/P*` |

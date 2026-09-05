@@ -20,6 +20,13 @@ Guia diz “criar / configurar / implantar / gerenciar / trabalhar com” → P 
 
 `P*` não deve ser confundido com `P`: ele indica que existe um roteiro de prática, mas a execução pode depender de pré-requisitos que não devem ser forçados apenas para estudo.
 
+
+### Critério reforçado da baseline v8
+
+`P` só é aceito quando o arquivo contém evidência de **conceito operacional + configuração/comando + inspeção + teste/comportamento observável**. Um comando isolado não é prática suficiente.
+
+Para troubleshooting, o tópico precisa ainda apresentar **Sintoma → Hipótese → Evidência → Causa → Correção** quando a falha faz parte do objetivo da aula.
+
 ## Auditoria
 
 | Seção | Item | Esperado | Onde | Nível final | Evidência/observação |

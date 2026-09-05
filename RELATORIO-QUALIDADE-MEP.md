@@ -28,3 +28,10 @@ Evitar que um tópico seja marcado como “coberto” apenas porque seu nome apa
 ## Regra de regressão
 
 Uma futura versão não pode transformar um item `P` em `E` ou `M` sem justificativa explícita. Itens `P*` só podem ser promovidos a `P` quando o laboratório for realmente executável sem depender de infraestrutura/permissões não disponíveis ao aluno comum.
+
+
+---
+
+# Revisão v8 — evidência real
+
+A baseline v8 substitui o critério antigo de presença por um critério de evidência. Em especial, HPA e VPA foram reclassificados/reconstruídos com explicação e prática efetiva. Veja `AUDITORIA-MEP-EVIDENCIAS.md`.

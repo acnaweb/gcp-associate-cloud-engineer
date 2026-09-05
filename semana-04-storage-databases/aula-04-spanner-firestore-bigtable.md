@@ -259,3 +259,32 @@ Correção: selecionar destino compatível conforme o fluxo suportado
 ```
 
 > Se a interface/feature não estiver disponível no seu projeto, marque como `P*` e faça a prática guiada sem inventar comandos não validados.
+
+---
+
+<!-- MEP-ACCEPTANCE-V8 -->
+# Critério de aceite M/E/P desta aula
+
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+
+Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+
+```text
+conceito operacional
+   ↓
+configuração/comando
+   ↓
+inspeção
+   ↓
+teste ou comportamento observável
+```
+
+Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+
+## Tópicos do guia mapeados para esta aula
+
+| Seção | Tópico | Esperado | Nível da matriz |
+|---|---|---:|---:|
+| 4.4 | Queries Spanner | `P` | `E/P*` |
+| 4.4 | Queries Firestore | `P` | `P*` |
+| 4.4 | Backup/restore Firestore | `P` | `P*` |

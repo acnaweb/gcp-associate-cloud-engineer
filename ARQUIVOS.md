@@ -1,12 +1,14 @@
-# Inventário
+# Inventário da baseline v8
 
 - `ARQUIVOS.md`
 - `AUDITORIA-EXAM-GUIDE.md`
+- `AUDITORIA-MEP-EVIDENCIAS.md`
 - `MATRIZ-CONTEUDO-ACE.md`
 - `MATRIZ-MEP-ACE.md`
 - `README.md`
 - `RELATORIO-COMPATIBILIDADE-GUIA-ANEXO.md`
 - `RELATORIO-QUALIDADE-MEP.md`
+- `VALIDACAO-BASELINE-V8.md`
 - `VALIDACAO-COMANDOS-COMENTADOS.md`
 - `semana-01-fundamentos-projetos-iam/README.md`
 - `semana-01-fundamentos-projetos-iam/aula-01-hierarquia-projects-regions-zones-gcloud.md`

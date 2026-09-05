@@ -151,3 +151,24 @@ Nenhum recurso é criado.
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
 - [ ] Consigo relacionar o cenário a uma questão ACE;
 - [ ] Executei o cleanup.
+
+---
+
+<!-- MEP-ACCEPTANCE-V8 -->
+# Critério de aceite M/E/P desta aula
+
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+
+Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+
+```text
+conceito operacional
+   ↓
+configuração/comando
+   ↓
+inspeção
+   ↓
+teste ou comportamento observável
+```
+
+Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.

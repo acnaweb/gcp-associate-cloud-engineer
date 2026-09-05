@@ -2044,3 +2044,36 @@ Standard Tier → opção de custo/roteamento diferente para casos suportados
 ```
 
 A escolha depende do tipo de recurso, alcance e requisitos de performance/custo.
+
+---
+
+<!-- MEP-ACCEPTANCE-V8 -->
+# Critério de aceite M/E/P desta aula
+
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+
+Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+
+```text
+conceito operacional
+   ↓
+configuração/comando
+   ↓
+inspeção
+   ↓
+teste ou comportamento observável
+```
+
+Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+
+## Tópicos do guia mapeados para esta aula
+
+| Seção | Tópico | Esperado | Nível da matriz |
+|---|---|---:|---:|
+| 2.3 | Localização/disponibilidade de recursos em rede | `E` | `E` |
+| 2.3 | Network Service Tiers | `E` | `E` |
+| 3.5 | Custom VPC + subnets | `P` | `P` |
+| 4.5 | Adicionar subnet | `P` | `P` |
+| 4.5 | Expandir subnet | `P` | `P` |
+| 4.5 | IP estático interno | `P` | `P` |
+| 4.5 | IP estático externo | `P` | `P` |

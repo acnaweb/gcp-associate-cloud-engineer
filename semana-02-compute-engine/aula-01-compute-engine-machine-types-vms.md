@@ -331,3 +331,35 @@ Saiba interpretar opções de manutenção/restart compatíveis com a VM.
 gcloud compute instances delete ace-custom-vm ace-spot-vm \
   --zone=us-central1-a --quiet
 ```
+
+---
+
+<!-- MEP-ACCEPTANCE-V8 -->
+# Critério de aceite M/E/P desta aula
+
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+
+Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+
+```text
+conceito operacional
+   ↓
+configuração/comando
+   ↓
+inspeção
+   ↓
+teste ou comportamento observável
+```
+
+Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+
+## Tópicos do guia mapeados para esta aula
+
+| Seção | Tópico | Esperado | Nível da matriz |
+|---|---|---:|---:|
+| 2.1 | Escolher CE/GKE/Cloud Run/Cloud Functions | `E` | `E` |
+| 2.1 | Spot VMs | `E` | `P` |
+| 2.1 | Custom machine types | `E` | `P` |
+| 3.1 | Inicializar VM + discos + availability policy + SSH keys | `P` | `P` |
+| 4.1 | Conectar remotamente à VM | `P` | `P` |
+| 4.1 | Inventário/IDs/detalhes de VMs | `P` | `P` |

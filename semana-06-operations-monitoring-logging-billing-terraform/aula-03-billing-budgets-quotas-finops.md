@@ -192,3 +192,32 @@ Budget         → thresholds/alertas
 Quota          → limite técnico
 Pricing Calculator → estimativa antes da implantação
 ```
+
+---
+
+<!-- MEP-ACCEPTANCE-V8 -->
+# Critério de aceite M/E/P desta aula
+
+> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v8.
+
+Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+
+```text
+conceito operacional
+   ↓
+configuração/comando
+   ↓
+inspeção
+   ↓
+teste ou comportamento observável
+```
+
+Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+
+## Tópicos do guia mapeados para esta aula
+
+| Seção | Tópico | Esperado | Nível da matriz |
+|---|---|---:|---:|
+| 1.1 | Avaliar quotas | `P` | `P` |
+| 1.2 | Budgets e alerts | `P` | `P*` |
+| 1.2 | Billing export | `P` | `P*` |
