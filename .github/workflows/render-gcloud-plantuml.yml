@@ -1,0 +1,30 @@
+name: Render gcloud PlantUML
+
+on:
+  push:
+    paths:
+      - 'gcloud/**/*.puml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Render PlantUML diagrams
+        uses: grassedge/generate-plantuml-action@v1.5
+        with:
+          path: gcloud
+          message: "docs: render gcloud PlantUML diagrams"
+
+      - name: Commit rendered SVG files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update gcloud diagram SVGs"
+          file_pattern: "gcloud/**/*.svg"
