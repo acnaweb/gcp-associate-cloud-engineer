@@ -6,22 +6,58 @@ on:
       - 'gcloud/**/*.puml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
-    name: plantuml
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Render PlantUML diagrams
-        id: plantuml
-        uses: grassedge/generate-plantuml-action@v1.5
+      - name: Setup Java
+        uses: actions/setup-java@v6
         with:
-          path: gcloud
-          message: "docs: render gcloud PlantUML diagrams"
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download PlantUML
+        run: |
+          curl -L \
+            https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar \
+            -o /tmp/plantuml.jar
+
+      - name: Render PlantUML to SVG
+        run: |
+          find gcloud -type f -name "*.puml" -print0 |
+          while IFS= read -r -d '' file; do
+            echo "Rendering: $file"
+            java -jar /tmp/plantuml.jar -tsvg "$file"
+          done
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit SVG files
         env:
           GITHUB_TOKEN: ${{ secrets.PLANTUML_GITHUB_TOKEN }}
+        run: |
+          git add 'gcloud/**/*.svg'
+
+          if git diff --cached --quiet; then
+            echo "No SVG changes."
+            exit 0
+          fi
+
+          git commit -m "docs: render gcloud PlantUML diagrams"
+
+          git remote set-url origin \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git push origin HEAD:${GITHUB_REF_NAME}
