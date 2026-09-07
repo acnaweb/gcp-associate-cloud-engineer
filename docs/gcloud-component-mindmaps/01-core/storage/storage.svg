@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<style>text{font-family:Arial,sans-serif;fill:#202124}.root{fill:#fff;font-weight:700;font-size:25px}.g{font-weight:700;font-size:19px}.e{font-size:15px}.line{stroke:#4285F4;stroke-width:2;fill:none}</style>
+<path class="line" d="M 800.0 500.0 L 800.0 170.0"/>
+<path class="line" d="M 800.0 500.0 L 1085.8 335.0"/>
+<path class="line" d="M 800.0 500.0 L 1085.8 665.0"/>
+<path class="line" d="M 800.0 500.0 L 800.0 830.0"/>
+<path class="line" d="M 800.0 500.0 L 514.2 665.0"/>
+<path class="line" d="M 800.0 500.0 L 514.2 335.0"/>
+<path class="line" d="M 800.0 170.0 L 800.0 20.0"/>
+<rect x="754.0" y="4.0" rx="9" ry="9" width="92" height="32" fill="#F8F9FA" stroke="#4285F4" stroke-width="1.4"/>
+<text class="e" x="800.0" y="25.0" text-anchor="middle">buckets</text>
+<path class="line" d="M 1085.8 335.0 L 1215.7 260.0"/>
+<rect x="1169.7" y="244.0" rx="9" ry="9" width="92" height="32" fill="#F8F9FA" stroke="#4285F4" stroke-width="1.4"/>
+<text class="e" x="1215.7" y="265.0" text-anchor="middle">objects</text>
+<path class="line" d="M 1085.8 665.0 L 1215.7 740.0"/>
+<rect x="1142.7" y="724.0" rx="9" ry="9" width="146" height="32" fill="#F8F9FA" stroke="#4285F4" stroke-width="1.4"/>
+<text class="e" x="1215.7" y="745.0" text-anchor="middle">managed-folders</text>
+<path class="line" d="M 800.0 830.0 L 800.0 980.0"/>
+<rect x="747.0" y="964.0" rx="9" ry="9" width="106" height="32" fill="#F8F9FA" stroke="#4285F4" stroke-width="1.4"/>
+<text class="e" x="800.0" y="985.0" text-anchor="middle">operations</text>
+<path class="line" d="M 514.2 665.0 L 384.3 740.0"/>
+<rect x="311.3" y="724.0" rx="9" ry="9" width="146" height="32" fill="#F8F9FA" stroke="#4285F4" stroke-width="1.4"/>
+<text class="e" x="384.3" y="745.0" text-anchor="middle">anywhere-caches</text>
+<path class="line" d="M 514.2 335.0 L 384.3 260.0"/>
+<rect x="338.3" y="244.0" rx="9" ry="9" width="92" height="32" fill="#F8F9FA" stroke="#4285F4" stroke-width="1.4"/>
+<text class="e" x="384.3" y="265.0" text-anchor="middle">insights</text>
+<rect x="725.0" y="148.0" rx="12" ry="12" width="150" height="44" fill="#E8F0FE" stroke="#4285F4" stroke-width="2"/>
+<text class="g" x="800.0" y="176.0" text-anchor="middle">Buckets</text>
+<rect x="1010.8" y="313.0" rx="12" ry="12" width="150" height="44" fill="#E8F0FE" stroke="#4285F4" stroke-width="2"/>
+<text class="g" x="1085.8" y="341.0" text-anchor="middle">Objects</text>
+<rect x="995.8" y="643.0" rx="12" ry="12" width="180" height="44" fill="#E8F0FE" stroke="#4285F4" stroke-width="2"/>
+<text class="g" x="1085.8" y="671.0" text-anchor="middle">Managed Folders</text>
+<rect x="725.0" y="808.0" rx="12" ry="12" width="150" height="44" fill="#E8F0FE" stroke="#4285F4" stroke-width="2"/>
+<text class="g" x="800.0" y="836.0" text-anchor="middle">Operations</text>
+<rect x="429.2" y="643.0" rx="12" ry="12" width="170" height="44" fill="#E8F0FE" stroke="#4285F4" stroke-width="2"/>
+<text class="g" x="514.2" y="671.0" text-anchor="middle">Anywhere Cache</text>
+<rect x="439.2" y="313.0" rx="12" ry="12" width="150" height="44" fill="#E8F0FE" stroke="#4285F4" stroke-width="2"/>
+<text class="g" x="514.2" y="341.0" text-anchor="middle">Insights</text>
+<ellipse cx="800.0" cy="500.0" rx="116.0" ry="34.0" fill="#4285F4" stroke="#4285F4" stroke-width="3"/>
+<text class="root" x="800.0" y="508.0" text-anchor="middle">gcloud storage</text>
+</svg>

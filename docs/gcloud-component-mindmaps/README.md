@@ -1,8 +1,10 @@
 # gcloud Component Mindmaps
 
-Repositório visual para estudo da estrutura do Google Cloud CLI (`gcloud`), organizado por **COMPONENT** e suas principais **ENTITY**.
+Mapas mentais visuais da Google Cloud CLI (`gcloud`), organizados por **COMPONENT** e suas principais **ENTITY**.
 
-O objetivo é facilitar a memorização da hierarquia:
+## Objetivo
+
+Facilitar a leitura e memorização da hierarquia:
 
 ```text
 gcloud
@@ -10,52 +12,53 @@ gcloud
     └── ENTITY
 ```
 
-Os diagramas usam **Mermaid Mindmap**, renderizado automaticamente pelo GitHub.
+Cada componente possui:
 
-## Prioridade atual
+- `README.md` — documentação e exemplos;
+- `.puml` — fonte editável PlantUML;
+- `.svg` — visualização direta no GitHub.
 
-| Ordem | Component | Arquivo |
-|---|---|---|
-| 01 | `compute` | [01-core/compute.md](01-core/compute.md) |
-| 02 | `storage` | [01-core/storage.md](01-core/storage.md) |
+## Padrão visual
+
+O padrão adotado preserva o estilo aprovado para os mindmaps PlantUML:
+
+- componente central: `#4285F4` com texto branco;
+- agrupamentos de primeiro nível: `#E8F0FE`;
+- entidades: `#F8F9FA`;
+- texto: `#202124`;
+- conexões/bordas: `#4285F4`.
+
+## Componentes nesta versão de validação
+
+| Prioridade | Component | Mapa |
+|---:|---|---|
+| 01 | `compute` | [Abrir](01-core/compute/README.md) |
+| 02 | `storage` | [Abrir](01-core/storage/README.md) |
 
 ## Estrutura
 
 ```text
-gcloud-component-mindmaps/
+gcloud-component-mindmaps-plantuml/
 │
 ├── README.md
-│
 └── 01-core/
-    ├── compute.md
-    └── storage.md
+    ├── compute/
+    │   ├── README.md
+    │   ├── compute.puml
+    │   └── compute.svg
+    └── storage/
+        ├── README.md
+        ├── storage.puml
+        └── storage.svg
 ```
 
-## Como ler os mapas
+## Renderização local
 
-O nó central representa sempre o **COMPONENT**.
-
-Abaixo dele, os recursos são agrupados por função quando isso melhora a leitura. As folhas representam as principais **ENTITY** ou subgrupos relevantes do comando.
-
-Exemplo:
-
-```text
-gcloud
-└── compute
-    └── instances
-```
-
-Comando correspondente:
+Com Java e PlantUML instalados:
 
 ```bash
-gcloud compute instances list
+java -jar plantuml.jar -tsvg 01-core/compute/compute.puml
+java -jar plantuml.jar -tsvg 01-core/storage/storage.puml
 ```
 
-## Escopo
-
-Nesta primeira versão, o repositório contém apenas os dois componentes de maior prioridade para validação do padrão visual:
-
-1. `compute`
-2. `storage`
-
-Depois da validação, a mesma estrutura pode ser expandida para `container`, `run`, `functions`, `sql`, `pubsub`, `dns`, `logging`, `monitoring`, `iam` e demais componentes.
+O arquivo `.puml` é a fonte canônica; o `.svg` é mantido no repositório para visualização imediata no GitHub.

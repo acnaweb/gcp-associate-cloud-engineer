@@ -1,0 +1,48 @@
+@startmindmap
+
+<style>
+mindmapDiagram {
+  node {
+    BackgroundColor white
+    LineColor #4285F4
+    FontColor #202124
+  }
+
+  rootNode {
+    BackgroundColor #4285F4
+    FontColor white
+    FontStyle bold
+  }
+
+  :depth(1) {
+    BackgroundColor #E8F0FE
+    FontStyle bold
+  }
+
+  :depth(2) {
+    BackgroundColor #F8F9FA
+  }
+}
+</style>
+
+* gcloud storage
+
+** Buckets
+*** buckets
+
+** Objects
+*** objects
+
+** Managed Folders
+*** managed-folders
+
+** Operations
+*** operations
+
+** Anywhere Cache
+*** anywhere-caches
+
+** Insights
+*** insights
+
+@endmindmap

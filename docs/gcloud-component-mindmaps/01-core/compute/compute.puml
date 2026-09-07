@@ -1,0 +1,76 @@
+@startmindmap
+
+<style>
+mindmapDiagram {
+  node {
+    BackgroundColor white
+    LineColor #4285F4
+    FontColor #202124
+  }
+
+  rootNode {
+    BackgroundColor #4285F4
+    FontColor white
+    FontStyle bold
+  }
+
+  :depth(1) {
+    BackgroundColor #E8F0FE
+    FontStyle bold
+  }
+
+  :depth(2) {
+    BackgroundColor #F8F9FA
+  }
+}
+</style>
+
+* gcloud compute
+
+** Virtual Machines
+*** instances
+*** machine-types
+*** reservations
+*** sole-tenancy
+
+** Storage da VM
+*** disks
+*** images
+*** snapshots
+
+** Escalabilidade
+*** instance-templates
+*** instance-groups
+**** managed
+**** unmanaged
+
+** Networking
+*** networks
+**** subnets
+*** firewall-rules
+*** routes
+*** addresses
+
+** Load Balancing
+*** health-checks
+*** backend-services
+*** forwarding-rules
+*** url-maps
+*** target-http-proxies
+*** target-https-proxies
+*** ssl-certificates
+*** network-endpoint-groups
+
+** Hybrid Connectivity
+*** routers
+*** vpn-gateways
+*** vpn-tunnels
+*** external-vpn-gateways
+*** interconnects
+**** attachments
+
+** Localização
+*** regions
+*** zones
+
+@endmindmap
