@@ -1,22 +1,19 @@
-# gcloud storage
+# gcloud database-migration
 
-Mapa mental do component `storage`.
+Mapa mental do component `database-migration`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud database-migration](./database-migration.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[database-migration.puml](./database-migration.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `migration-jobs`
+- `connection-profiles`
+- `conversion-workspaces`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

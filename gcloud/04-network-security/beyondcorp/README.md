@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud beyondcorp
 
-Mapa mental do component `storage`.
+Mapa mental do component `beyondcorp`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud beyondcorp](./beyondcorp.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[beyondcorp.puml](./beyondcorp.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `app-connections`
+- `app-connectors`
+- `app-gateways`
+- `client-gateways`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

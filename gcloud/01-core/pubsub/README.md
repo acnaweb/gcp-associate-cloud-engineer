@@ -1,22 +1,21 @@
-# gcloud storage
+# gcloud pubsub
 
-Mapa mental do component `storage`.
+Mapa mental do component `pubsub`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud pubsub](./pubsub.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[pubsub.puml](./pubsub.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `topics`
+- `subscriptions`
+- `snapshots`
+- `schemas`
+- `lite`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

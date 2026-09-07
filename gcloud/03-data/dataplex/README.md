@@ -1,22 +1,24 @@
-# gcloud storage
+# gcloud dataplex
 
-Mapa mental do component `storage`.
+Mapa mental do component `dataplex`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud dataplex](./dataplex.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[dataplex.puml](./dataplex.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `lakes`
+- `zones`
+- `assets`
+- `tasks`
+- `entries`
+- `entry-groups`
+- `aspects`
+- `aspect-types`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

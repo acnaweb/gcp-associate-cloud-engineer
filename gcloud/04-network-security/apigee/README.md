@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud apigee
 
-Mapa mental do component `storage`.
+Mapa mental do component `apigee`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud apigee](./apigee.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[apigee.puml](./apigee.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `organizations`
+- `environments`
+- `instances`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

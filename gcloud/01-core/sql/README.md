@@ -1,22 +1,25 @@
-# gcloud storage
+# gcloud sql
 
-Mapa mental do component `storage`.
+Mapa mental do component `sql`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud sql](./sql.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[sql.puml](./sql.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `instances`
+- `databases`
+- `users`
+- `backups`
+- `backup-runs`
 - `operations`
-- `anywhere-caches`
-- `insights`
+- `ssl-certs`
+- `export`
+- `import`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

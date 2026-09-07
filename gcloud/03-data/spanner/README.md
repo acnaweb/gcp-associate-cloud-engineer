@@ -1,22 +1,21 @@
-# gcloud storage
+# gcloud spanner
 
-Mapa mental do component `storage`.
+Mapa mental do component `spanner`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud spanner](./spanner.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[spanner.puml](./spanner.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `instances`
+- `databases`
+- `backups`
+- `instance-configs`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

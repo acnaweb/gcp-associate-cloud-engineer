@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud iam
 
-Mapa mental do component `storage`.
+Mapa mental do component `iam`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud iam](./iam.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[iam.puml](./iam.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `roles`
+- `service-accounts`
+- `keys`
+- `workload-identity-pools`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

@@ -1,22 +1,25 @@
-# gcloud storage
+# gcloud container
 
-Mapa mental do component `storage`.
+Mapa mental do component `container`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud container](./container.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[container.puml](./container.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `clusters`
 - `operations`
-- `anywhere-caches`
-- `insights`
+- `server-config`
+- `node-pools`
+- `fleet`
+- `images`
+- `hub`
+- `aws`
+- `azure`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

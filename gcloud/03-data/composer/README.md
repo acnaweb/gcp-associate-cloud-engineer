@@ -1,22 +1,18 @@
-# gcloud storage
+# gcloud composer
 
-Mapa mental do component `storage`.
+Mapa mental do component `composer`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud composer](./composer.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[composer.puml](./composer.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `environments`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

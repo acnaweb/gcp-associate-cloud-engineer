@@ -1,22 +1,18 @@
-# gcloud storage
+# gcloud tasks
 
-Mapa mental do component `storage`.
+Mapa mental do component `tasks`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud tasks](./tasks.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[tasks.puml](./tasks.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `queues`
+- `tasks`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

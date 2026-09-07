@@ -1,22 +1,19 @@
-# gcloud storage
+# gcloud secrets
 
-Mapa mental do component `storage`.
+Mapa mental do component `secrets`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud secrets](./secrets.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[secrets.puml](./secrets.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `secrets`
+- `versions`
+- `locations`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

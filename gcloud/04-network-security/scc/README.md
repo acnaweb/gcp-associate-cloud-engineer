@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud scc
 
-Mapa mental do component `storage`.
+Mapa mental do component `scc`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud scc](./scc.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[scc.puml](./scc.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `findings`
+- `sources`
+- `notifications`
+- `assets`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

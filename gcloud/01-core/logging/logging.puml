@@ -1,0 +1,51 @@
+@startmindmap
+
+title gcloud logging — Component Mindmap
+footer Disponível em  https://github.com/acnaweb/gcp-associate-cloud-engineer
+
+<style>
+mindmapDiagram {
+  node {
+    BackgroundColor white
+    LineColor #4285F4
+    FontColor #202124
+  }
+
+  rootNode {
+    BackgroundColor #4285F4
+    FontColor white
+    FontStyle bold
+  }
+
+  :depth(1) {
+    BackgroundColor #E8F0FE
+    FontStyle bold
+  }
+
+  :depth(2) {
+    BackgroundColor #F8F9FA
+  }
+}
+</style>
+
+* gcloud logging
+
+** Logs
+*** logs
+*** read
+*** write
+
+** Metrics
+*** metrics
+
+** Routing
+*** sinks
+
+** Storage
+*** buckets
+*** views
+
+** Exclusions
+*** exclusions
+
+@endmindmap

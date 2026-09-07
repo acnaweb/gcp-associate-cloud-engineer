@@ -1,22 +1,19 @@
-# gcloud storage
+# gcloud redis
 
-Mapa mental do component `storage`.
+Mapa mental do component `redis`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud redis](./redis.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[redis.puml](./redis.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `instances`
+- `clusters`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

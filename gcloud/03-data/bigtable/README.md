@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud bigtable
 
-Mapa mental do component `storage`.
+Mapa mental do component `bigtable`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud bigtable](./bigtable.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[bigtable.puml](./bigtable.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `instances`
+- `clusters`
+- `app-profiles`
+- `backups`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

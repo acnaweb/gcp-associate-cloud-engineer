@@ -1,22 +1,21 @@
-# gcloud storage
+# gcloud dns
 
-Mapa mental do component `storage`.
+Mapa mental do component `dns`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud dns](./dns.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[dns.puml](./dns.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `managed-zones`
+- `record-sets`
+- `policies`
+- `response-policies`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

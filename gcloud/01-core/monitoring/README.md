@@ -1,22 +1,21 @@
-# gcloud storage
+# gcloud monitoring
 
-Mapa mental do component `storage`.
+Mapa mental do component `monitoring`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud monitoring](./monitoring.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[monitoring.puml](./monitoring.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `dashboards`
+- `policies`
+- `channels`
+- `uptime`
+- `metrics-scopes`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

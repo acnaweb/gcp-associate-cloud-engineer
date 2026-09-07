@@ -1,0 +1,46 @@
+@startmindmap
+
+title gcloud network-connectivity — Component Mindmap
+footer Disponível em  https://github.com/acnaweb/gcp-associate-cloud-engineer
+
+<style>
+mindmapDiagram {
+  node {
+    BackgroundColor white
+    LineColor #4285F4
+    FontColor #202124
+  }
+
+  rootNode {
+    BackgroundColor #4285F4
+    FontColor white
+    FontStyle bold
+  }
+
+  :depth(1) {
+    BackgroundColor #E8F0FE
+    FontStyle bold
+  }
+
+  :depth(2) {
+    BackgroundColor #F8F9FA
+  }
+}
+</style>
+
+* gcloud network-connectivity
+
+** Hub and Spoke
+*** hubs
+*** spokes
+
+** Policy-based Routes
+*** policy-based-routes
+
+** Internal Ranges
+*** internal-ranges
+
+** Service Connection
+*** service-connection-policies
+
+@endmindmap

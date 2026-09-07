@@ -1,0 +1,46 @@
+@startmindmap
+
+title gcloud projects — Component Mindmap
+footer Disponível em  https://github.com/acnaweb/gcp-associate-cloud-engineer
+
+<style>
+mindmapDiagram {
+  node {
+    BackgroundColor white
+    LineColor #4285F4
+    FontColor #202124
+  }
+
+  rootNode {
+    BackgroundColor #4285F4
+    FontColor white
+    FontStyle bold
+  }
+
+  :depth(1) {
+    BackgroundColor #E8F0FE
+    FontStyle bold
+  }
+
+  :depth(2) {
+    BackgroundColor #F8F9FA
+  }
+}
+</style>
+
+* gcloud projects
+
+** Projects
+*** list
+*** describe
+*** create
+*** delete
+*** undelete
+
+** IAM Policy
+*** get-iam-policy
+*** set-iam-policy
+*** add-iam-policy-binding
+*** remove-iam-policy-binding
+
+@endmindmap

@@ -1,22 +1,22 @@
-# gcloud storage
+# gcloud deploy
 
-Mapa mental do component `storage`.
+Mapa mental do component `deploy`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud deploy](./deploy.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[deploy.puml](./deploy.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `delivery-pipelines`
+- `targets`
+- `releases`
+- `rollouts`
+- `automation-runs`
+- `automations`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

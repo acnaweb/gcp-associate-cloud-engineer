@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud api-gateway
 
-Mapa mental do component `storage`.
+Mapa mental do component `api-gateway`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud api-gateway](./api-gateway.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[api-gateway.puml](./api-gateway.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `gateways`
+- `apis`
+- `api-configs`
+- `locations`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

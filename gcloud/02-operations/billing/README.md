@@ -1,22 +1,19 @@
-# gcloud storage
+# gcloud billing
 
-Mapa mental do component `storage`.
+Mapa mental do component `billing`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud billing](./billing.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[billing.puml](./billing.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `accounts`
+- `projects`
+- `budgets`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

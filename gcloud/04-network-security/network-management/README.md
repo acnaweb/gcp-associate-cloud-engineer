@@ -1,22 +1,18 @@
-# gcloud storage
+# gcloud network-management
 
-Mapa mental do component `storage`.
+Mapa mental do component `network-management`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud network-management](./network-management.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[network-management.puml](./network-management.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `connectivity-tests`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

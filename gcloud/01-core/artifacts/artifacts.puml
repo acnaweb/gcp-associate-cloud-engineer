@@ -1,0 +1,51 @@
+@startmindmap
+
+title gcloud artifacts — Component Mindmap
+footer Disponível em  https://github.com/acnaweb/gcp-associate-cloud-engineer
+
+<style>
+mindmapDiagram {
+  node {
+    BackgroundColor white
+    LineColor #4285F4
+    FontColor #202124
+  }
+
+  rootNode {
+    BackgroundColor #4285F4
+    FontColor white
+    FontStyle bold
+  }
+
+  :depth(1) {
+    BackgroundColor #E8F0FE
+    FontStyle bold
+  }
+
+  :depth(2) {
+    BackgroundColor #F8F9FA
+  }
+}
+</style>
+
+* gcloud artifacts
+
+** Repositories
+*** repositories
+
+** Docker
+*** docker
+
+** Packages
+*** packages
+
+** Versions
+*** versions
+
+** Files
+*** files
+
+** Tags
+*** tags
+
+@endmindmap

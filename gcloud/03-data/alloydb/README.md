@@ -1,22 +1,21 @@
-# gcloud storage
+# gcloud alloydb
 
-Mapa mental do component `storage`.
+Mapa mental do component `alloydb`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud alloydb](./alloydb.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[alloydb.puml](./alloydb.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `clusters`
+- `instances`
+- `backups`
+- `users`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

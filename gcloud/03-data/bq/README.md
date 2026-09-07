@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud bq
 
-Mapa mental do component `storage`.
+Mapa mental do component `bq`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud bq](./bq.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[bq.puml](./bq.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `datasets`
+- `tables`
+- `jobs`
+- `reservations`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

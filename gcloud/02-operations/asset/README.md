@@ -1,22 +1,21 @@
-# gcloud storage
+# gcloud asset
 
-Mapa mental do component `storage`.
+Mapa mental do component `asset`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud asset](./asset.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[asset.puml](./asset.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `search-all-resources`
+- `search-all-iam-policies`
+- `list`
+- `feeds`
+- `export`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

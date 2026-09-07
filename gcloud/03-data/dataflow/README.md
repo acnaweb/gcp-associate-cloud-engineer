@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud dataflow
 
-Mapa mental do component `storage`.
+Mapa mental do component `dataflow`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud dataflow](./dataflow.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[dataflow.puml](./dataflow.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `jobs`
+- `flex-template`
+- `sql`
+- `snapshots`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

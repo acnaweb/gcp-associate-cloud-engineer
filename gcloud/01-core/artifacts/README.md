@@ -1,22 +1,22 @@
-# gcloud storage
+# gcloud artifacts
 
-Mapa mental do component `storage`.
+Mapa mental do component `artifacts`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud artifacts](./artifacts.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[artifacts.puml](./artifacts.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `repositories`
+- `docker`
+- `packages`
+- `versions`
+- `files`
+- `tags`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

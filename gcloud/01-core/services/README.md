@@ -1,22 +1,21 @@
-# gcloud storage
+# gcloud services
 
-Mapa mental do component `storage`.
+Mapa mental do component `services`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud services](./services.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[services.puml](./services.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
+- `list`
+- `enable`
+- `disable`
+- `api-keys`
 - `operations`
-- `anywhere-caches`
-- `insights`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

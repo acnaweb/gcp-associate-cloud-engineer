@@ -1,22 +1,20 @@
-# gcloud storage
+# gcloud datastream
 
-Mapa mental do component `storage`.
+Mapa mental do component `datastream`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud datastream](./datastream.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[datastream.puml](./datastream.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `streams`
+- `connection-profiles`
+- `private-connections`
+- `routes`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.

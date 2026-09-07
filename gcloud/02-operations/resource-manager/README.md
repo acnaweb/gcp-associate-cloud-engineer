@@ -1,22 +1,19 @@
-# gcloud storage
+# gcloud resource-manager
 
-Mapa mental do component `storage`.
+Mapa mental do component `resource-manager`.
 
 ## Diagrama
 
-![gcloud storage](./storage.svg)
+![gcloud resource-manager](./resource-manager.svg)
 
 ## Fonte PlantUML
 
-[storage.puml](./storage.puml)
+[resource-manager.puml](./resource-manager.puml)
 
 ## Entities / subgrupos representados
 
-- `buckets`
-- `objects`
-- `managed-folders`
-- `operations`
-- `anywhere-caches`
-- `insights`
+- `folders`
+- `org-policies`
+- `tags`
 
 > O mapa prioriza os grupos e entidades mais úteis para estudo e navegação mental da CLI. Alguns nós podem representar subgrupos intermediários da árvore real do `gcloud`.
