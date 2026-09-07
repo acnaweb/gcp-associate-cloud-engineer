@@ -21,23 +21,229 @@ Incident? → logs/metrics + Google Cloud status
 
 ## 2. Criar / Configurar
 
-Crie uma VM pequena e instale Ops Agent pelo fluxo recomendado no Console/documentação atual, ou use a opção de instalação fornecida pelo Monitoring para a VM. Depois gere um log local.
+Nesta etapa, vamos criar uma VM pequena, instalar o Ops Agent usando o script oficial de instalação e gerar um log local para validar a coleta.
 
-Inspeção de routing:
+### 2.1 Definir variáveis do laboratório
+
+```bash
+# Explicação: Define a região em que os recursos do laboratório serão criados.
+export REGION=us-central1
+
+# Explicação: Define a zona usada pela VM. A zona precisa pertencer à região escolhida.
+export ZONE=us-central1-a
+
+# Explicação: Define o nome da VM que será criada para o laboratório.
+export VM_NAME=ace-ops-agent-vm
+
+# Explicação: Obtém o ID do projeto atualmente configurado no gcloud.
+export PROJECT_ID=$(gcloud config get-value project)
+```
+
+Valide as variáveis:
+
+```bash
+# Explicação: Exibe os valores que serão usados nos próximos comandos.
+echo "PROJECT_ID=$PROJECT_ID"
+echo "REGION=$REGION"
+echo "ZONE=$ZONE"
+echo "VM_NAME=$VM_NAME"
+```
+
+### 2.2 Habilitar as APIs necessárias
+
+```bash
+# Explicação: Habilita a API do Compute Engine, necessária para criar a VM.
+gcloud services enable compute.googleapis.com
+
+# Explicação: Habilita a Cloud Logging API, usada pelo Ops Agent para enviar logs.
+gcloud services enable logging.googleapis.com
+
+# Explicação: Habilita a Cloud Monitoring API, usada pelo Ops Agent para enviar métricas.
+gcloud services enable monitoring.googleapis.com
+```
+
+Confirme:
+
+```bash
+# Explicação: Lista apenas as APIs habilitadas relacionadas a Compute, Logging e Monitoring.
+gcloud services list --enabled \
+  --filter='NAME:(compute.googleapis.com logging.googleapis.com monitoring.googleapis.com)'
+```
+
+### 2.3 Criar uma Service Account dedicada ao Ops Agent
+
+Para evitar depender das permissões implícitas da Compute Engine default service account, vamos usar uma identidade dedicada.
+
+```bash
+# Explicação: Cria uma Service Account que será anexada à VM.
+gcloud iam service-accounts create ace-ops-agent-sa \
+  --display-name="ACE Ops Agent VM"
+```
+
+Conceda apenas as permissões necessárias para enviar logs e métricas:
+
+```bash
+# Explicação: Permite que a Service Account grave entradas no Cloud Logging.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ace-ops-agent-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/logging.logWriter"
+
+# Explicação: Permite que a Service Account envie métricas ao Cloud Monitoring.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ace-ops-agent-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/monitoring.metricWriter"
+```
+
+### 2.4 Criar a VM
+
+```bash
+# Explicação: Cria uma VM Linux pequena para o laboratório.
+# --machine-type=e2-micro mantém o recurso pequeno.
+# --image-family e --image-project selecionam uma imagem Debian suportada.
+# --service-account associa a identidade criada anteriormente.
+# --scopes=cloud-platform permite que as credenciais da VM sejam usadas com as APIs,
+# enquanto o IAM continua limitando o que a Service Account realmente pode fazer.
+gcloud compute instances create "$VM_NAME" \
+  --zone="$ZONE" \
+  --machine-type=e2-micro \
+  --image-family=debian-12 \
+  --image-project=debian-cloud \
+  --service-account="ace-ops-agent-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --scopes=https://www.googleapis.com/auth/cloud-platform
+```
+
+### 2.5 Inspecionar a VM antes de instalar o agente
+
+```bash
+# Explicação: Exibe os principais campos da VM para confirmar estado, zona e Service Account.
+gcloud compute instances describe "$VM_NAME" \
+  --zone="$ZONE" \
+  --format='yaml(name,status,zone,machineType,serviceAccounts)'
+```
+
+O estado esperado é:
+
+```text
+status: RUNNING
+```
+
+### 2.6 Instalar o Ops Agent por gcloud SSH
+
+A documentação oficial para uma VM Linux individual usa o script:
+
+```text
+add-google-cloud-ops-agent-repo.sh
+```
+
+Vamos executar exatamente esse fluxo remotamente usando `gcloud compute ssh`.
+
+```bash
+# Explicação: Conecta à VM via SSH e executa os comandos de instalação sem precisar
+# abrir um terminal interativo manualmente.
+# curl baixa o script oficial do Google.
+# --also-install adiciona o repositório e instala o Ops Agent na mesma execução.
+gcloud compute ssh "$VM_NAME" \
+  --zone="$ZONE" \
+  --command='curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh && sudo bash add-google-cloud-ops-agent-repo.sh --also-install'
+```
+
+Após a instalação, o serviço deve iniciar automaticamente.
+
+### 2.7 Verificar o serviço do Ops Agent
+
+```bash
+# Explicação: Executa systemctl dentro da VM para verificar se o serviço está ativo.
+gcloud compute ssh "$VM_NAME" \
+  --zone="$ZONE" \
+  --command='sudo systemctl status google-cloud-ops-agent --no-pager'
+```
+
+Para uma saída mais simples:
+
+```bash
+# Explicação: Retorna apenas o estado do serviço. O valor esperado é "active".
+gcloud compute ssh "$VM_NAME" \
+  --zone="$ZONE" \
+  --command='systemctl is-active google-cloud-ops-agent'
+```
+
+Resultado esperado:
+
+```text
+active
+```
+
+### 2.8 Gerar um log local
+
+O comando `logger` envia uma mensagem para o syslog da VM. O Ops Agent coleta logs do sistema em sua configuração padrão.
+
+```bash
+# Explicação: Gera uma entrada de syslog com uma mensagem fácil de localizar no Cloud Logging.
+gcloud compute ssh "$VM_NAME" \
+  --zone="$ZONE" \
+  --command='logger "ACE_OPS_AGENT_TESTE log gerado pelo laboratorio"'
+```
+
+Gere mais algumas entradas para facilitar a visualização:
+
+```bash
+# Explicação: Gera três mensagens adicionais, cada uma com um identificador diferente.
+gcloud compute ssh "$VM_NAME" \
+  --zone="$ZONE" \
+  --command='for i in 1 2 3; do logger "ACE_OPS_AGENT_TESTE mensagem-$i"; sleep 1; done'
+```
+
+### 2.9 Inspecionar Log Router e buckets
+
 ```bash
 # Explicação: Lista log sinks existentes para verificar roteamento configurado.
 gcloud logging sinks list
-# Explicação: Lista log buckets do Cloud Logging na localização informada.
+
+# Explicação: Lista log buckets do Cloud Logging na localização global.
 gcloud logging buckets list --location=global
 ```
 
 ## 3. Inspecionar
 
+Primeiro, descubra o ID numérico da VM, que aparece nos `resource.labels` dos logs de Compute Engine:
+
 ```bash
-# Explicação: Consulta entradas do Cloud Logging usando o filtro informado para coletar evidências.
-gcloud logging read 'resource.type="gce_instance"' --limit=20
+# Explicação: Obtém o ID numérico da VM para usá-lo como filtro preciso no Cloud Logging.
+export INSTANCE_ID=$(gcloud compute instances describe "$VM_NAME" \
+  --zone="$ZONE" \
+  --format='value(id)')
+
+echo "INSTANCE_ID=$INSTANCE_ID"
+```
+
+Agora procure especificamente a mensagem gerada com `logger`:
+
+```bash
+# Explicação: Consulta logs da VM e procura pelo texto usado no teste.
+# O filtro combina o resource type de VM, o instance_id e a mensagem criada no laboratório.
+gcloud logging read \
+  "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"$INSTANCE_ID\" AND textPayload:\"ACE_OPS_AGENT_TESTE\"" \
+  --limit=20 \
+  --format='table(timestamp,logName,textPayload)'
+```
+
+Se ainda não houver resultado, aguarde alguns segundos e repita a consulta, pois a ingestão não é instantânea.
+
+Inspecione também o agente dentro da VM:
+
+```bash
+# Explicação: Exibe as últimas mensagens do serviço Ops Agent no journal do systemd.
+gcloud compute ssh "$VM_NAME" \
+  --zone="$ZONE" \
+  --command='sudo journalctl -u google-cloud-ops-agent -n 50 --no-pager'
+```
+
+E revise o roteamento:
+
+```bash
 # Explicação: Lista log sinks existentes para verificar roteamento configurado.
 gcloud logging sinks list
+
 # Explicação: Lista log buckets do Cloud Logging na localização informada.
 gcloud logging buckets list --location=global
 ```
@@ -48,7 +254,40 @@ No Console: Monitoring → Prometheus e Observability → Diagnostics/Logs Explo
 
 ## 4. Testar
 
-Pare um serviço local monitorado ou gere uma linha de log conhecida e confirme a evidência no Logging/Monitoring.
+O teste positivo desta parte da aula é provar o caminho completo:
+
+```text
+logger na VM
+   ↓
+syslog
+   ↓
+Ops Agent
+   ↓
+Cloud Logging
+   ↓
+gcloud logging read
+```
+
+Gere uma nova mensagem:
+
+```bash
+# Explicação: Cria uma nova entrada para validar o pipeline ponta a ponta.
+gcloud compute ssh "$VM_NAME" \
+  --zone="$ZONE" \
+  --command='logger "ACE_OPS_AGENT_TESTE validacao-final"'
+```
+
+Depois consulte novamente:
+
+```bash
+# Explicação: Procura especificamente a mensagem de validação final no Cloud Logging.
+gcloud logging read \
+  "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"$INSTANCE_ID\" AND textPayload:\"ACE_OPS_AGENT_TESTE validacao-final\"" \
+  --limit=10 \
+  --format='table(timestamp,textPayload)'
+```
+
+O teste está concluído quando a mensagem aparece na consulta.
 
 ## 5. Quebrar propositalmente
 
@@ -81,7 +320,39 @@ Corrija filtro. Antes de reinstalar agente, sempre valide se os logs chegam com 
 
 ## 9. Cleanup
 
-Delete VM de laboratório e sinks/destinos extras criados.
+Remova os recursos criados neste laboratório.
+
+```bash
+# Explicação: Exclui a VM e encerra o consumo de Compute Engine associado a ela.
+gcloud compute instances delete "$VM_NAME" \
+  --zone="$ZONE" \
+  --quiet
+```
+
+Remova os papéis concedidos à Service Account:
+
+```bash
+# Explicação: Remove a permissão de escrita no Cloud Logging concedida para o laboratório.
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ace-ops-agent-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/logging.logWriter"
+
+# Explicação: Remove a permissão de escrita de métricas no Cloud Monitoring.
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ace-ops-agent-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/monitoring.metricWriter"
+```
+
+Por fim:
+
+```bash
+# Explicação: Exclui a Service Account dedicada ao laboratório.
+gcloud iam service-accounts delete \
+  "ace-ops-agent-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --quiet
+```
+
+Se você criou sinks ou destinos extras nas seções posteriores da aula, remova-os também.
 
 ## Checklist
 
