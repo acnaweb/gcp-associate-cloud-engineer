@@ -4,15 +4,11 @@ Mapa mental do component `compute`.
 
 ## Diagrama
 
-Quando o SVG for gerado pelo workflow:
+![gcloud compute](./compute.svg)
 
-```markdown
-![gcloud compute](compute.svg)
-```
+## Fonte PlantUML
 
-Fonte PlantUML:
-
-[compute.puml](compute.puml)
+[compute.puml](./compute.puml)
 
 ## Estrutura principal
 

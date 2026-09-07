@@ -4,15 +4,11 @@ Mapa mental do component `storage`.
 
 ## Diagrama
 
-Quando o SVG for gerado pelo workflow:
+![gcloud storage](./storage.svg)
 
-```markdown
-![gcloud storage](storage.svg)
-```
+## Fonte PlantUML
 
-Fonte PlantUML:
-
-[storage.puml](storage.puml)
+[storage.puml](./storage.puml)
 
 ## Estrutura principal
 
