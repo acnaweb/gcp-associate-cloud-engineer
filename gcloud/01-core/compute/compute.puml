@@ -1,5 +1,8 @@
 @startmindmap
 
+title gcloud compute — Component Mindmap
+footer Disponível em  https://github.com/acnaweb/gcp-associate-cloud-engineer
+
 <style>
 mindmapDiagram {
   node {
