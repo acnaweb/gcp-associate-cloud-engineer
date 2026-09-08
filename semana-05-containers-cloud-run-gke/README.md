@@ -31,3 +31,19 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Escolha e operação de plataforma de aplicação
+
+Uma API containerizada precisa de opção gerenciada, escala e eventos. Compare Compute Engine, GKE e Cloud Run e implemente uma das opções.
+
+Entregáveis:
+- imagem no Artifact Registry;
+- deploy;
+- scaling;
+- exposição;
+- troubleshooting;
+- decisão entre HPA/VPA/Cluster Autoscaler quando usar GKE.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.

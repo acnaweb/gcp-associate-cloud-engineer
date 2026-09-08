@@ -330,3 +330,87 @@ Quando a execução depender de Organization, privilégio administrativo, custo 
 |---|---|---:|---:|
 | 4.6 | Monitoring alerts por resource metric | `P` | `P` |
 | 4.6 | Custom metrics | `P` | `P` |
+
+
+# 11. Refinamento prático — Uptime Checks
+
+## Laboratório — Uptime Check via gcloud
+
+Uptime Check responde a uma pergunta diferente de CPU/memória:
+
+```text
+"O endpoint está respondendo externamente?"
+```
+
+### Arquitetura mental
+
+```text
+Google Cloud uptime probes
+        ↓ HTTP/HTTPS
+endpoint público
+        ↓
+resultado no Cloud Monitoring
+```
+
+### 1. Crie um endpoint de laboratório
+
+Use um endpoint HTTP/HTTPS público que você controla. Se quiser reaproveitar um recurso do curso, use um serviço Cloud Run público criado anteriormente.
+
+```bash
+# Explicação: Define o host público SEM https:// e sem caminho.
+export UPTIME_HOST='SEU_HOST_PUBLICO'
+
+# Explicação: Obtém o projeto ativo.
+export PROJECT_ID="$(gcloud config get-value project)"
+```
+
+### 2. Crie o Uptime Check
+
+```bash
+# Explicação: Cria uma verificação pública do tipo uptime-url para o host informado.
+gcloud monitoring uptime create ace-uptime \
+  --resource-type=uptime-url \
+  --resource-labels="host=${UPTIME_HOST},project_id=${PROJECT_ID}"
+```
+
+### 3. Inspecione
+
+```bash
+# Explicação: Lista as verificações de uptime existentes no projeto.
+gcloud monitoring uptime list
+
+# Explicação: Descreva o check pelo nome/ID retornado pelo list quando precisar analisar a configuração detalhada.
+gcloud monitoring uptime describe ace-uptime
+```
+
+### 4. Teste
+
+Aguarde os probes e confirme no Cloud Monitoring o estado do check. O comportamento esperado é `PASSING`/saudável quando o endpoint responde conforme configurado.
+
+### 5. Quebrar propositalmente
+
+Altere **somente o host** para um nome inválido em um novo check de teste ou torne temporariamente indisponível o endpoint de laboratório.
+
+```text
+Sintoma
+Uptime Check falha
+      ↓
+Hipótese
+host não resolve / endpoint não responde
+      ↓
+Evidência
+resultado do check + teste HTTP/DNS
+      ↓
+Causa
+host incorreto ou endpoint indisponível
+      ↓
+Correção
+corrigir host / restaurar endpoint
+```
+
+### 6. Cleanup
+
+```bash
+# Explicação: Exclui o uptime check ao final do laboratório.
+gcloud monitoring uptime delete ace-uptime --quiet
+```

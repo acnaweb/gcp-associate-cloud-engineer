@@ -31,3 +31,21 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Observabilidade de uma aplicação crítica
+
+Uma aplicação apresenta falhas intermitentes. O time precisa detectar indisponibilidade, pesquisar logs, criar métricas, exportar registros e monitorar VM.
+
+Entregáveis:
+- alerta;
+- Uptime Check;
+- consulta de logs;
+- log-based metric/custom metric;
+- Audit Logs;
+- Ops Agent;
+- sink de logs;
+- fluxo Sintoma → Hipótese → Evidência → Causa → Correção.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.

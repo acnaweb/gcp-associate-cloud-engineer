@@ -29,3 +29,17 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Simulação de prova orientada a decisão
+
+Resolva um cenário que combine computação, rede, dados, IAM e observabilidade. Para cada decisão, registre:
+- requisito;
+- serviço escolhido;
+- alternativa descartada;
+- trade-off;
+- comando de inspeção;
+- possível falha e evidência para troubleshooting.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.

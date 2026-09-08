@@ -29,3 +29,19 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Rede privada com saída controlada
+
+Uma aplicação possui VMs sem IP público, precisa acessar a Internet para updates, resolver DNS e expor somente o frontend por Load Balancer.
+
+Entregáveis:
+- VPC/subnets;
+- firewall;
+- Cloud NAT;
+- DNS;
+- Load Balancer;
+- plano para conectividade entre redes quando necessário.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.

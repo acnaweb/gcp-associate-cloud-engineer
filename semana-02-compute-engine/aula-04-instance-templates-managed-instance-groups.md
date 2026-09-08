@@ -216,3 +216,97 @@ Quando a execução depender de Organization, privilégio administrativo, custo 
 | Seção | Tópico | Esperado | Nível da matriz |
 |---|---|---:|---:|
 | 3.1 | MIG + autoscaling + instance template | `P` | `P` |
+
+
+# 11. Refinamento prático — Rolling Update de MIG
+
+## Laboratório — Rolling Update de um MIG
+
+Um Managed Instance Group usa Instance Templates imutáveis. Para mudar a configuração das VMs, crie **um novo template** e faça rollout.
+
+### Modelo mental
+
+```text
+Template v1
+   ↓
+MIG
+   ↓
+cria Template v2
+   ↓
+rolling update
+   ↓
+substituição gradual das VMs
+```
+
+### 1. Crie o novo template
+
+```bash
+# Explicação: Cria um segundo template com startup-script diferente para podermos identificar a nova versão.
+gcloud compute instance-templates create ace-mig-template-v2 \
+  --machine-type=e2-micro \
+  --metadata=startup-script='#!/bin/bash
+apt-get update
+apt-get install -y nginx
+echo "versao-v2" > /var/www/html/index.html'
+```
+
+### 2. Inicie o rolling update
+
+```bash
+# Explicação: Atualiza gradualmente o MIG para o novo template.
+# --max-surge=1 permite uma VM adicional durante a substituição.
+# --max-unavailable=0 tenta manter todas as instâncias alvo disponíveis durante o rollout.
+gcloud compute instance-groups managed rolling-action start-update ace-mig \
+  --zone=us-central1-a \
+  --version=template=ace-mig-template-v2 \
+  --max-surge=1 \
+  --max-unavailable=0
+```
+
+### 3. Acompanhe o rollout
+
+```bash
+# Explicação: Lista as VMs do MIG e mostra template/ação/estado durante a atualização.
+gcloud compute instance-groups managed list-instances ace-mig \
+  --zone=us-central1-a
+
+# Explicação: Aguarda até que o MIG termine as ações atuais e atinja estabilidade.
+gcloud compute instance-groups managed wait-until ace-mig \
+  --zone=us-central1-a \
+  --stable
+```
+
+### 4. Teste
+
+```bash
+# Explicação: Obtém IPs externos das VMs do MIG para validar a versão servida.
+gcloud compute instances list \
+  --filter='name~ace-mig' \
+  --format='table(name,networkInterfaces[0].accessConfigs[0].natIP)'
+```
+
+Acesse os IPs e procure `versao-v2`.
+
+### Falha proposital
+
+Crie um template com startup-script inválido ou aplicação que não sobe, aplique-o em laboratório e observe a atualização/health state. Não introduza outra falha ao mesmo tempo.
+
+### Rollback
+
+Não existe um comando especial chamado `rollback`: faça **um novo rolling update** apontando para o template anterior.
+
+```bash
+# Explicação: Reaplica o template anterior como nova atualização, efetivamente fazendo rollback.
+gcloud compute instance-groups managed rolling-action start-update ace-mig \
+  --zone=us-central1-a \
+  --version=template=ace-mig-template \
+  --max-surge=1 \
+  --max-unavailable=0
+```
+
+### Cleanup adicional
+
+```bash
+# Explicação: Exclua o template v2 somente depois que nenhum MIG depender dele.
+gcloud compute instance-templates delete ace-mig-template-v2 --quiet
+```

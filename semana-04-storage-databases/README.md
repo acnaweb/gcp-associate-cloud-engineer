@@ -31,3 +31,19 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Plataforma de dados com custo e segurança
+
+Uma equipe armazena arquivos, usa banco relacional e executa analytics. Ela precisa controlar custos e proteger dados sensíveis.
+
+Entregáveis:
+- escolher Storage Class;
+- estimar custo no Pricing Calculator;
+- configurar lifecycle;
+- justificar Cloud SQL/AlloyDB/Spanner/Firestore/Bigtable;
+- usar CMEK onde houver requisito;
+- executar uma query BigQuery com dry run.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.

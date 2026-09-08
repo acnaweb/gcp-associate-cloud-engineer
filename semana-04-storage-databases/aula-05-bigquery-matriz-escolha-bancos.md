@@ -250,3 +250,46 @@ Quando a execução depender de Organization, privilégio administrativo, custo 
 |---|---|---:|---:|
 | 4.4 | Queries BigQuery | `P` | `P` |
 | 4.4 | Status BigQuery jobs | `P` | `P` |
+
+
+# 11. Refinamento prático — custo do BigQuery
+
+## Laboratório guiado — custo de armazenamento e consultas no BigQuery
+
+Separe duas dimensões:
+
+```text
+armazenamento de dados
++
+processamento/compute de consultas
+```
+
+### 1. Inspecione o tamanho lógico da tabela
+
+```bash
+# Explicação: Exibe metadados da tabela; use os campos de tamanho/linhas como entrada da estimativa.
+bq show --format=prettyjson "${PROJECT_ID}:ace_bq.vendas"
+```
+
+### 2. Faça dry run antes de executar uma consulta
+
+```bash
+# Explicação: O dry run estima bytes processados sem executar a query, ajudando a prever custo em modelos on-demand.
+bq query \
+  --use_legacy_sql=false \
+  --dry_run \
+  'SELECT estado, SUM(valor) FROM `PROJECT_ID.ace_bq.vendas` GROUP BY estado'
+```
+
+> Substitua `PROJECT_ID` no SQL pelo ID real do projeto.
+
+### 3. Pricing Calculator
+
+Monte dois cenários com a mesma quantidade de dados armazenados e diferentes volumes mensais de processamento de query. Registre as premissas e compare o resultado.
+
+```text
+Cenário A: pouco processamento
+Cenário B: muito processamento
+```
+
+O objetivo da prova é reconhecer que **armazenamento e processamento são dimensões diferentes de custo**.

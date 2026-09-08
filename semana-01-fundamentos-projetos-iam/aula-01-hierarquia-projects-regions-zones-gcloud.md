@@ -428,3 +428,50 @@ Quando a execução depender de Organization, privilégio administrativo, custo 
 | 1.1 | Hierarquia de recursos | `P` | `P` |
 | 1.1 | Aplicar políticas organizacionais | `P` | `P*` |
 | 1.1 | Ativar APIs | `P` | `P` |
+
+
+# 11. Refinamento prático — disponibilidade de serviços por região
+
+## Exercício — disponibilidade de serviços por região
+
+**Região existente não significa que todos os produtos possuem exatamente a mesma cobertura regional.** A disponibilidade deve ser confirmada por serviço.
+
+### 1. Compute Engine — regiões e zonas
+
+```bash
+# Explicação: Lista regiões Compute Engine disponíveis ao projeto.
+gcloud compute regions list
+
+# Explicação: Lista zonas e permite relacioná-las às regiões.
+gcloud compute zones list \
+  --format='table(name,region.basename(),status)'
+
+# Explicação: Verifica tipos de máquina disponíveis na zona escolhida.
+gcloud compute machine-types list \
+  --filter='zone:us-central1-a' \
+  --limit=10
+```
+
+### 2. Compare com outro serviço que expõe locations via CLI
+
+```bash
+# Explicação: Lista locations suportadas pelo Artifact Registry.
+gcloud artifacts locations list
+```
+
+### 3. Regra operacional
+
+Para produtos sem um comando único de `locations list`, consulte a página oficial de **Google Cloud locations** e a documentação específica do produto antes de assumir disponibilidade.
+
+Preencha:
+
+| Serviço | Região desejada | Como você confirmou? | Disponível? |
+|---|---|---|---|
+| Compute Engine | us-central1 | gcloud | |
+| Artifact Registry | us-central1 | gcloud | |
+| Cloud Run | região escolhida | docs do produto | |
+| BigQuery | região/multirregião escolhida | docs do produto | |
+
+### Cenário de prova
+
+Uma arquitetura exige baixa latência e residência de dados. Antes de escolher uma região apenas porque ela existe no Compute Engine, confirme também a disponibilidade e as restrições de localização dos demais serviços da solução.

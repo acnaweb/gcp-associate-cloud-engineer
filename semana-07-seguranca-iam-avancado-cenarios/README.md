@@ -29,3 +29,19 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Acesso sem chaves de longa duração
+
+Uma workload precisa acessar recursos Google Cloud com privilégio mínimo e o time quer evitar chaves persistentes.
+
+Entregáveis:
+- Service Account;
+- roles mínimas;
+- impersonation/credencial curta quando aplicável;
+- IAM Conditions em cenário adequado;
+- troubleshooting de 403;
+- evidência em Audit Logs.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.

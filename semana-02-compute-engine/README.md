@@ -31,3 +31,20 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Aplicação web resiliente em Compute Engine
+
+Uma aplicação precisa rodar em várias VMs, recuperar-se de falhas e receber atualizações sem indisponibilidade planejada.
+
+Entregáveis:
+- Instance Template;
+- MIG;
+- autoscaling;
+- autohealing;
+- snapshot/image quando aplicável;
+- rolling update para v2;
+- rollback para v1.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.

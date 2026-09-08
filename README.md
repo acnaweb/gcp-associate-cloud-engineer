@@ -67,3 +67,8 @@ A matriz e a auditoria usam como fonte de verdade o guia oficial anexado ao proj
 - [Matriz de conteúdo](./MATRIZ-CONTEUDO-ACE.md)
 - [Matriz M/E/P — mencionado, explicado e praticado](./MATRIZ-MEP-ACE.md)
 - [Auditoria do Exam Guide](./AUDITORIA-EXAM-GUIDE.md)
+
+
+## Validação da baseline
+
+- [Validação da Baseline v10](./VALIDACAO-BASELINE-V10.md)

@@ -584,3 +584,70 @@ Quando a execução depender de Organization, privilégio administrativo, custo 
 | 4.4 | Queries Cloud SQL | `P` | `P` |
 | 4.4 | Queries AlloyDB | `P` | `E/P*` |
 | 4.4 | Backup/restore Cloud SQL | `P` | `P/P*` |
+
+
+# 11. Refinamento prático — estimativa de custos de banco
+
+## Laboratório guiado — estimar custo de banco relacional
+
+O objetivo é aprender a decompor o custo antes de usar a Pricing Calculator.
+
+### Cloud SQL — fatores principais
+
+```text
+compute / machine tier
++ armazenamento provisionado
++ backups
++ HA regional, quando habilitada
++ read replicas
++ transferência de rede
+```
+
+### AlloyDB — fatores principais
+
+```text
+compute dos nós
++ armazenamento
++ arquitetura HA / read pools
++ transferência
+```
+
+### Cenários
+
+Compare na Pricing Calculator:
+
+```text
+Cenário 1
+Cloud SQL pequeno, single-zone, sem réplica
+
+Cenário 2
+Cloud SQL com HA regional
+
+Cenário 3
+Cloud SQL com HA + read replica
+```
+
+Use a **mesma região, engine e horizonte mensal** para não comparar premissas diferentes.
+
+Preencha:
+
+| Cenário | Compute | Storage | HA/Replica | Backup | Estimativa mensal |
+|---|---:|---:|---:|---:|---:|
+| 1 | | | | | |
+| 2 | | | | | |
+| 3 | | | | | |
+
+### Interpretação para prova
+
+```text
+Alta disponibilidade
+≠
+backup
+
+Read replica
+≠
+HA automática
+
+Mais resiliência / mais capacidade
+→ geralmente mais recursos faturáveis
+```

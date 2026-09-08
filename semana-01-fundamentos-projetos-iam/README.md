@@ -27,3 +27,20 @@ Conceito → Criar/Configurar → Inspecionar → Testar → Quebrar → Trouble
 ```
 
 > O conteúdo desta semana é rastreado em `../AUDITORIA-EXAM-GUIDE.md` e `../MATRIZ-CONTEUDO-ACE.md`.
+
+## Practical Scenario Integrador — Governança de um novo ambiente
+
+Uma empresa está criando um novo projeto para uma aplicação interna. Ela precisa de região definida, APIs habilitadas, controle de acesso mínimo, orçamento e visibilidade de quotas.
+
+Entregáveis:
+- desenhar a hierarquia aplicável;
+- definir projeto/região/zona;
+- habilitar uma API necessária;
+- indicar roles IAM mínimas;
+- criar/explicar budget;
+- verificar quotas;
+- justificar a escolha de localização.
+
+### Critério de conclusão
+
+O cenário só está concluído quando você consegue explicar **por que** escolheu cada componente e consegue inspecionar pelo menos um sinal operacional de cada recurso principal.
