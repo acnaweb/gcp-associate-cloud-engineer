@@ -2,7 +2,7 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá ser capaz de:
+Ao final, você deverá:
 
 - Entender por que usamos Load Balancers;
 - Diferenciar **Application Load Balancer** e **Network Load Balancer**;

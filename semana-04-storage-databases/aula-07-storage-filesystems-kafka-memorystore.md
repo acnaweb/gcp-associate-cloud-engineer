@@ -1,5 +1,17 @@
 # Aula 7 — Filestore, NetApp Volumes, Managed Lustre, Managed Kafka e Memorystore
 
+## Objetivos
+
+Ao final, você deverá:
+- diferenciar object storage, file storage, streaming e cache;
+- explicar os casos de uso de Filestore, NetApp Volumes e Managed Lustre;
+- diferenciar Pub/Sub e Managed Service for Apache Kafka;
+- explicar o papel do Memorystore;
+- selecionar a opção adequada a partir de requisitos de protocolo, desempenho e arquitetura.
+
+---
+
+
 > **Classificação em relação ao guia oficial anexado:** conteúdo complementar. Os tópicos desta aula não aparecem explicitamente no PDF usado como fonte de verdade nesta versão. Estude depois de concluir os itens obrigatórios do guia.
 
 

@@ -2,7 +2,7 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá ser capaz de:
+Ao final, você deverá:
 
 - Entender o que é uma **VPC** no Google Cloud;
 - Entender que uma VPC é um recurso **global**;

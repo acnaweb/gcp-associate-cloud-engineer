@@ -1,5 +1,18 @@
 # Aula 6 — Log Routing, Ops Agent, Managed Prometheus e Cloud Diagnostics
 
+## Objetivos
+
+Ao final, você deverá:
+- explicar o papel do Log Router, log buckets, views e sinks;
+- criar uma VM de laboratório e instalar o Ops Agent pela linha de comando;
+- gerar e consultar logs coletados pelo Ops Agent;
+- explicar o papel do Managed Service for Prometheus;
+- usar evidências de Monitoring, Logging e status da plataforma em troubleshooting;
+- reconhecer o papel de Audit Logs e exportação de registros.
+
+---
+
+
 ## Cobertura no exam guide
 
 Exam Guide 4.6: custom metrics, log export/routing, buckets/views, diagnostics, Google Cloud status, Ops Agent, Managed Service for Prometheus e Audit Logs.
@@ -681,21 +694,230 @@ gcloud logging write ace-export-test 'ERRO EXPORTADO' --severity=ERROR
 
 Depois valide a chegada quando o destino estiver configurado corretamente.
 
-### Managed Service for Prometheus
+### Managed Service for Prometheus — laboratório operacional
 
-**Nível:** `P*` se você não possuir cluster GKE de laboratório ativo.
+O Managed Service for Prometheus permite coletar métricas no formato/ecossistema Prometheus e armazená-las no backend de métricas gerenciado do Google Cloud.
 
-Em um cluster compatível, identifique/configure coleta gerenciada e confirme no Monitoring a existência de métricas Prometheus. O objetivo operacional é conseguir distinguir:
+Modelo:
 
 ```text
-Prometheus metric collection
-→ Managed Service for Prometheus
-
-VM logs/metrics agent
-→ Ops Agent
+application / exporter
+      ↓ /metrics
+PodMonitoring
+      ↓
+managed collector
+      ↓
+Managed Service for Prometheus
+      ↓
+Cloud Monitoring / PromQL
 ```
 
-Não marque este tópico como `P` se você apenas leu a definição.
+No GKE moderno, a **managed collection** é normalmente a opção preferida. Ela reduz a necessidade de administrar servidores Prometheus, sharding e collectors manualmente.
+
+> **Nível:** `P*` se você não possuir um cluster GKE de laboratório. Se você já tiver um cluster GKE criado na Semana 5, execute o laboratório e trate como `P`.
+
+#### 1. Reutilizar um cluster GKE
+
+```bash
+# Define projeto, região e cluster.
+export PROJECT_ID="$(gcloud config get-value project)"
+export REGION="us-central1"
+export CLUSTER="ace-gke"
+
+# Obtém credenciais do cluster.
+# Ajuste o nome caso tenha usado outro cluster na Semana 5.
+gcloud container clusters get-credentials "$CLUSTER" \
+  --region="$REGION"
+```
+
+Se o cluster for zonal, use `--zone` em vez de `--region`.
+
+#### 2. Confirmar/ativar managed collection
+
+```bash
+# Exibe a configuração do cluster e permite verificar
+# se Managed Service for Prometheus está habilitado.
+gcloud container clusters describe "$CLUSTER" \
+  --region="$REGION" \
+  --format="yaml(monitoringConfig)"
+```
+
+Se precisar habilitar explicitamente:
+
+```bash
+# Habilita a coleta gerenciada do Managed Service for Prometheus.
+gcloud container clusters update "$CLUSTER" \
+  --region="$REGION" \
+  --enable-managed-prometheus
+```
+
+#### 3. Criar namespace do laboratório
+
+```bash
+# Cria um namespace isolado para a aplicação Prometheus de exemplo.
+kubectl create namespace gmp-test
+```
+
+#### 4. Implantar aplicação que expõe métricas
+
+```bash
+# Implanta o aplicativo oficial de exemplo.
+# Ele expõe métricas Prometheus na porta nomeada "metrics".
+kubectl -n gmp-test apply \
+  -f https://raw.githubusercontent.com/GoogleCloudPlatform/prometheus-engine/v0.17.2/examples/example-app.yaml
+```
+
+Inspecione:
+
+```bash
+# Confirma Pods e labels do aplicativo.
+kubectl -n gmp-test get pods -o wide
+```
+
+#### 5. Criar PodMonitoring
+
+`PodMonitoring` diz ao collector **quais Pods devem ser descobertos e qual endpoint `/metrics` deve ser coletado**.
+
+```bash
+# Aplica o recurso PodMonitoring oficial do exemplo.
+kubectl -n gmp-test apply \
+  -f https://raw.githubusercontent.com/GoogleCloudPlatform/prometheus-engine/v0.17.2/examples/pod-monitoring.yaml
+```
+
+Inspecione:
+
+```bash
+# Lista recursos PodMonitoring em todos os namespaces.
+kubectl get podmonitoring -A
+```
+
+```bash
+# Mostra selector, endpoint, porta e conditions.
+kubectl -n gmp-test describe podmonitoring prom-example
+```
+
+Modelo mental:
+
+```text
+selector
+→ encontra Pods
+
+port: metrics
+→ indica o endpoint que será raspado
+
+interval
+→ frequência de coleta
+```
+
+#### 6. Testar comportamento observável
+
+Depois de alguns minutos, use Cloud Monitoring → Metrics Explorer e procure métricas Prometheus do exemplo.
+
+A aplicação oficial gera métricas como:
+
+```text
+example_requests_total
+example_random_numbers
+```
+
+O objetivo do laboratório não é decorar a UI, mas reconhecer o fluxo:
+
+```text
+app expõe métrica
+→ PodMonitoring seleciona target
+→ collector coleta
+→ métrica aparece no backend gerenciado
+```
+
+#### 7. Quebrar propositalmente
+
+Crie uma cópia do PodMonitoring com selector que não corresponde aos Pods:
+
+```bash
+cat > /tmp/podmonitoring-bad.yaml <<'EOF'
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: prom-example-bad
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: label-inexistente
+  endpoints:
+  - port: metrics
+    interval: 30s
+EOF
+
+# Aplica um PodMonitoring que não encontra targets.
+kubectl -n gmp-test apply -f /tmp/podmonitoring-bad.yaml
+```
+
+Inspecione:
+
+```bash
+# Verifique selector e ausência de targets correspondentes.
+kubectl -n gmp-test describe podmonitoring prom-example-bad
+
+# Compare com os labels reais dos Pods.
+kubectl -n gmp-test get pods --show-labels
+```
+
+#### 8. Troubleshooting
+
+```text
+Sintoma
+→ métricas não aparecem
+
+Hipótese 1
+→ selector do PodMonitoring não encontra Pods
+
+Evidência
+→ kubectl get pods --show-labels
+→ kubectl describe podmonitoring
+
+Hipótese 2
+→ port/path do endpoint está incorreto
+
+Evidência
+→ manifesto do PodMonitoring + portas do Pod
+
+Hipótese 3
+→ managed collection não está habilitada
+
+Evidência
+→ gcloud container clusters describe
+
+Causa
+→ localizar a primeira diferença comprovada pela evidência
+
+Correção
+→ alinhar selector/endpoint ou habilitar managed collection
+```
+
+#### 9. Corrigir
+
+```bash
+# Remove o PodMonitoring propositalmente incorreto.
+kubectl -n gmp-test delete podmonitoring prom-example-bad
+```
+
+Confirme que o correto continua presente:
+
+```bash
+kubectl -n gmp-test get podmonitoring
+```
+
+#### 10. Cleanup
+
+```bash
+# Remove todos os recursos do namespace de laboratório.
+kubectl delete namespace gmp-test
+
+# Remove o arquivo temporário.
+rm -f /tmp/podmonitoring-bad.yaml
+```
+
+Não desabilite Managed Service for Prometheus se o cluster continuar sendo usado em outros laboratórios.
 
 ---
 

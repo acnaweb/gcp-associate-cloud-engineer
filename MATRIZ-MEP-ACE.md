@@ -134,3 +134,13 @@ Para troubleshooting, o tópico precisa ainda apresentar **Sintoma → Hipótese
 | 5.2 | Gerenciar IAM da SA | `P` | S7 A2 | `P` | get/add/remove SA policy |
 | 5.2 | Identidade temporária SA | `P` | S7 A2 | `P` | impersonation |
 | 5.2 | Credenciais de curta duração | `P` | S7 A2 | `P` | access/id token via impersonation |
+
+
+---
+
+## Ajustes v13
+
+- Cloud Identity manual/automático: `P*` com explicação explícita de Admin Console/CSV, GCDS e Admin SDK Directory API.
+- Storage Transfer Service: elevado para `P` com `gcloud transfer jobs create`, inspeção de job/operação e validação do objeto.
+- Eventarc: elevado para `P` no fluxo Cloud Storage → Eventarc → Cloud Run.
+- Managed Service for Prometheus: laboratório executável em GKE existente; `P` quando executado e `P*` quando o aluno não possui cluster disponível.

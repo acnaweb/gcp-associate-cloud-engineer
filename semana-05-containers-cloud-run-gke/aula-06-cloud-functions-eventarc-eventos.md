@@ -1,5 +1,17 @@
 # Aula 6 — Cloud Functions, Eventarc e Aplicações Orientadas a Eventos
 
+## Objetivos
+
+Ao final, você deverá:
+- explicar o papel de Cloud Functions/Cloud Run functions em arquiteturas orientadas a eventos;
+- explicar como Pub/Sub, Cloud Storage e Eventarc participam do fluxo de eventos;
+- implantar e inspecionar uma função orientada a eventos;
+- diferenciar Cloud Run, funções e alternativas citadas no guia do exame;
+- diagnosticar falhas básicas de trigger, identidade e entrega de eventos.
+
+---
+
+
 ## Nível de cobertura M/E/P
 
 ```text
@@ -322,16 +334,253 @@ Causa: ace-outro-topic não está associado ao trigger
 Correção: publicar em ace-events ou reconfigurar trigger
 ```
 
-### 7. Cloud Storage + Eventarc
+### 7. Eventarc — conceitos que precisam ficar claros
 
-O guia também cita eventos de alteração de objetos no Cloud Storage. Antes de criar outro recurso, identifique no Console/CLI quais triggers Eventarc estão disponíveis e reconheça o padrão:
+Eventarc conecta uma **fonte de eventos** a um **destino** usando um trigger.
+
+Modelo:
 
 ```text
-Cloud Storage object event
-        ↓
-Eventarc
-        ↓
-Cloud Run / Cloud Function
+event provider
+      ↓
+event type + filters
+      ↓
+Eventarc trigger
+      ↓
+destination
+```
+
+Elementos importantes:
+
+- **event provider**: serviço que gera o evento, como Cloud Storage ou Pub/Sub;
+- **event type**: tipo exato do evento;
+- **event filters**: restringem quais eventos acionam o trigger;
+- **service account**: identidade usada pelo trigger para invocar o destino;
+- **destination**: Cloud Run, Workflows, GKE ou outro destino suportado.
+
+Para Cloud Storage, um evento comum é:
+
+```text
+google.cloud.storage.object.v1.finalized
+```
+
+Ele ocorre quando um objeto é finalizado/criado no bucket.
+
+---
+
+### 8. Laboratório completo — Cloud Storage → Eventarc → Cloud Run
+
+> **Custo:** Cloud Run, Eventarc e Cloud Storage podem gerar cobrança pequena. Execute em projeto de laboratório e faça cleanup.
+
+#### 8.1 Variáveis e APIs
+
+```bash
+# Define o projeto atual.
+export PROJECT_ID="$(gcloud config get-value project)"
+
+# Obtém o número do projeto.
+export PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" \
+  --format='value(projectNumber)')"
+
+# Define região, nomes e identidade do laboratório.
+export REGION="us-central1"
+export RUN_SERVICE="ace-eventarc-run"
+export TRIGGER="ace-storage-trigger"
+export BUCKET="${PROJECT_ID}-ace-eventarc-$RANDOM"
+export EVENTARC_SA="ace-eventarc-invoker@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# Habilita as APIs necessárias.
+gcloud services enable \
+  run.googleapis.com \
+  eventarc.googleapis.com \
+  pubsub.googleapis.com \
+  storage.googleapis.com
+```
+
+#### 8.2 Criar o destino Cloud Run
+
+```bash
+# Implanta um container de exemplo no Cloud Run.
+# O serviço será o destino dos eventos enviados pelo Eventarc.
+gcloud run deploy "$RUN_SERVICE" \
+  --image="us-docker.pkg.dev/cloudrun/container/hello" \
+  --region="$REGION" \
+  --no-allow-unauthenticated
+```
+
+Inspecione:
+
+```bash
+# Mostra URL, revisão e configuração do serviço.
+gcloud run services describe "$RUN_SERVICE" \
+  --region="$REGION"
+```
+
+#### 8.3 Criar a identidade do trigger
+
+```bash
+# Cria a Service Account usada pelo Eventarc para invocar o Cloud Run.
+gcloud iam service-accounts create ace-eventarc-invoker \
+  --display-name="ACE Eventarc Invoker"
+```
+
+Conceda ao trigger permissão de receber eventos:
+
+```bash
+# Permite que a Service Account seja usada como Eventarc Event Receiver.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$EVENTARC_SA" \
+  --role="roles/eventarc.eventReceiver"
+```
+
+Conceda invocação do Cloud Run:
+
+```bash
+# Permite que a identidade do trigger invoque o serviço Cloud Run.
+gcloud run services add-iam-policy-binding "$RUN_SERVICE" \
+  --region="$REGION" \
+  --member="serviceAccount:$EVENTARC_SA" \
+  --role="roles/run.invoker"
+```
+
+#### 8.4 Preparar o bucket e o service agent do Cloud Storage
+
+```bash
+# Cria o bucket na mesma região do trigger.
+gcloud storage buckets create "gs://$BUCKET" \
+  --location="$REGION"
+```
+
+Obtenha a identidade de serviço do Cloud Storage:
+
+```bash
+# Exibe o service agent usado pelo Cloud Storage no projeto.
+export STORAGE_SA="$(gcloud storage service-agent \
+  --project="$PROJECT_ID")"
+
+echo "$STORAGE_SA"
+```
+
+Conceda publicação no Pub/Sub, usada pelo transporte do Eventarc Standard:
+
+```bash
+# Permite que o service agent do Cloud Storage publique os eventos
+# necessários ao fluxo do Eventarc.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$STORAGE_SA" \
+  --role="roles/pubsub.publisher"
+```
+
+#### 8.5 Criar o trigger
+
+```bash
+# Cria um trigger para objetos finalizados no bucket.
+#
+# type=...finalized filtra criação/finalização de objeto.
+# bucket=... restringe o trigger ao bucket do laboratório.
+# --service-account define a identidade que invoca o Cloud Run.
+gcloud eventarc triggers create "$TRIGGER" \
+  --location="$REGION" \
+  --destination-run-service="$RUN_SERVICE" \
+  --destination-run-region="$REGION" \
+  --event-filters="type=google.cloud.storage.object.v1.finalized" \
+  --event-filters="bucket=$BUCKET" \
+  --service-account="$EVENTARC_SA"
+```
+
+#### 8.6 Inspecionar o trigger
+
+```bash
+# Lista triggers na região.
+gcloud eventarc triggers list \
+  --location="$REGION"
+```
+
+```bash
+# Mostra filtros, destino e identidade do trigger.
+gcloud eventarc triggers describe "$TRIGGER" \
+  --location="$REGION"
+```
+
+Procure:
+
+```text
+eventFilters
+destination
+serviceAccount
+transport
+```
+
+#### 8.7 Testar
+
+```bash
+# Cria um arquivo pequeno.
+printf 'evento Eventarc ACE
+' > /tmp/ace-eventarc.txt
+
+# O upload finaliza um objeto e produz o evento esperado pelo trigger.
+gcloud storage cp \
+  /tmp/ace-eventarc.txt \
+  "gs://$BUCKET/"
+```
+
+Aguarde a propagação e consulte logs do destino:
+
+```bash
+# Lê logs recentes do Cloud Run para verificar que uma requisição/evento chegou.
+gcloud run services logs read "$RUN_SERVICE" \
+  --region="$REGION" \
+  --limit=30
+```
+
+#### 8.8 Quebrar propositalmente
+
+Crie outro bucket que **não** corresponde ao filtro:
+
+```bash
+# Cria um bucket fora do filtro do trigger.
+export OTHER_BUCKET="${PROJECT_ID}-ace-eventarc-other-$RANDOM"
+
+gcloud storage buckets create "gs://$OTHER_BUCKET" \
+  --location="$REGION"
+
+# Faz upload no bucket errado.
+gcloud storage cp \
+  /tmp/ace-eventarc.txt \
+  "gs://$OTHER_BUCKET/"
+```
+
+O trigger não deve ser acionado por esse bucket.
+
+#### 8.9 Troubleshooting
+
+```text
+Sintoma
+→ upload ocorreu, mas destino não recebeu evento
+
+Hipótese 1
+→ bucket não corresponde ao event filter
+
+Evidência
+→ gcloud eventarc triggers describe
+
+Hipótese 2
+→ identidade do trigger não consegue invocar Cloud Run
+
+Evidência
+→ IAM do Cloud Run + logs/Eventarc
+
+Hipótese 3
+→ Cloud Storage service agent não pode publicar no transporte Pub/Sub
+
+Evidência
+→ IAM do projeto
+
+Causa
+→ identificar qual vínculo/filtro está incorreto
+
+Correção
+→ ajustar filtro ou IAM e testar novamente
 ```
 
 ### Cleanup
@@ -348,6 +597,29 @@ gcloud pubsub topics delete ace-outro-topic --quiet
 # Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
 rm -rf ~/ace-function
 ```
+
+
+# Exclui o trigger explícito do Eventarc.
+gcloud eventarc triggers delete "$TRIGGER" \
+  --location="$REGION" \
+  --quiet 2>/dev/null || true
+
+# Exclui o serviço Cloud Run usado como destino.
+gcloud run services delete "$RUN_SERVICE" \
+  --region="$REGION" \
+  --quiet 2>/dev/null || true
+
+# Remove objetos/buckets usados no Eventarc.
+gcloud storage rm --recursive "gs://$BUCKET/**" 2>/dev/null || true
+gcloud storage rm --recursive "gs://$OTHER_BUCKET/**" 2>/dev/null || true
+gcloud storage buckets delete "gs://$BUCKET" --quiet 2>/dev/null || true
+gcloud storage buckets delete "gs://$OTHER_BUCKET" --quiet 2>/dev/null || true
+
+# Exclui a Service Account do trigger.
+gcloud iam service-accounts delete "$EVENTARC_SA" \
+  --quiet 2>/dev/null || true
+
+rm -f /tmp/ace-eventarc.txt
 
 ---
 
@@ -376,6 +648,6 @@ Quando a execução depender de Organization, privilégio administrativo, custo 
 |---|---|---:|---:|
 | 3.3 | Deploy Cloud Functions | `P` | `P` |
 | 3.3 | Evento Pub/Sub | `P` | `P` |
-| 3.3 | Evento de objeto Cloud Storage | `P` | `P*` |
-| 3.3 | Eventarc | `P` | `P/P*` |
+| 3.3 | Evento de objeto Cloud Storage | `P` | `P` |
+| 3.3 | Eventarc | `P` | `P` |
 | 3.3 | Decidir Cloud Run managed / Cloud Run for Anthos / Functions | `E` | `E` |

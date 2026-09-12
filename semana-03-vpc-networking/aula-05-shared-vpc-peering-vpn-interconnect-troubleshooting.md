@@ -2,7 +2,7 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá ser capaz de:
+Ao final, você deverá:
 
 - Entender quando utilizar **Shared VPC**;
 - Entender quando utilizar **VPC Network Peering**;

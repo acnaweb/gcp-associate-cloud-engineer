@@ -1,5 +1,19 @@
 # Aula 3 — Billing, Observability, Quotas e Cloud Identity
 
+## Objetivos
+
+Ao final, você deverá:
+- explicar o papel do Cloud Identity na gestão de usuários e grupos;
+- entender a relação entre Billing Account, projetos e recursos;
+- inspecionar a associação de faturamento de um projeto;
+- explicar e configurar budgets e alertas de faturamento quando houver permissão;
+- entender Billing Export e seu uso para análise de custos;
+- identificar quotas relevantes e entender o processo de solicitação de aumento;
+- reconhecer os produtos básicos do Google Cloud Observability exigidos pelo exame.
+
+---
+
+
 ## Cobertura no exam guide
 
 Exam Guide 1.1 e 1.2: Cloud Identity, produtos de Observability, quotas, billing accounts, vínculo de projetos, budgets e billing export.
@@ -216,7 +230,109 @@ Cloud Identity group
 Project / Resource
 ```
 
-Automação de provisionamento deve ser reconhecida como alternativa ao gerenciamento manual quando a organização utiliza integração/provisionamento de identidade.
+## Provisionamento manual x automatizado no Cloud Identity
+
+O guia do exame exige reconhecer gerenciamento de usuários e grupos **manual e automaticamente**.
+
+### Provisionamento manual
+
+Para poucas identidades ou laboratório, o fluxo normal é:
+
+```text
+Google Admin Console
+      ↓
+criar usuário/grupo
+      ↓
+adicionar membership
+      ↓
+usar user/group como principal IAM
+```
+
+Também é possível criar vários usuários por upload de CSV.
+
+Use manual/CSV quando:
+
+- o volume de usuários é pequeno;
+- não existe diretório corporativo externo;
+- a organização aceita administrar identidades diretamente no Cloud Identity/Google Workspace.
+
+### Provisionamento automatizado
+
+Quando a empresa já possui um diretório corporativo, criar e remover usuários manualmente em dois lugares gera risco de inconsistência.
+
+Modelo:
+
+```text
+Active Directory / LDAP
+          ↓
+Google Cloud Directory Sync (GCDS)
+          ↓
+Cloud Identity
+   ├── users
+   ├── groups
+   └── memberships
+          ↓
+IAM
+```
+
+O **Google Cloud Directory Sync (GCDS)** sincroniza dados de diretórios LDAP/Active Directory com o diretório Google, incluindo usuários e grupos.
+
+Outra opção para automação em escala é usar a **Admin SDK Directory API** para provisionar usuários programaticamente.
+
+Modelo:
+
+```text
+Sistema corporativo / automação
+          ↓
+Admin SDK Directory API
+          ↓
+Cloud Identity users/groups
+```
+
+### Não confunda provisionamento com autorização IAM
+
+```text
+Cloud Identity
+→ cria/sincroniza a identidade
+
+IAM
+→ concede autorização aos principals
+```
+
+Exemplo:
+
+```text
+AD group "cloud-readers"
+        ↓ GCDS
+Cloud Identity group
+        ↓ IAM binding
+roles/viewer
+        ↓
+Project
+```
+
+### Prática guiada P*
+
+Este laboratório é `P*` porque GCDS exige diretório corporativo e privilégios administrativos.
+
+Se você possui domínio de laboratório:
+
+1. crie um usuário manualmente no Admin Console;
+2. crie um grupo;
+3. adicione o usuário ao grupo;
+4. observe o grupo como principal IAM;
+5. identifique no Admin Console as opções de importação em massa;
+6. documente qual das opções seria usada em um ambiente com AD/LDAP:
+   - GCDS;
+   - Admin SDK Directory API.
+
+### Questão estilo ACE
+
+Uma empresa possui milhares de usuários no Active Directory e quer evitar criação manual duplicada no Cloud Identity.
+
+**Resposta:** usar sincronização/provisionamento automatizado, como GCDS, em vez de criar cada usuário manualmente.
+
+A pegadinha é escolher IAM como ferramenta de criação de usuários. IAM controla autorização; ele não substitui o diretório de identidades.
 
 ### Billing Account e vinculação de projeto
 

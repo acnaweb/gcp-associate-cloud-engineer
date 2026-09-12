@@ -1,5 +1,16 @@
 # Aula 7 — AI-assisted Tooling, Active Assist e Cloud Hub
 
+## Objetivos
+
+Ao final, você deverá:
+- reconhecer o propósito das ferramentas assistidas por IA apresentadas na aula;
+- explicar o papel de Active Assist e Cloud Hub;
+- diferenciar assistência à operação, recomendação e visão agregada de recursos;
+- identificar quando essas ferramentas podem complementar workflows de operação e troubleshooting.
+
+---
+
+
 > **Classificação em relação ao guia oficial anexado:** conteúdo complementar. Os tópicos desta aula não aparecem explicitamente no PDF usado como fonte de verdade nesta versão. Estude depois de concluir os itens obrigatórios do guia.
 
 

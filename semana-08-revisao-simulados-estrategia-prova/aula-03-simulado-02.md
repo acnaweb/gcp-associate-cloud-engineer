@@ -1,5 +1,17 @@
 # Aula 3 — Simulado 2
 
+## Objetivos
+
+Ao final, você deverá:
+- validar sua evolução após a primeira rodada de revisão;
+- resolver um novo conjunto de questões baseadas em cenários;
+- aplicar critérios de escolha entre serviços semelhantes;
+- justificar respostas usando requisitos técnicos, operacionais e de custo;
+- identificar os últimos tópicos que exigem revisão antes da prova.
+
+---
+
+
 ## Instruções
 
 Faça sem consultar o gabarito. Para cada resposta, escreva em uma frase por que as outras opções não atendem ao requisito.

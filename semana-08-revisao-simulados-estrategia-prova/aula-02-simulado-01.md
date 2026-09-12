@@ -1,5 +1,17 @@
 # Aula 2 — Simulado 1
 
+## Objetivos
+
+Ao final, você deverá:
+- avaliar sua cobertura dos principais domínios do exame ACE;
+- resolver questões baseadas em cenários sem consultar o gabarito;
+- justificar por que a alternativa correta atende ao requisito;
+- identificar por que as alternativas incorretas não atendem ao cenário;
+- registrar lacunas de conhecimento para revisão dirigida.
+
+---
+
+
 ## Instruções
 
 Faça sem consultar o gabarito. Para cada resposta, escreva em uma frase por que as outras opções não atendem ao requisito.

@@ -2,7 +2,7 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá ser capaz de:
+Ao final, você deverá:
 
 - explicar por que uma Service Account é ao mesmo tempo um **principal IAM** e um **recurso IAM**;
 - diferenciar `roles/iam.serviceAccountUser` de `roles/iam.serviceAccountTokenCreator`;

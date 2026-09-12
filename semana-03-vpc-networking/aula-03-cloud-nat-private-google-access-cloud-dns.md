@@ -2,7 +2,7 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá ser capaz de:
+Ao final, você deverá:
 
 - Entender por que uma VM privada pode precisar de saída para a internet;
 - Entender o papel do **Cloud NAT**;

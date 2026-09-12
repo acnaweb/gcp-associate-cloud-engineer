@@ -1,5 +1,17 @@
 # Aula 7 — Agent Runtime, Workbench e Cloud Workstations
 
+## Objetivos
+
+Ao final, você deverá:
+- diferenciar Agent Runtime, Workbench e Cloud Workstations;
+- reconhecer o caso de uso de cada serviço;
+- identificar onde esses serviços se encaixam em arquiteturas de desenvolvimento, dados e agentes;
+- inspecionar opções disponíveis sem provisionar recursos desnecessários;
+- resolver cenários de escolha entre as alternativas apresentadas.
+
+---
+
+
 > **Classificação em relação ao guia oficial anexado:** conteúdo complementar. Os tópicos desta aula não aparecem explicitamente no PDF usado como fonte de verdade nesta versão. Estude depois de concluir os itens obrigatórios do guia.
 
 

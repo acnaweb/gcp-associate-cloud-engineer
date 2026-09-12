@@ -1,5 +1,18 @@
 # Aula 6 — Pub/Sub, Dataflow, Storage Transfer e Jobs
 
+## Objetivos
+
+Ao final, você deverá:
+- explicar o modelo de produtores, tópicos, subscriptions e consumidores no Pub/Sub;
+- criar e testar um fluxo básico de mensagens Pub/Sub;
+- explicar quando Dataflow é usado para processamento batch ou streaming;
+- inspecionar o status de jobs Dataflow;
+- explicar o papel do Storage Transfer Service;
+- reconhecer quando usar upload direto, transferência gerenciada ou processamento de dados.
+
+---
+
+
 ## Cobertura no exam guide
 
 Exam Guide 3.3, 3.4 e 4.4: Pub/Sub, Dataflow, eventos, Storage Transfer Service e revisão de status de jobs.
@@ -221,27 +234,248 @@ Agora “job status” deixou de ser apenas mencionado.
 
 Use um `JOB_ID` inexistente em `describe` e confirme primeiro a lista real antes de investigar pipeline, Pub/Sub ou IAM.
 
-### Storage Transfer Service — prática guiada
+### Storage Transfer Service — prática completa via gcloud
 
-O guia exige uso do serviço. Para evitar transferência desnecessária de grande volume:
+O Storage Transfer Service cria **jobs gerenciados de transferência**. Um job define:
 
-1. crie dois buckets pequenos de laboratório;
-2. coloque um objeto no bucket origem;
-3. no Console abra **Storage Transfer → Create a transfer**;
-4. escolha origem Cloud Storage e destino Cloud Storage;
-5. execute transferência imediata;
-6. valide o objeto no destino;
-7. exclua o transfer job.
+```text
+origem
+  ↓
+regras/opções
+  ↓
+schedule
+  ↓
+destino
+```
+
+Não confunda:
+
+```text
+gcloud storage cp
+→ o seu cliente executa a cópia
+
+Storage Transfer Service
+→ serviço gerenciado executa e acompanha um transfer job
+```
+
+#### 1. Preparar os buckets
+
+```bash
+# Define o projeto atual.
+export PROJECT_ID="$(gcloud config get-value project)"
+
+# Define nomes únicos para origem e destino.
+export STS_SOURCE="gs://${PROJECT_ID}-ace-sts-src-$RANDOM"
+export STS_DEST="gs://${PROJECT_ID}-ace-sts-dst-$RANDOM"
+
+# Habilita a API do Storage Transfer Service.
+gcloud services enable storagetransfer.googleapis.com
+
+# Cria o bucket de origem.
+gcloud storage buckets create "$STS_SOURCE" \
+  --location=us-central1
+
+# Cria o bucket de destino.
+gcloud storage buckets create "$STS_DEST" \
+  --location=us-central1
+
+# Cria um arquivo pequeno para provar a transferência.
+printf 'ACE Storage Transfer Service
+' > /tmp/ace-sts.txt
+
+# Envia o arquivo ao bucket de origem.
+gcloud storage cp /tmp/ace-sts.txt "$STS_SOURCE/"
+```
+
+Inspecione:
+
+```bash
+# Lista o conteúdo da origem antes da transferência.
+gcloud storage ls "$STS_SOURCE"
+```
+
+#### 2. Entender a identidade do serviço
+
+O Storage Transfer Service usa um **service agent gerenciado pelo Google** para acessar buckets.
+
+Em projetos/ambientes em que as permissões não são concedidas automaticamente, o service agent precisa conseguir:
+
+```text
+origem
+→ listar/ler objetos
+
+destino
+→ criar objetos
+```
+
+Se o job falhar com `PERMISSION_DENIED`, investigue primeiro IAM no source/destination e a identidade do Storage Transfer Service.
+
+#### 3. Criar o transfer job
+
+```bash
+# Cria um transfer job Cloud Storage → Cloud Storage.
+# Sem schedule explícito, o comando inicia a transferência imediatamente,
+# salvo quando --do-not-run é utilizado.
+gcloud transfer jobs create \
+  "$STS_SOURCE" \
+  "$STS_DEST" \
+  --name="ace-storage-transfer" \
+  --description="ACE - transferencia pequena entre buckets"
+```
+
+#### 4. Listar e inspecionar jobs
+
+```bash
+# Lista jobs do Storage Transfer Service.
+gcloud transfer jobs list
+```
+
+Identifique o nome real retornado, normalmente no formato:
+
+```text
+transferJobs/...
+```
+
+Defina:
+
+```bash
+# Substitua pelo nome retornado pelo comando anterior.
+export STS_JOB="transferJobs/SEU_JOB"
+```
+
+Descreva:
+
+```bash
+# Exibe source, destination, status, schedule e opções do job.
+gcloud transfer jobs describe "$STS_JOB"
+```
+
+Procure conceitualmente por:
+
+```text
+transferSpec
+schedule
+status
+description
+```
+
+#### 5. Inspecionar operações
+
+Um **job** é a configuração. Cada execução cria uma **operation**.
+
+```bash
+# Lista operações associadas ao projeto.
+gcloud transfer operations list
+```
+
+Se houver operação ativa/concluída, descreva a operação real:
+
+```bash
+# Substitua OPERATION_NAME pelo nome retornado.
+gcloud transfer operations describe OPERATION_NAME
+```
+
+#### 6. Testar o resultado
+
+```bash
+# Verifica se o objeto chegou ao destino.
+gcloud storage ls "$STS_DEST"
+```
+
+Teste o conteúdo:
+
+```bash
+# Copia o objeto do destino para stdout.
+gcloud storage cat "$STS_DEST/ace-sts.txt"
+```
+
+Resultado esperado:
+
+```text
+ACE Storage Transfer Service
+```
+
+#### 7. Schedule: quando usar
+
+O mesmo comando suporta transferências agendadas.
 
 Modelo:
 
 ```text
-Source bucket
-    ↓ Storage Transfer Service
-Destination bucket
+one-time
+→ transferência pontual
+
+scheduled
+→ execução em uma data/cadência definida
 ```
 
-Não confunda `gcloud storage cp` (cópia direta pelo cliente) com Storage Transfer Service (serviço gerenciado de transferência).
+Exemplo conceitual:
+
+```bash
+# Exemplo: cria um job e não inicia imediatamente.
+# Use --schedule-starts / --schedule-repeats-every quando quiser recorrência.
+gcloud transfer jobs create \
+  "$STS_SOURCE" \
+  "$STS_DEST" \
+  --do-not-run
+```
+
+Não deixe jobs recorrentes ativos apenas para estudo.
+
+#### 8. Quebrar propositalmente
+
+Crie uma evidência simples de falha usando um destino inexistente:
+
+```bash
+# Este caminho aponta para um bucket que não existe.
+export BAD_DEST="gs://${PROJECT_ID}-bucket-inexistente-ace"
+
+# A criação/execução deve falhar por destino inválido ou inacessível.
+gcloud transfer jobs create \
+  "$STS_SOURCE" \
+  "$BAD_DEST" \
+  --name="ace-sts-falha"
+```
+
+#### 9. Troubleshooting
+
+```text
+Sintoma
+→ job não transfere o objeto
+
+Hipóteses
+→ origem incorreta
+→ destino incorreto
+→ service agent sem permissão
+→ job desabilitado / schedule ainda não executou
+
+Evidências
+→ gcloud transfer jobs describe
+→ gcloud transfer operations list/describe
+→ gcloud storage ls source/destination
+
+Causa
+→ determinar a partir do job/operação real
+
+Correção
+→ corrigir URI, IAM ou schedule e executar novamente
+```
+
+#### 10. Cleanup do Storage Transfer Service
+
+```bash
+# Exclui o transfer job.
+gcloud transfer jobs delete "$STS_JOB"
+
+# Remove objetos e buckets usados no laboratório.
+gcloud storage rm --recursive "$STS_SOURCE/**" 2>/dev/null || true
+gcloud storage rm --recursive "$STS_DEST/**" 2>/dev/null || true
+gcloud storage buckets delete "$STS_SOURCE" --quiet
+gcloud storage buckets delete "$STS_DEST" --quiet
+
+# Remove o arquivo local.
+rm -f /tmp/ace-sts.txt
+```
 
 ### Cleanup Dataflow
 
@@ -281,5 +515,5 @@ Quando a execução depender de Organization, privilégio administrativo, custo 
 |---|---|---:|---:|
 | 3.4 | Pub/Sub | `P` | `P` |
 | 3.4 | Dataflow | `P` | `P` |
-| 3.4 | Storage Transfer Service | `P` | `P*` |
+| 3.4 | Storage Transfer Service | `P` | `P` |
 | 4.4 | Status Dataflow jobs | `P` | `P` |

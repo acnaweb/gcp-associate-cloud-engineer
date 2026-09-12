@@ -2,7 +2,7 @@
 
 ## Objetivos
 
-Ao final desta aula, você deverá ser capaz de:
+Ao final, você deverá:
 
 - Entender o papel das **Firewall Rules**;
 - Entender o papel das **rotas** em uma VPC;

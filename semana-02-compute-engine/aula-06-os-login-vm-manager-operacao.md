@@ -1,5 +1,18 @@
 # Aula 6 — OS Login, VM Manager e Operação de VMs
 
+## Objetivos
+
+Ao final, você deverá:
+- explicar como OS Login integra acesso SSH com IAM;
+- habilitar e inspecionar OS Login;
+- conectar-se remotamente a uma VM e inspecionar seu inventário;
+- explicar o papel do VM Manager;
+- inspecionar informações de inventário e gerenciamento do sistema operacional;
+- diagnosticar problemas básicos de acesso e operação de VMs.
+
+---
+
+
 ## Cobertura no exam guide
 
 Exam Guide 3.1 e 4.1: OS Login, VM Manager, conexão remota e inventário de VMs.

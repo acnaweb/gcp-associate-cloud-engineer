@@ -13,6 +13,8 @@
 - `VALIDACAO-BASELINE-V11.md`
 - `VALIDACAO-BASELINE-V9.md`
 - `VALIDACAO-COMANDOS-COMENTADOS.md`
+- `VALIDACAO-LACUNAS-TECNICAS-V13.md`
+- `VALIDACAO-PADRAO-OBJETIVOS-V12.md`
 - `semana-01-fundamentos-projetos-iam/README.md`
 - `semana-01-fundamentos-projetos-iam/aula-01-hierarquia-projects-regions-zones-gcloud.md`
 - `semana-01-fundamentos-projetos-iam/aula-02-iam-service-accounts.md`
