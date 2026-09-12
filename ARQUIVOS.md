@@ -1,4 +1,4 @@
-# Inventário
+# Inventário de arquivos
 
 - `ARQUIVOS.md`
 - `AUDITORIA-EXAM-GUIDE.md`
@@ -10,6 +10,7 @@
 - `RELATORIO-COMPATIBILIDADE-GUIA-ANEXO.md`
 - `RELATORIO-QUALIDADE-MEP.md`
 - `VALIDACAO-BASELINE-V10.md`
+- `VALIDACAO-BASELINE-V11.md`
 - `VALIDACAO-BASELINE-V9.md`
 - `VALIDACAO-COMANDOS-COMENTADOS.md`
 - `semana-01-fundamentos-projetos-iam/README.md`
