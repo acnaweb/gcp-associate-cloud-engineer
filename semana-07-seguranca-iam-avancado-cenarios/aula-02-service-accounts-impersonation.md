@@ -318,7 +318,8 @@ export SA="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 gcloud services enable \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
-  compute.googleapis.com
+  compute.googleapis.com \
+  policytroubleshooter.googleapis.com
 ```
 
 ---
@@ -645,155 +646,418 @@ Aqui:
 
 ---
 
-# 13. Quebrar propositalmente — remover Token Creator
+# 13. Quebrar propositalmente — remover o binding criado no laboratório
 
-Remova somente `Token Creator`.
+Até aqui, concedemos diretamente ao usuário:
+
+```text
+roles/iam.serviceAccountTokenCreator
+```
+
+sobre:
+
+```text
+ace-impersonation@PROJECT_ID.iam.gserviceaccount.com
+```
+
+Agora remova **esse binding específico**:
 
 ```bash
-# Remove do usuário a capacidade de gerar credenciais temporárias para a SA.
+# Remove o binding de Token Creator criado diretamente sobre a Service Account.
 gcloud iam service-accounts remove-iam-policy-binding "$SA" \
   --member="user:$USER_ACCOUNT" \
   --role="roles/iam.serviceAccountTokenCreator"
 ```
 
-Agora tente:
+Inspecione a IAM Policy da própria Service Account:
 
 ```bash
-# Este comando deve falhar porque removemos a role necessária para impersonation.
+# Confirma que o binding direto não está mais presente.
+gcloud iam service-accounts get-iam-policy "$SA"
+```
+
+Nesse ponto, não conclua automaticamente:
+
+```text
+Token Creator removido
+        ↓
+impersonation obrigatoriamente falhará
+```
+
+Essa conclusão pode estar errada.
+
+O que removemos foi apenas **um binding específico**.
+
+A pergunta correta é:
+
+```text
+O principal ainda possui
+`iam.serviceAccounts.getAccessToken`
+por algum outro caminho?
+```
+
+---
+
+# 14. Binding removido não significa necessariamente permission efetiva removida
+
+IAM trabalha com **permissões efetivas**.
+
+Um principal pode receber a mesma permission por diferentes políticas e níveis da hierarquia:
+
+```text
+binding direto na Service Account
+          +
+binding no projeto
+          +
+binding herdado de folder/organization
+          +
+custom role
+          +
+outro predefined role que contenha a permission
+```
+
+Para gerar access token e usar impersonation, a permission central é:
+
+```text
+iam.serviceAccounts.getAccessToken
+```
+
+`roles/iam.serviceAccountTokenCreator` contém essa permission, mas ela também pode chegar ao principal por outro caminho.
+
+Por isso, este comando:
+
+```bash
+# Tenta gerar um access token temporário para a Service Account.
+gcloud auth print-access-token \
+  --impersonate-service-account="$SA"
+```
+
+pode produzir dois resultados legítimos.
+
+## Resultado A — falha
+
+Se o usuário não possui mais `iam.serviceAccounts.getAccessToken` de nenhuma outra origem, a impersonation falha.
+
+## Resultado B — continua funcionando
+
+Se o usuário ainda possui a permission efetiva por outro binding/role, o comando continua funcionando.
+
+Isso é comum em contas administrativas ou ambientes com IAM amplo.
+
+---
+
+# 15. Diagnóstico correto — Policy Troubleshooter
+
+Não adivinhe. Consulte a permission efetiva.
+
+A Service Account pode ser referenciada pelo full resource name:
+
+```text
+//iam.googleapis.com/projects/PROJECT_ID/serviceAccounts/SA_EMAIL
+```
+
+Defina:
+
+```bash
+# Monta o full resource name da Service Account para o Policy Troubleshooter.
+export SA_RESOURCE="//iam.googleapis.com/projects/${PROJECT_ID}/serviceAccounts/${SA}"
+```
+
+Agora execute:
+
+```bash
+# Verifica se o usuário possui efetivamente a permission
+# iam.serviceAccounts.getAccessToken sobre a Service Account.
+gcloud policy-intelligence troubleshoot-policy iam "$SA_RESOURCE" \
+  --principal-email="$USER_ACCOUNT" \
+  --permission="iam.serviceAccounts.getAccessToken"
+```
+
+O Policy Troubleshooter avalia as políticas aplicáveis e informa se o principal possui ou não a permission.
+
+Modelo mental:
+
+```text
+binding removido
+      ↓
+Policy Troubleshooter
+      ↓
+principal ainda tem permission?
+   ┌───────┴────────┐
+   │                │
+  SIM              NÃO
+   │                │
+impersonation     impersonation
+pode funcionar    deve falhar
+```
+
+---
+
+# 16. Inspecionar possíveis fontes da permission
+
+## 16.1 Policy da própria Service Account
+
+```bash
+# Mostra bindings diretamente configurados sobre a Service Account.
+gcloud iam service-accounts get-iam-policy "$SA"
+```
+
+## 16.2 IAM Policy do projeto
+
+```bash
+# Lista roles do usuário no projeto.
+gcloud projects get-iam-policy "$PROJECT_ID" \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:user:$USER_ACCOUNT" \
+  --format="table(bindings.role)"
+```
+
+Esse comando mostra roles do projeto, mas não resolve sozinho toda a herança.
+
+Por isso o Policy Troubleshooter é a evidência principal neste laboratório.
+
+---
+
+# 17. Verificar impersonation configurada globalmente no gcloud
+
+O `gcloud` pode estar configurado para impersonar automaticamente uma Service Account.
+
+Verifique:
+
+```bash
+# Exibe a Service Account configurada para impersonation na configuração ativa.
+gcloud config get-value auth/impersonate_service_account
+```
+
+Se houver um valor configurado e você quiser evitar interferência no laboratório:
+
+```bash
+# Remove temporariamente a impersonation persistente da configuração ativa.
+gcloud config unset auth/impersonate_service_account
+```
+
+Depois repita:
+
+```bash
 gcloud auth print-access-token \
   --impersonate-service-account="$SA"
 ```
 
 ---
 
-# 14. Troubleshooting da impersonation
+# 25. Troubleshooting — impersonation continua funcionando após remover Token Creator
 
 ## Sintoma
 
-O comando com:
+Você removeu:
 
 ```text
---impersonate-service-account
+roles/iam.serviceAccountTokenCreator
 ```
 
-falha.
+da IAM Policy da Service Account, mas:
+
+```bash
+gcloud auth print-access-token \
+  --impersonate-service-account="$SA"
+```
+
+continua funcionando.
 
 ## Hipótese
 
-O usuário não possui mais permissão para criar credenciais temporárias da SA.
+O usuário ainda possui:
 
-## Evidência
+```text
+iam.serviceAccounts.getAccessToken
+```
+
+por outra origem.
+
+## Evidência 1 — binding direto realmente foi removido?
 
 ```bash
-# Inspeciona a IAM Policy da própria Service Account.
 gcloud iam service-accounts get-iam-policy "$SA"
 ```
 
-Procure por:
+Confirme que o binding criado pelo laboratório não aparece.
 
-```text
-roles/iam.serviceAccountTokenCreator
+## Evidência 2 — permission efetiva
+
+```bash
+gcloud policy-intelligence troubleshoot-policy iam "$SA_RESOURCE" \
+  --principal-email="$USER_ACCOUNT" \
+  --permission="iam.serviceAccounts.getAccessToken"
 ```
 
-Ela não estará mais associada ao usuário.
+Se o resultado indicar acesso permitido, a impersonation continuar funcionando é coerente.
+
+## Evidência 3 — roles no projeto
+
+```bash
+gcloud projects get-iam-policy "$PROJECT_ID" \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:user:$USER_ACCOUNT" \
+  --format="table(bindings.role)"
+```
+
+Use essa saída para procurar grants adicionais, lembrando que políticas também podem vir de níveis superiores.
 
 ## Causa
 
-Removemos:
+O laboratório removeu uma concessão direta, mas não eliminou necessariamente todas as origens da permission efetiva.
+
+## Correção
+
+Em ambiente real, **não remova papéis administrativos amplos apenas para fazer o teste falhar**.
+
+A correção didática é:
+
+```text
+1. identificar a origem da permission;
+2. entender por que ela continua efetiva;
+3. usar um principal de laboratório com privilégios mínimos
+   se for necessário demonstrar uma negação previsível.
+```
+
+---
+
+# 26. Como reproduzir uma falha previsível
+
+Para uma demonstração determinística, use um principal de laboratório que:
+
+```text
+não tenha roles herdadas amplas
+não tenha custom role com getAccessToken
+não tenha Token Creator sobre a SA
+```
+
+O fluxo esperado é:
+
+```text
+principal mínimo
+      ↓
+sem getAccessToken
+      ↓
+Policy Troubleshooter = DENIED
+      ↓
+--impersonate-service-account falha
+```
+
+Depois conceda:
 
 ```text
 roles/iam.serviceAccountTokenCreator
 ```
 
-A Service Account **continua** com `roles/viewer` no projeto.
+sobre a Service Account.
 
-Portanto:
+Agora:
 
 ```text
-o que a SA pode fazer
-≠
-quem pode impersonar a SA
+Policy Troubleshooter = ALLOWED
+      ↓
+impersonation funciona
 ```
 
-## Correção
+Isso demonstra causa e efeito sem depender das permissões administrativas da conta usada para construir o laboratório.
+
+---
+
+# 27. Recriar Token Creator para continuar a aula
+
+Se o seu usuário realmente perdeu a permission efetiva, restaure o binding:
 
 ```bash
-# Restaura a capacidade de impersonation.
+# Restaura Token Creator sobre a Service Account.
 gcloud iam service-accounts add-iam-policy-binding "$SA" \
   --member="user:$USER_ACCOUNT" \
   --role="roles/iam.serviceAccountTokenCreator"
 ```
 
-Teste novamente:
+Teste:
 
 ```bash
-# Confirma a correção.
+# Confirma impersonation com a role restaurada.
 gcloud projects describe "$PROJECT_ID" \
   --impersonate-service-account="$SA"
 ```
 
 ---
 
-# 15. Quebrar propositalmente — remover Service Account User
+# 28. Quebrar propositalmente — remover Service Account User
 
-Agora remova somente `Service Account User`.
+Agora faça um teste separado para `actAs`.
+
+Remova:
 
 ```bash
-# Remove a permissão de usar/anexar a Service Account.
+# Remove o binding direto de Service Account User.
 gcloud iam service-accounts remove-iam-policy-binding "$SA" \
   --member="user:$USER_ACCOUNT" \
   --role="roles/iam.serviceAccountUser"
 ```
 
-A VM já criada continua existindo.
-
-A falha relevante aparece quando o principal tenta realizar uma nova operação que exige `actAs` sobre a SA, como anexá-la a outro recurso.
-
-Isso mostra novamente que:
+Aqui vale a mesma regra:
 
 ```text
-actAs
-e
-impersonation
+binding removido
+≠
+permission efetiva necessariamente removida
 ```
 
-são controles diferentes.
-
----
-
-# 16. Troubleshooting de actAs
-
-## Sintoma
-
-Uma operação que tenta anexar a Service Account a um recurso falha com mensagem relacionada a:
+A permission relevante é:
 
 ```text
 iam.serviceAccounts.actAs
 ```
 
+Use o Policy Troubleshooter:
+
+```bash
+# Verifica se o usuário ainda possui actAs efetivamente.
+gcloud policy-intelligence troubleshoot-policy iam "$SA_RESOURCE" \
+  --principal-email="$USER_ACCOUNT" \
+  --permission="iam.serviceAccounts.actAs"
+```
+
+Se ainda estiver permitido, o usuário pode continuar conseguindo anexar a SA por outro grant efetivo.
+
+---
+
+# 29. Troubleshooting de actAs
+
+## Sintoma
+
+Uma operação de anexar a Service Account a um recurso funciona ou falha de maneira diferente do esperado após remover `Service Account User`.
+
 ## Hipótese
 
-O caller não possui mais `Service Account User` sobre a SA.
+A permission efetiva:
+
+```text
+iam.serviceAccounts.actAs
+```
+
+ainda existe ou deixou de existir.
 
 ## Evidência
 
 ```bash
-# Confirma as roles atualmente concedidas SOBRE a Service Account.
-gcloud iam service-accounts get-iam-policy "$SA"
+gcloud policy-intelligence troubleshoot-policy iam "$SA_RESOURCE" \
+  --principal-email="$USER_ACCOUNT" \
+  --permission="iam.serviceAccounts.actAs"
 ```
 
 ## Causa
 
-Ausência de:
-
-```text
-roles/iam.serviceAccountUser
-```
+A decisão depende da **permission efetiva**, não apenas de um binding isolado.
 
 ## Correção
 
+Para restaurar o binding direto usado no laboratório:
+
 ```bash
-# Restaura a permissão de anexar/usar a SA.
 gcloud iam service-accounts add-iam-policy-binding "$SA" \
   --member="user:$USER_ACCOUNT" \
   --role="roles/iam.serviceAccountUser"
@@ -801,7 +1065,44 @@ gcloud iam service-accounts add-iam-policy-binding "$SA" \
 
 ---
 
-# 17. Credenciais de curta duração
+# 30. Regra de ouro desta aula
+
+```text
+Role removida de um binding
+≠
+permission necessariamente removida
+```
+
+Sempre raciocine em três níveis:
+
+```text
+Role
+  ↓
+contém permissions
+  ↓
+políticas efetivas determinam acesso
+```
+
+Para este caso:
+
+```text
+roles/iam.serviceAccountTokenCreator
+        ↓
+iam.serviceAccounts.getAccessToken
+        ↓
+impersonation
+
+roles/iam.serviceAccountUser
+        ↓
+iam.serviceAccounts.actAs
+        ↓
+attach/use SA em recurso
+```
+
+---
+
+# 24. Credenciais de curta duração
+
 
 A ideia central de impersonation é evitar, quando possível, credenciais persistentes.
 
@@ -840,7 +1141,7 @@ gcloud auth print-identity-token \
 
 ---
 
-# 18. Service Account User não concede as permissões da SA ao usuário
+# 25. Service Account User não concede as permissões da SA ao usuário
 
 Este é um erro conceitual comum.
 
@@ -871,7 +1172,7 @@ A autorização do recurso em runtime será exercida pela identidade anexada con
 
 ---
 
-# 19. Token Creator merece cuidado
+# 26. Token Creator merece cuidado
 
 Se uma Service Account possui privilégios elevados:
 
@@ -911,7 +1212,7 @@ também às permissões **sobre** Service Accounts.
 
 ---
 
-# 20. Questões estilo ACE
+# 27. Questões estilo ACE
 
 ## Questão 1
 
@@ -968,7 +1269,7 @@ D. Tornar o recurso público.
 
 ---
 
-# 21. Cleanup
+# 28. Cleanup
 
 Primeiro exclua a VM.
 
@@ -1015,7 +1316,7 @@ gcloud iam service-accounts delete "$SA" \
 
 ---
 
-# 22. Checklist
+# 29. Checklist
 
 - [ ] Sei explicar Service Account como principal;
 - [ ] Sei explicar Service Account como recurso;
@@ -1029,11 +1330,13 @@ gcloud iam service-accounts delete "$SA" \
 - [ ] Testei o fluxo esperado;
 - [ ] Provoquei falha;
 - [ ] Diagnostiquei usando IAM Policy da própria SA;
+- [ ] Sei que remover um binding não garante remover a permission efetiva;
+- [ ] Usei Policy Troubleshooter para `iam.serviceAccounts.getAccessToken` e `iam.serviceAccounts.actAs`;
 - [ ] Executei cleanup.
 
 ---
 
-# 23. Critério de aceite M/E/P
+# 30. Critério de aceite M/E/P
 
 | Tópico | Esperado | Evidência nesta aula |
 |---|---:|---|
@@ -1045,8 +1348,8 @@ gcloud iam service-accounts delete "$SA" \
 | Credenciais curtas | P | access token / ID token |
 | IAM da própria SA | P | get-iam-policy |
 | IAM concedido à SA | P | project get-iam-policy |
-| Troubleshooting de impersonation | P | remover role + evidência + correção |
-| Troubleshooting de actAs | P | remover role + diagnóstico + correção |
+| Troubleshooting de impersonation | P | remover binding + Policy Troubleshooter + análise de permission efetiva |
+| Troubleshooting de actAs | P | remover binding + Policy Troubleshooter + análise de `iam.serviceAccounts.actAs` |
 
 ---
 
