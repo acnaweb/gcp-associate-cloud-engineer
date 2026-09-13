@@ -3,310 +3,81 @@
 ## Objetivos
 
 Ao final, você deverá:
-- entender principal, role, permission, policy e resource;
+
+- entender `principal`, `role`, `permission`, `policy` e `resource`;
 - criar uma Service Account;
 - conceder uma role mínima em um bucket;
 - testar acesso com impersonation;
 - diagnosticar um `PERMISSION_DENIED` produzido no laboratório.
 
-
 ---
 
-# 1. Conceito
+# 1. Conceito — como IAM decide acesso
 
-IAM responde “quem pode fazer o quê em qual recurso”. Service Accounts são identidades usadas por workloads. Nesta aula o acesso será testado sem criar chave JSON persistente.
-
-## Arquitetura mental
+IAM responde:
 
 ```text
-User
-  └─ impersonates
-      Service Account
-          └─ role
-              └─ Bucket
+quem
+pode fazer o quê
+em qual recurso?
 ```
 
----
-
-# 2. Criar
-
-```bash
-# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
-export PROJECT_ID=$(gcloud config get-value project)
-# Explicação: Define a variável `SA_NAME` usada nas próximas etapas do laboratório.
-export SA_NAME=ace-storage-reader
-# Explicação: Define a variável `SA_EMAIL` usada nas próximas etapas do laboratório.
-export SA_EMAIL="$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"
-# Explicação: Define `BUCKET` com o nome do bucket usado no laboratório.
-export BUCKET="gs://$PROJECT_ID-ace-iam-$RANDOM"
-
-# Explicação: Cria uma Service Account que será usada como identidade de workload ou principal IAM.
-gcloud iam service-accounts create "$SA_NAME"
-# Explicação: Cria um bucket Cloud Storage com localização e opções informadas.
-gcloud storage buckets create "$BUCKET" --location=us-central1
-
-# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
-echo "conteudo ACE" > dado.txt
-# Explicação: Copia arquivo(s) entre o ambiente local e Cloud Storage, ou entre localizações no Cloud Storage.
-gcloud storage cp dado.txt "$BUCKET/"
-```
-
----
-
-# 3. Inspecionar
-
-Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
-
-```bash
-# Explicação: Exibe detalhes da Service Account indicada.
-gcloud iam service-accounts describe "$SA_EMAIL"
-# Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
-gcloud storage buckets describe "$BUCKET"
-# Explicação: Exibe a política IAM do bucket para verificar quem possui acesso.
-gcloud storage buckets get-iam-policy "$BUCKET"
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/storage.objectViewer
-```
-
----
-
-# 4. Testar
-
-Conceda leitura e depois teste:
-
-```bash
-# Explicação: Adiciona uma concessão IAM diretamente ao bucket.
-gcloud storage buckets add-iam-policy-binding "$BUCKET" \
-  --member="serviceAccount:$SA_EMAIL" \
-  --role="roles/storage.objectViewer"
-
-# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
-gcloud storage cat "$BUCKET/dado.txt" \
-  --impersonate-service-account="$SA_EMAIL"
-```
-
----
-
-# 5. Quebrar propositalmente
-
-Remova a role que acabou de conceder:
-
-```bash
-# Explicação: Remove uma concessão IAM diretamente do bucket.
-gcloud storage buckets remove-iam-policy-binding "$BUCKET" \
-  --member="serviceAccount:$SA_EMAIL" \
-  --role="roles/storage.objectViewer"
-
-# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
-gcloud storage cat "$BUCKET/dado.txt" \
-  --impersonate-service-account="$SA_EMAIL"
-```
-
-Agora você espera um erro de autorização.
-
----
-
-# 6. Troubleshooting
-
-Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
-
-**Sintoma:** leitura retorna `PERMISSION_DENIED`/403.
-
-**Hipótese:** a SA não possui mais permissão `storage.objects.get`.
-
-**Evidências:**
-```bash
-# Explicação: Exibe a política IAM do bucket para verificar quem possui acesso.
-gcloud storage buckets get-iam-policy "$BUCKET"
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/storage.objectViewer
-```
-
-**Causa:** removemos deliberadamente o binding `roles/storage.objectViewer`.
-
-Observe que não há motivo para investigar rota, firewall ou DNS: o acesso está chegando ao serviço e a negação é de IAM.
-
-Use sempre:
+O modelo básico é:
 
 ```text
-Sintoma
-   ↓
-Hipótese
-   ↓
-Evidência
-   ↓
-Causa
-   ↓
-Correção
-```
-
----
-
-# 7. Corrigir
-
-Recrie exatamente o binding mínimo:
-
-```bash
-# Explicação: Adiciona uma concessão IAM diretamente ao bucket.
-gcloud storage buckets add-iam-policy-binding "$BUCKET" \
-  --member="serviceAccount:$SA_EMAIL" \
-  --role="roles/storage.objectViewer"
-
-# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
-gcloud storage cat "$BUCKET/dado.txt" \
-  --impersonate-service-account="$SA_EMAIL"
-```
-
----
-
-# 8. Questões estilo ACE
-
-1. A workload só precisa ler objetos. Qual role escolher? **Storage Object Viewer**.
-2. Por que não usar `roles/editor`? **Viola least privilege**.
-3. A SA precisa obrigatoriamente de uma chave JSON para este cenário? **Não.**
-
----
-
-# 9. Cleanup
-
-```bash
-# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
-gcloud storage rm "$BUCKET/dado.txt"
-# Explicação: Exclui o bucket; ele precisa estar vazio ou ser removido recursivamente conforme o comando.
-gcloud storage buckets delete "$BUCKET" --quiet
-# Explicação: Exclui a Service Account criada para o laboratório.
-gcloud iam service-accounts delete "$SA_EMAIL" --quiet
-# Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
-rm -f dado.txt
-```
-
----
-
-
----
-
-# Cobertura ACE ampliada — permissions e tipos de roles
-
-## Permission → Role → Binding
-
-```text
-Permission
-   ↓ agrupada em
-Role
-   ↓ concedida a um
 Principal
-   ↓ em um
-Resource / Scope
+   ↓ recebe
+Role
+   ↓ contém
+Permissions
+   ↓ aplicada por uma
+Policy / Binding
+   ↓ sobre um
+Resource
 ```
 
-Exemplos:
-
-```text
-storage.objects.get
-compute.instances.start
-resourcemanager.projects.get
-```
-
-## Basic Roles
-
-As Basic Roles são amplas e históricas:
-
-```text
-roles/viewer  → Viewer
-roles/editor  → Editor
-roles/owner   → Owner
-```
-
-Inspecione:
-
-```bash
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/viewer
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/editor
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/owner
-```
-
-## Predefined Roles
-
-São criadas e mantidas pelo Google para serviços específicos.
-
-Exemplos:
-
-```text
-roles/compute.viewer
-roles/compute.admin
-roles/storage.objectViewer
-roles/storage.admin
-roles/bigquery.dataViewer
-```
-
-Descubra as roles existentes:
-
-```bash
-# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
-gcloud iam roles list --filter='stage:GA' --limit=30
-# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
-gcloud iam roles list --filter='title:Compute'
-# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
-gcloud iam roles list --filter='title:Storage'
-```
-
-Inspecione as permissions de uma role:
-
-```bash
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/storage.objectViewer
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/compute.viewer
-```
-
-## Custom Roles
-
-Use quando nenhuma predefined role atende o conjunto necessário de permissions.
-
-```text
-Preferência para a prova:
-predefined role mínima
-   ↓ se não atende
-custom role
-   ↓ evitar
-basic role ampla
-```
-
-## Google-managed service accounts
-
-Alguns serviços criam Service Accounts gerenciadas pelo Google/service agents. Não delete ou altere suas permissões sem entender a dependência do serviço.
-
-## Perguntas adicionais
-
-1. Onde descobrir roles prontas? **IAM & Admin → Roles** ou `gcloud iam roles list`.
-2. Viewer, Editor e Owner pertencem a qual categoria? **Basic Roles**.
-3. `Storage Object Viewer` é basic ou predefined? **Predefined**.
-4. Role é uma lista de quê? **Permissions**.
-
-# 10. Checklist
-
-- [ ] Entendi os conceitos usados no laboratório;
-- [ ] Criei o recurso;
-- [ ] Inspecionei estado e configuração;
-- [ ] Testei o comportamento esperado;
-- [ ] Provoquei a falha descrita;
-- [ ] Diagnostiquei usando evidências;
-- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
-- [ ] Consigo relacionar o cenário a uma questão ACE;
-- [ ] Executei o cleanup.
+Vamos separar cada conceito.
 
 ---
 
-# Cobertura fundamental — Permissions, Basic Roles, Predefined Roles e Custom Roles
+# 2. Principal
 
-Este conteúdo deve ser dominado já na Semana 1, e será aprofundado novamente na Semana 7.
+Um **principal** é uma identidade que pode receber acesso.
 
-## Permission
+Exemplos:
 
-Permission é uma operação elementar, normalmente com formato semelhante a:
+```text
+user:alguem@example.com
+group:dev@example.com
+serviceAccount:app@projeto.iam.gserviceaccount.com
+```
+
+Nesta aula teremos dois principals importantes:
+
+```text
+seu usuário
+→ autentica no gcloud
+
+Service Account
+→ será impersonada e fará a leitura no bucket
+```
+
+Veja seu principal autenticado:
+
+```bash
+# Obtém a conta atualmente ativa no gcloud.
+export USER_ACCOUNT="$(gcloud config get-value account)"
+
+echo "$USER_ACCOUNT"
+```
+
+---
+
+# 3. Permission
+
+Uma **permission** representa uma operação elementar permitida por IAM.
+
+Formato típico:
 
 ```text
 service.resource.verb
@@ -315,28 +86,637 @@ service.resource.verb
 Exemplos:
 
 ```text
-compute.instances.get
 storage.objects.get
 storage.objects.create
+compute.instances.get
 ```
 
-## Role
-
-Role é um conjunto de permissions:
+No laboratório, a permission mais importante para leitura do objeto será:
 
 ```text
-Principal
-   ↓ recebe
-Role
-   ↓ contém
-Permissions
-   ↓ sobre
-Resource
+storage.objects.get
 ```
 
-## Tipos de roles
+Permissions não são normalmente concedidas diretamente ao principal.
 
-### Basic Roles
+Elas são agrupadas em roles.
+
+---
+
+# 4. Role
+
+Uma **role** é um conjunto de permissions.
+
+Exemplo:
+
+```text
+roles/storage.objectViewer
+```
+
+Essa role contém permissions necessárias para visualizar objetos.
+
+Inspecione:
+
+```bash
+# Mostra a definição da role e suas includedPermissions.
+gcloud iam roles describe roles/storage.objectViewer
+```
+
+Procure:
+
+```text
+includedPermissions
+```
+
+e confirme que a role inclui operações de leitura, como:
+
+```text
+storage.objects.get
+```
+
+Modelo:
+
+```text
+roles/storage.objectViewer
+        ↓ contém
+storage.objects.get
+```
+
+---
+
+# 5. Resource
+
+Um **resource** é o recurso Google Cloud sobre o qual o acesso é concedido.
+
+Exemplos:
+
+```text
+Project
+Bucket
+VM
+Dataset
+Service Account
+```
+
+Nesta aula teremos:
+
+```text
+Bucket
+→ resource que contém o objeto dado.txt
+
+Service Account
+→ identidade, mas também um resource IAM
+   sobre o qual poderemos conceder Token Creator ao usuário
+```
+
+Esse segundo ponto é importante:
+
+```text
+Service Account pode ser:
+1. principal
+2. resource IAM
+```
+
+---
+
+# 6. Policy e Binding
+
+Uma **allow policy** descreve quais principals recebem quais roles em um resource.
+
+Dentro da policy existem **bindings**.
+
+Modelo simplificado:
+
+```text
+Policy do bucket
+   └── Binding
+       ├── role: roles/storage.objectViewer
+       └── member: serviceAccount:ace-storage-reader@...
+```
+
+Ou seja:
+
+```text
+Binding
+= associação entre principal e role
+```
+
+Quando executamos:
+
+```bash
+gcloud storage buckets add-iam-policy-binding ...
+```
+
+estamos alterando a allow policy do bucket e adicionando um binding.
+
+Inspecione uma policy com:
+
+```bash
+gcloud storage buckets get-iam-policy BUCKET
+```
+
+---
+
+# 7. Arquitetura mental do laboratório
+
+Teremos dois fluxos de autorização diferentes.
+
+## Fluxo A — seu usuário pode impersonar a Service Account?
+
+```text
+Seu usuário
+   │
+   │ roles/iam.serviceAccountTokenCreator
+   │ contém iam.serviceAccounts.getAccessToken
+   ▼
+Service Account
+```
+
+## Fluxo B — a Service Account pode ler o objeto?
+
+```text
+Service Account
+   │
+   │ roles/storage.objectViewer
+   │ contém storage.objects.get
+   ▼
+Bucket
+   ▼
+dado.txt
+```
+
+O teste só funciona se **os dois fluxos** estiverem corretos.
+
+```text
+Usuário pode impersonar?
+        ↓ sim
+SA pode ler objeto?
+        ↓ sim
+leitura funciona
+```
+
+---
+
+# 8. Criar
+
+Defina as variáveis:
+
+```bash
+# Obtém o Project ID ativo.
+export PROJECT_ID="$(gcloud config get-value project)"
+
+# Obtém o usuário ativo.
+export USER_ACCOUNT="$(gcloud config get-value account)"
+
+# Nome da Service Account.
+export SA_NAME="ace-storage-reader"
+
+# E-mail completo da Service Account.
+export SA_EMAIL="$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"
+
+# Nome único para o bucket.
+export BUCKET="gs://$PROJECT_ID-ace-iam-$RANDOM"
+```
+
+Habilite APIs necessárias:
+
+```bash
+# Habilita IAM Credentials API para geração de credenciais curtas.
+gcloud services enable \
+  iamcredentials.googleapis.com \
+  storage.googleapis.com
+```
+
+Crie a Service Account:
+
+```bash
+# Cria a identidade usada no laboratório.
+gcloud iam service-accounts create "$SA_NAME" \
+  --display-name="ACE Storage Reader"
+```
+
+Crie o bucket:
+
+```bash
+# Cria um bucket regional.
+gcloud storage buckets create "$BUCKET" \
+  --location=us-central1
+```
+
+Crie e envie um objeto:
+
+```bash
+# Cria arquivo local.
+echo "conteudo ACE" > dado.txt
+
+# Envia o arquivo para o bucket.
+gcloud storage cp dado.txt "$BUCKET/"
+```
+
+---
+
+# 9. Inspecionar antes de conceder acesso
+
+Service Account:
+
+```bash
+# Mostra os metadados da Service Account.
+gcloud iam service-accounts describe "$SA_EMAIL"
+```
+
+Bucket:
+
+```bash
+# Mostra localização e configuração do bucket.
+gcloud storage buckets describe "$BUCKET"
+```
+
+Policy do bucket:
+
+```bash
+# Mostra os bindings IAM atuais do bucket.
+gcloud storage buckets get-iam-policy "$BUCKET"
+```
+
+Role de leitura:
+
+```bash
+# Mostra as permissions incluídas na role.
+gcloud iam roles describe roles/storage.objectViewer
+```
+
+---
+
+# 10. Preparar impersonation
+
+O uso de:
+
+```text
+--impersonate-service-account
+```
+
+não funciona apenas porque a Service Account existe.
+
+O principal autenticado precisa poder criar credenciais temporárias para ela.
+
+A permission relevante é:
+
+```text
+iam.serviceAccounts.getAccessToken
+```
+
+Ela está incluída em:
+
+```text
+roles/iam.serviceAccountTokenCreator
+```
+
+Conceda a role **ao seu usuário sobre a Service Account**:
+
+```bash
+# Permite ao usuário gerar credenciais curtas para esta SA.
+gcloud iam service-accounts add-iam-policy-binding "$SA_EMAIL" \
+  --member="user:$USER_ACCOUNT" \
+  --role="roles/iam.serviceAccountTokenCreator"
+```
+
+Inspecione a policy da própria Service Account:
+
+```bash
+# Mostra os bindings concedidos SOBRE a Service Account.
+gcloud iam service-accounts get-iam-policy "$SA_EMAIL"
+```
+
+---
+
+# 11. Testar primeiro a impersonation
+
+Antes de testar Cloud Storage, prove que a impersonation funciona.
+
+```bash
+# Solicita um access token temporário da Service Account.
+gcloud auth print-access-token \
+  --impersonate-service-account="$SA_EMAIL"
+```
+
+Se este comando falhar, **ainda não investigue o bucket**.
+
+O problema está no fluxo:
+
+```text
+usuário
+→ Service Account
+```
+
+e não no fluxo:
+
+```text
+Service Account
+→ bucket
+```
+
+---
+
+# 12. Conceder a role mínima no bucket
+
+Agora conceda apenas leitura de objetos:
+
+```bash
+# Adiciona um binding na policy do bucket.
+gcloud storage buckets add-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:$SA_EMAIL" \
+  --role="roles/storage.objectViewer"
+```
+
+Inspecione:
+
+```bash
+# Confirma que o binding foi criado.
+gcloud storage buckets get-iam-policy "$BUCKET"
+```
+
+Modelo:
+
+```text
+Bucket Policy
+   ↓
+roles/storage.objectViewer
+   ↓
+Service Account
+```
+
+---
+
+# 13. Testar o comportamento esperado
+
+Leia o objeto usando a identidade da Service Account:
+
+```bash
+# gcloud cria credencial temporária da SA
+# e executa a leitura como essa identidade.
+gcloud storage cat "$BUCKET/dado.txt" \
+  --impersonate-service-account="$SA_EMAIL"
+```
+
+Resultado esperado:
+
+```text
+conteudo ACE
+```
+
+Agora sabemos duas coisas:
+
+```text
+1. impersonation funciona;
+2. SA possui storage.objects.get no bucket.
+```
+
+---
+
+# 14. Quebrar propositalmente
+
+Vamos alterar **uma única variável**: o acesso da Service Account ao bucket.
+
+Não removeremos Token Creator.
+
+Isso garante que o fluxo:
+
+```text
+usuário → SA
+```
+
+continue funcionando.
+
+Remova somente:
+
+```text
+roles/storage.objectViewer
+```
+
+do bucket:
+
+```bash
+# Remove o binding de leitura do bucket.
+gcloud storage buckets remove-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:$SA_EMAIL" \
+  --role="roles/storage.objectViewer"
+```
+
+Confirme:
+
+```bash
+# Verifica que o binding realmente saiu da policy do bucket.
+gcloud storage buckets get-iam-policy "$BUCKET"
+```
+
+---
+
+# 15. Confirmar que impersonation ainda funciona
+
+Antes de testar o bucket novamente:
+
+```bash
+# Se este comando funcionar, o caminho usuário → SA está saudável.
+gcloud auth print-access-token \
+  --impersonate-service-account="$SA_EMAIL"
+```
+
+Esse passo é essencial para isolar a falha.
+
+```text
+impersonation funciona
++
+bucket binding removido
+=
+falha esperada está no acesso ao bucket
+```
+
+---
+
+# 16. Produzir o PERMISSION_DENIED
+
+Agora tente ler:
+
+```bash
+# A SA continua sendo impersonada,
+# mas não deve mais possuir storage.objects.get no bucket.
+gcloud storage cat "$BUCKET/dado.txt" \
+  --impersonate-service-account="$SA_EMAIL"
+```
+
+Em um projeto de laboratório limpo, o comportamento esperado é:
+
+```text
+PERMISSION_DENIED
+ou
+403
+```
+
+relacionado à ausência de autorização para leitura do objeto.
+
+> Se a leitura ainda funcionar, não conclua que o laboratório está errado:
+> a Service Account pode possuir `storage.objects.get` por outro binding efetivo.
+> Nesse caso, investigue os grants adicionais antes de remover qualquer privilégio.
+
+---
+
+# 17. Troubleshooting
+
+## Sintoma
+
+```text
+gcloud storage cat
+→ PERMISSION_DENIED / 403
+```
+
+## Hipótese
+
+A Service Account não possui:
+
+```text
+storage.objects.get
+```
+
+sobre o bucket/objeto.
+
+## Evidência 1 — impersonation
+
+```bash
+# Confirma que o usuário ainda consegue impersonar a SA.
+gcloud auth print-access-token \
+  --impersonate-service-account="$SA_EMAIL"
+```
+
+Se funciona:
+
+```text
+usuário → SA
+= OK
+```
+
+## Evidência 2 — policy do bucket
+
+```bash
+# Inspeciona os bindings existentes no bucket.
+gcloud storage buckets get-iam-policy "$BUCKET"
+```
+
+O binding:
+
+```text
+roles/storage.objectViewer
+→ serviceAccount:$SA_EMAIL
+```
+
+não deverá estar presente.
+
+## Evidência 3 — permissions da role
+
+```bash
+# Confirma que a role removida incluía a permission necessária.
+gcloud iam roles describe roles/storage.objectViewer
+```
+
+Procure:
+
+```text
+storage.objects.get
+```
+
+## Causa
+
+Removemos deliberadamente:
+
+```text
+roles/storage.objectViewer
+```
+
+da Service Account no bucket.
+
+Logo:
+
+```text
+SA
+→ não possui mais a permission esperada
+→ leitura é negada
+```
+
+Não investigue:
+
+```text
+DNS
+firewall
+rota
+```
+
+porque a requisição chegou ao serviço e a resposta é uma negação de IAM.
+
+---
+
+# 18. Corrigir
+
+Recrie exatamente o binding mínimo:
+
+```bash
+# Restaura somente a role necessária para leitura dos objetos.
+gcloud storage buckets add-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:$SA_EMAIL" \
+  --role="roles/storage.objectViewer"
+```
+
+Teste:
+
+```bash
+# Confirma a correção.
+gcloud storage cat "$BUCKET/dado.txt" \
+  --impersonate-service-account="$SA_EMAIL"
+```
+
+Resultado:
+
+```text
+conteudo ACE
+```
+
+---
+
+# 19. Least privilege
+
+O requisito é:
+
+```text
+ler objetos
+```
+
+Compare:
+
+```text
+roles/storage.objectViewer
+→ leitura de objetos
+→ adequado
+
+roles/storage.admin
+→ administração ampla
+→ excessivo
+
+roles/editor
+→ acesso amplo ao projeto
+→ excessivo
+```
+
+A regra de prova é:
+
+```text
+use a menor role que satisfaça o requisito
+```
+
+---
+
+# 20. Tipos de roles
+
+## Basic Roles
+
+Roles amplas e históricas:
 
 ```text
 roles/viewer
@@ -344,111 +724,255 @@ roles/editor
 roles/owner
 ```
 
-São amplas e existem principalmente por compatibilidade/conveniência. Para novos grants, prefira roles mais específicas quando possível.
+Inspecione:
 
-### Predefined Roles
+```bash
+gcloud iam roles describe roles/viewer
+gcloud iam roles describe roles/editor
+gcloud iam roles describe roles/owner
+```
 
-Criadas e mantidas pelo Google para serviços e responsabilidades específicas:
+## Predefined Roles
+
+Criadas e mantidas pelo Google.
+
+Exemplos:
 
 ```text
 roles/compute.viewer
 roles/compute.admin
 roles/storage.objectViewer
-roles/storage.objectAdmin
 roles/storage.admin
 roles/bigquery.dataViewer
-roles/run.invoker
 ```
 
-### Custom Roles
+Liste:
 
-Criadas na organização ou projeto quando nenhuma predefined role atende ao conjunto mínimo necessário.
+```bash
+# Lista roles IAM disponíveis.
+gcloud iam roles list \
+  --filter="stage:GA" \
+  --limit=30
+```
 
-## Como descobrir roles existentes
+Filtre:
 
-No Console:
+```bash
+gcloud iam roles list \
+  --filter="title:Storage"
+```
+
+## Custom Roles
+
+Criadas pela organização ou projeto quando nenhuma predefined role atende adequadamente.
+
+Modelo de preferência:
 
 ```text
-IAM & Admin → Roles
+predefined role mínima
+        ↓ se não atender
+custom role
+        ↓ evitar para novos grants
+basic role ampla
 ```
 
-Pelo CLI:
-
-```bash
-# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
-gcloud iam roles list
-# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
-gcloud iam roles list --filter='title:Compute'
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/viewer
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/editor
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/compute.viewer
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/storage.objectViewer
-```
-
-Para listar apenas custom roles do projeto:
-
-```bash
-# Explicação: Lista roles IAM disponíveis para descobrir roles básicas/predefinidas ou filtrar as relevantes.
-gcloud iam roles list --project="$(gcloud config get-value project)"
-```
-
-## Como descobrir as permissions de uma role
-
-```bash
-# Explicação: Exibe detalhes da role IAM, incluindo permissões e estágio, para entender exatamente o acesso concedido.
-gcloud iam roles describe roles/storage.objectViewer
-```
-
-Observe `includedPermissions`.
-
-## Regra de prova
-
-Se a questão disser:
-
-> “O usuário precisa apenas visualizar VMs.”
-
-Compare:
-
-```text
-Editor           → amplo demais
-Compute Admin    → amplo demais
-Compute Viewer   → adequado
-Owner            → muito amplo
-```
-
-A prova costuma favorecer **least privilege**.
+Na Semana 7, Custom Roles serão aprofundadas.
 
 ---
 
-<!-- MEP-ACCEPTANCE-V9 -->
-# Critério de aceite M/E/P desta aula
+# 21. Service Accounts gerenciadas pelo Google
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
-
-Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+Alguns serviços criam identidades próprias, frequentemente chamadas de:
 
 ```text
-conceito operacional
-   ↓
-configuração/comando
-   ↓
-inspeção
-   ↓
-teste ou comportamento observável
+service agents
 ```
 
-Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+Elas são usadas internamente por serviços Google Cloud.
 
-## Tópicos do guia mapeados para esta aula
+Não remova suas roles ou exclua essas identidades sem entender a dependência do serviço.
 
-| Seção | Tópico | Esperado | Nível da matriz |
-|---|---|---:|---:|
-| 1.1 | Conceder IAM roles em projeto | `P` | `P` |
-| 5.1 | View/create IAM policies | `P` | `P` |
-| 5.1 | Basic/predefined/custom roles | `P` | `P` |
-| 5.2 | Criar Service Accounts | `P` | `P` |
-| 5.2 | Least privilege SA in IAM | `P` | `P` |
+Nesta aula criamos uma **user-managed Service Account**:
+
+```text
+ace-storage-reader@...
+```
+
+---
+
+# 22. Questões estilo ACE
+
+## Questão 1
+
+Uma workload precisa somente ler objetos de um bucket.
+
+Qual role escolher?
+
+**Resposta:** `roles/storage.objectViewer`.
+
+---
+
+## Questão 2
+
+Por que não conceder `roles/editor`?
+
+**Resposta:** porque viola least privilege.
+
+---
+
+## Questão 3
+
+Uma pessoa quer usar:
+
+```text
+--impersonate-service-account
+```
+
+Qual permission precisa existir sobre a Service Account?
+
+**Resposta:**
+
+```text
+iam.serviceAccounts.getAccessToken
+```
+
+Ela está incluída em:
+
+```text
+roles/iam.serviceAccountTokenCreator
+```
+
+---
+
+## Questão 4
+
+O access token da impersonation funciona, mas a leitura do objeto retorna 403.
+
+Onde investigar primeiro?
+
+**Resposta:** IAM do bucket/objeto e as permissions da Service Account, não o Token Creator do usuário.
+
+---
+
+## Questão 5
+
+O que é um binding?
+
+**Resposta:** associação entre um principal e uma role dentro de uma IAM allow policy.
+
+---
+
+# 23. Cleanup
+
+Remova o objeto:
+
+```bash
+gcloud storage rm "$BUCKET/dado.txt"
+```
+
+Exclua o bucket:
+
+```bash
+gcloud storage buckets delete "$BUCKET" \
+  --quiet
+```
+
+Remova o binding de Token Creator criado para o laboratório:
+
+```bash
+gcloud iam service-accounts remove-iam-policy-binding "$SA_EMAIL" \
+  --member="user:$USER_ACCOUNT" \
+  --role="roles/iam.serviceAccountTokenCreator" \
+  --quiet
+```
+
+Exclua a Service Account:
+
+```bash
+gcloud iam service-accounts delete "$SA_EMAIL" \
+  --quiet
+```
+
+Remova o arquivo local:
+
+```bash
+rm -f dado.txt
+```
+
+---
+
+# 24. Checklist
+
+- [ ] Sei definir principal;
+- [ ] Sei definir permission;
+- [ ] Sei definir role;
+- [ ] Sei definir resource;
+- [ ] Sei explicar policy;
+- [ ] Sei explicar binding;
+- [ ] Criei uma Service Account;
+- [ ] Inspecionei a Service Account;
+- [ ] Sei por que impersonation exige `iam.serviceAccounts.getAccessToken`;
+- [ ] Testei impersonation antes de testar o bucket;
+- [ ] Concedi `roles/storage.objectViewer` somente no bucket;
+- [ ] Testei leitura com impersonation;
+- [ ] Removi somente o acesso ao bucket;
+- [ ] Produzi/analisei `PERMISSION_DENIED`;
+- [ ] Diferenciei falha de impersonation de falha de acesso ao resource;
+- [ ] Corrigi sem aumentar privilégios;
+- [ ] Executei cleanup.
+
+---
+
+# 25. Critério de aceite M/E/P
+
+| Objetivo | Nível | Evidência |
+|---|---:|---|
+| Principal | E/P | definição + usuário + SA no laboratório |
+| Permission | E/P | `storage.objects.get` + inspeção da role |
+| Role | P | describe + grant + remove + restore |
+| Policy | P | `get-iam-policy` + alteração por binding |
+| Resource | E/P | bucket e Service Account |
+| Criar Service Account | P | create + describe |
+| Role mínima no bucket | P | `roles/storage.objectViewer` + teste |
+| Impersonation | P | Token Creator + access token + operação |
+| PERMISSION_DENIED | P | falha isolada + evidências + correção |
+
+---
+
+## Resumo para prova
+
+```text
+Principal
+→ identidade
+
+Permission
+→ ação elementar
+
+Role
+→ conjunto de permissions
+
+Policy
+→ define grants sobre um resource
+
+Binding
+→ principal + role
+
+Resource
+→ objeto protegido por IAM
+```
+
+```text
+Seu usuário
+   ↓ Token Creator
+Service Account
+   ↓ Storage Object Viewer
+Bucket
+```
+
+```text
+Impersonation falha?
+→ investigue usuário → Service Account
+
+Impersonation funciona, mas recurso retorna 403?
+→ investigue Service Account → Resource
+```
