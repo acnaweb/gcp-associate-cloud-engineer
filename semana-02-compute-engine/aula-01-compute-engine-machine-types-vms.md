@@ -4,7 +4,7 @@
 
 Ao final, você deverá:
 - criar e inspecionar uma VM;
-- entender machine type, zone, boot disk e network interface;
+- entender machine type, zone e boot disk;
 - praticar `stop`, `start` e `reset`;
 - diagnosticar tentativa de conexão em VM parada.
 
@@ -15,7 +15,7 @@ Ao final, você deverá:
 
 # 1. Conceito
 
-Compute Engine oferece VMs com controle do sistema operacional. A VM é tipicamente zonal e combina CPU/memória, disco de boot, NIC e uma identidade de runtime.
+Compute Engine oferece VMs com controle do sistema operacional. A VM é tipicamente zonal e combina CPU/memória, disco de boot e uma identidade de runtime.
 
 ## Arquitetura mental
 
@@ -25,8 +25,10 @@ Project
     └─ VM
        ├─ machine type
        ├─ boot disk
-       └─ NIC
+       └─ runtime identity
 ```
+
+> Toda VM precisa de conectividade para operar, mas detalhes de VPC, subnet, interfaces de rede, IPs e firewall serão estudados na semana dedicada a **Networking**.
 
 ---
 
@@ -36,7 +38,7 @@ Project
 # Explicação: Define `ZONE` com o valor da zona padrão usada pelos recursos zonais do laboratório.
 export ZONE=us-central1-a
 
-# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
+# Explicação: Cria uma VM do Compute Engine com o tipo de máquina, imagem e demais opções informadas.
 gcloud compute instances create ace-vm \
   --zone="$ZONE" \
   --machine-type=e2-micro \
@@ -178,7 +180,7 @@ gcloud compute machine-types list --zones=us-central1-a --filter='name:n2'
 Exemplo de criação (não é necessário executar se gerar custo):
 
 ```bash
-# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
+# Explicação: Cria uma VM do Compute Engine com o tipo de máquina, imagem e demais opções informadas.
 gcloud compute instances create ace-custom-vm \
   --zone=us-central1-a \
   --custom-cpu=2 \
@@ -234,7 +236,7 @@ Quando tipos predefinidos não atendem bem à relação vCPU/memória, um custom
 Exemplo:
 
 ```bash
-# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
+# Explicação: Cria uma VM do Compute Engine com o tipo de máquina, imagem e demais opções informadas.
 gcloud compute instances create ace-custom-vm \
   --zone=us-central1-a \
   --custom-cpu=2 \
@@ -279,7 +281,7 @@ O guia exige usar **Spot VMs** e **custom machine types**, não apenas reconhec�
 ### Custom Machine Type
 
 ```bash
-# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
+# Explicação: Cria uma VM do Compute Engine com o tipo de máquina, imagem e demais opções informadas.
 gcloud compute instances create ace-custom-vm \
   --zone=us-central1-a \
   --custom-cpu=2 \
@@ -296,7 +298,7 @@ gcloud compute instances describe ace-custom-vm \
 ### Spot VM
 
 ```bash
-# Explicação: Cria uma VM do Compute Engine com as opções de máquina, rede, disco e identidade informadas.
+# Explicação: Cria uma VM do Compute Engine com o tipo de máquina, imagem e demais opções informadas.
 gcloud compute instances create ace-spot-vm \
   --zone=us-central1-a \
   --machine-type=e2-micro \
