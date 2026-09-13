@@ -3,454 +3,1194 @@
 ## Objetivos
 
 Ao final, você deverá:
+
 - explicar o papel do Cloud Identity na gestão de usuários e grupos;
-- entender a relação entre Billing Account, projetos e recursos;
-- inspecionar a associação de faturamento de um projeto;
-- explicar e configurar budgets e alertas de faturamento quando houver permissão;
+- entender a relação entre Billing Account, Projects e Resources;
+- inspecionar a associação de faturamento de um Project;
+- explicar e configurar Budgets e alertas de faturamento quando houver permissão;
 - entender Billing Export e seu uso para análise de custos;
 - identificar quotas relevantes e entender o processo de solicitação de aumento;
 - reconhecer os produtos básicos do Google Cloud Observability exigidos pelo exame.
 
 ---
 
+# 1. Visão geral
 
-## Cobertura no exam guide
-
-Exam Guide 1.1 e 1.2: Cloud Identity, produtos de Observability, quotas, billing accounts, vínculo de projetos, budgets e billing export.
-
-**Pré-requisito:** algumas operações de billing/Cloud Identity dependem de permissões administrativas. Quando indisponíveis, faça inspeção e decisão, não tente contornar permissões.
-
-## 1. Conceito
-
-Esta aula fecha os itens de configuração do ambiente que não cabem apenas em Project/gcloud/IAM. Cloud Identity organiza usuários/grupos; billing define quem paga; quotas limitam capacidade técnica; Observability fornece operação inicial.
-
-### Arquitetura / modelo mental
+Esta aula conecta quatro áreas diferentes que costumam ser confundidas:
 
 ```text
-Cloud Identity users/groups → IAM
-Billing Account → Project → Resources
-Quota → limite técnico
-Observability → Monitoring + Logging
+Cloud Identity
+→ quem são os usuários e grupos?
+
+Billing
+→ quem paga pelos recursos?
+
+Quotas
+→ quanto de um recurso/serviço pode ser usado?
+
+Observability
+→ como observar saúde, comportamento e desempenho?
 ```
 
-## 2. Criar / Configurar
-
-Use um projeto de laboratório.
-
-```bash
-# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
-export PROJECT_ID=$(gcloud config get-value project)
-# Explicação: Lista contas de faturamento acessíveis à identidade atual.
-gcloud billing accounts list
-# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
-gcloud billing projects describe "$PROJECT_ID"
-# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
-gcloud compute project-info describe --format='yaml(quotas)'
-# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
-gcloud services enable monitoring.googleapis.com logging.googleapis.com
-```
-
-Se sua conta tiver Organization, liste-a; caso contrário, documente por que Cloud Identity/Org management não é executável na conta pessoal.
-
-## 3. Inspecionar
-
-```bash
-# Explicação: Lista organizações visíveis para a identidade atual.
-gcloud organizations list
-# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
-gcloud billing projects describe "$PROJECT_ID"
-# Explicação: Lista as APIs já habilitadas no projeto para confirmar a configuração.
-gcloud services list --enabled --filter='monitoring.googleapis.com OR logging.googleapis.com'
-```
-
-No Console visite Billing → Budgets & alerts e Billing export. Não altere billing de projeto corporativo.
-
-> A partir deste ponto, todos os elementos usados no troubleshooting já foram apresentados e inspecionados.
-
-## 4. Testar
-
-No Console, crie um budget de laboratório se possuir permissão e configure um threshold. Confirme que a criação não desliga recursos. No Metrics Explorer, confirme que o projeto pode consultar métricas.
-
-## 5. Quebrar propositalmente
-
-Falha conceitual controlada: trate um budget como se fosse quota e tente explicar por que “100% do budget bloqueará novas VMs” está errado.
-
-## 6. Troubleshooting
-
-**Sintoma:** expectativa de bloqueio automático ao atingir budget.
-
-**Hipótese:** confusão entre mecanismo financeiro e limite técnico.
-
-**Evidência:** quotas aparecem em `compute project-info`; budget aparece no Billing.
-
-**Causa:** conceitos diferentes.
-
-**Correção:** budget alerta/acompanha; quota limita capacidade.
-
-Use a sequência:
+Modelo geral:
 
 ```text
-Sintoma → Hipótese → Evidência → Causa → Correção
+Cloud Identity users/groups
+        ↓
+       IAM
+        ↓
+     Project
+        ↓
+    Resources
+        │
+        ├── Billing Account → custos
+        ├── Quotas → limites técnicos
+        └── Observability → métricas, logs, dashboards e alertas
 ```
-
-## 7. Corrigir
-
-Registre um quadro: `Budget != Quota != IAM`. Se criou budget apenas para o lab, remova no Console.
-
-## 8. Questões estilo ACE
-
-1. Quer alertar em 80% do custo? **Budget**.
-2. Quer detalhamento para análise de custos? **Billing export para BigQuery**.
-3. Muitos usuários com mesma função? **Grupo Cloud Identity + IAM binding**.
-4. `RESOURCE_EXHAUSTED`? **Quota/capacidade**, não budget.
-
-## 9. Cleanup
-
-Remova budgets de laboratório e recursos criados. APIs podem permanecer habilitadas.
-
-## Checklist
-
-- [ ] Consigo explicar os conceitos sem consultar;
-- [ ] Sei localizar o recurso no Console e/ou CLI;
-- [ ] Executei ou simulei o laboratório indicado;
-- [ ] Inspecionei a configuração antes de provocar a falha;
-- [ ] Diagnostiquei a falha com evidências;
-- [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
-
 
 ---
 
-# Cobertura ACE ampliada — billing, observability, quotas e Cloud Identity
+# 2. Cloud Identity
 
-## Billing accounts e linkage
+## 2.1 O que é
 
-```bash
-# Explicação: Lista contas de faturamento acessíveis à identidade atual.
-gcloud billing accounts list
-# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
-gcloud billing projects describe $PROJECT_ID
-```
+Cloud Identity fornece gerenciamento centralizado de identidades para organizações que usam serviços Google Cloud.
 
-Conceito:
+Ele permite administrar:
 
 ```text
-Billing Account
-  └─ linked Project
-      └─ billable resources
+users
+groups
+group memberships
 ```
 
-## Budgets e alerts
+Essas identidades podem ser usadas como principals no IAM.
 
-Budget **não bloqueia automaticamente** o consumo. Ele acompanha gasto e dispara alertas/integrações configuradas.
-
-## Billing export
-
-O exam guide inclui configuração de billing export. O cenário mais comum é exportar dados detalhados para BigQuery para análises de custo.
+Exemplo:
 
 ```text
-Cloud Billing
-   ↓ export
-BigQuery dataset
-   ↓
-SQL / dashboards / FinOps
-```
-
-A ativação é normalmente feita em **Billing → Billing export** no Console, pois exige permissão na Billing Account.
-
-## Quotas e aumento
-
-```bash
-# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
-gcloud compute project-info describe --format='yaml(quotas)'
-```
-
-Diferencie:
-
-```text
-Budget → limite financeiro de referência/alerta
-Quota  → limite técnico de uso
-```
-
-## Google Cloud Observability
-
-O guia cobra provisioning/setup dos produtos de observabilidade. Nesta etapa identifique:
-
-- Cloud Monitoring;
-- Cloud Logging;
-- dashboards;
-- alerts;
-- métricas;
-- logs.
-
-O aprofundamento operacional ocorre na Semana 6.
-
-## Cloud Identity
-
-Cloud Identity gerencia usuários e grupos associados à organização. Para ACE, entenda:
-
-- usuários;
-- grupos;
-- associação de grupos a IAM roles;
-- provisionamento manual ou automatizado.
-
-Exemplo mental:
-
-```text
-Cloud Identity Group: devops@example.com
-       ↓ IAM binding
+Cloud Identity Group
+devops@example.com
+       ↓
+IAM binding
 roles/compute.viewer
        ↓
 Project
 ```
 
+Importante:
+
+```text
+Cloud Identity
+→ gerencia identidades
+
+IAM
+→ gerencia autorização
+```
+
+Cloud Identity não substitui IAM.
+
+IAM não substitui o diretório de usuários e grupos.
 
 ---
 
-## Práticas guiadas obrigatórias — Cloud Identity, Billing e Quotas
+# 3. Usuários e grupos
 
-### Cloud Identity — usuários e grupos
+Um **user** representa uma pessoa.
 
-**Nível:** `P*` — requer privilégios administrativos do domínio/Cloud Identity.
+Exemplo:
 
-No Admin Console de uma organização de laboratório:
+```text
+antonio@example.com
+```
 
-1. crie um usuário de laboratório;
-2. crie um grupo, por exemplo `ace-viewers`;
-3. adicione o usuário ao grupo;
-4. no Google Cloud IAM, conceda uma role de leitura ao **grupo**, não ao usuário individual;
-5. remova o usuário do grupo e observe que o modelo de autorização passa a depender da associação ao grupo.
+Um **group** reúne vários usuários.
+
+Exemplo:
+
+```text
+cloud-viewers@example.com
+```
+
+Em vez de conceder IAM individualmente:
+
+```text
+user A → role
+user B → role
+user C → role
+```
+
+é normalmente melhor:
+
+```text
+users
+  ↓ membership
+group
+  ↓ IAM role
+resource
+```
+
+Isso facilita administração em escala.
+
+---
+
+# 4. Provisionamento manual e automatizado
+
+## 4.1 Manual
+
+Em ambientes pequenos, usuários e grupos podem ser administrados pelo Google Admin Console.
 
 Modelo:
 
 ```text
-Cloud Identity user
-      ↓ membership
-Cloud Identity group
-      ↓ IAM binding
-Project / Resource
-```
-
-## Provisionamento manual x automatizado no Cloud Identity
-
-O guia do exame exige reconhecer gerenciamento de usuários e grupos **manual e automaticamente**.
-
-### Provisionamento manual
-
-Para poucas identidades ou laboratório, o fluxo normal é:
-
-```text
-Google Admin Console
-      ↓
-criar usuário/grupo
-      ↓
+Admin Console
+    ↓
+criar user
+    ↓
+criar group
+    ↓
 adicionar membership
-      ↓
-usar user/group como principal IAM
 ```
 
-Também é possível criar vários usuários por upload de CSV.
+Também é possível importar usuários em massa por CSV.
 
-Use manual/CSV quando:
+## 4.2 Automatizado
 
-- o volume de usuários é pequeno;
-- não existe diretório corporativo externo;
-- a organização aceita administrar identidades diretamente no Cloud Identity/Google Workspace.
+Em empresas que já utilizam Active Directory ou LDAP, manter identidades manualmente em dois lugares aumenta risco de inconsistência.
 
-### Provisionamento automatizado
-
-Quando a empresa já possui um diretório corporativo, criar e remover usuários manualmente em dois lugares gera risco de inconsistência.
-
-Modelo:
+Uma opção é:
 
 ```text
 Active Directory / LDAP
-          ↓
-Google Cloud Directory Sync (GCDS)
-          ↓
+        ↓
+Google Cloud Directory Sync
+        ↓
 Cloud Identity
-   ├── users
-   ├── groups
-   └── memberships
-          ↓
-IAM
 ```
 
-O **Google Cloud Directory Sync (GCDS)** sincroniza dados de diretórios LDAP/Active Directory com o diretório Google, incluindo usuários e grupos.
+O Google Cloud Directory Sync, ou GCDS, sincroniza identidades e grupos do diretório corporativo com o diretório Google.
 
-Outra opção para automação em escala é usar a **Admin SDK Directory API** para provisionar usuários programaticamente.
+Outra opção é automação programática:
+
+```text
+sistema corporativo
+        ↓
+Admin SDK Directory API
+        ↓
+Cloud Identity
+```
+
+### Quando escolher cada abordagem?
+
+```text
+poucos usuários
+→ manual / CSV
+
+diretório corporativo existente
+→ GCDS
+
+provisionamento controlado por aplicação
+→ Admin SDK Directory API
+```
+
+> **Prática `P*`:** Cloud Identity normalmente exige domínio e privilégios administrativos. Em conta pessoal sem Organization, estude o fluxo e execute apenas o que estiver disponível.
+
+---
+
+# 5. Billing Account
+
+Uma **Cloud Billing Account** representa a entidade de faturamento usada para pagar pelos recursos Google Cloud.
 
 Modelo:
 
 ```text
-Sistema corporativo / automação
-          ↓
-Admin SDK Directory API
-          ↓
-Cloud Identity users/groups
+Billing Account
+    ├── Project A
+    │     ├── VM
+    │     └── Bucket
+    │
+    └── Project B
+          └── Cloud Run
 ```
 
-### Não confunda provisionamento com autorização IAM
+O custo dos Resources pertence ao Project, e o Project é associado a uma Billing Account.
+
+Portanto:
 
 ```text
-Cloud Identity
-→ cria/sincroniza a identidade
+Billing Account
+→ paga
 
-IAM
-→ concede autorização aos principals
+Project
+→ agrupa uso/custos
+
+Resource
+→ gera consumo
+```
+
+Um Billing Account pode estar associado a vários Projects.
+
+---
+
+# 6. Inspecionar Billing Accounts
+
+Defina:
+
+```bash
+# Obtém o Project ID ativo.
+export PROJECT_ID="$(gcloud config get-value project)"
+```
+
+Liste Billing Accounts acessíveis:
+
+```bash
+# Lista as Billing Accounts que sua identidade consegue visualizar.
+gcloud billing accounts list
+```
+
+Você poderá ver campos como:
+
+```text
+ACCOUNT_ID
+NAME
+OPEN
+```
+
+Nem toda identidade possui permissão para listar todas as Billing Accounts de uma organização.
+
+---
+
+# 7. Inspecionar o vínculo de Billing de um Project
+
+Execute:
+
+```bash
+# Mostra a Billing Account associada ao Project.
+gcloud billing projects describe "$PROJECT_ID"
+```
+
+Observe principalmente:
+
+```text
+billingAccountName
+billingEnabled
+projectId
+```
+
+Modelo:
+
+```text
+Project
+   ↓ linked to
+Billing Account
+```
+
+Se:
+
+```text
+billingEnabled: true
+```
+
+o Project possui faturamento habilitado.
+
+Se não houver Billing Account válida, muitos serviços pagos não poderão ser utilizados normalmente.
+
+---
+
+# 8. Budget
+
+Um **Budget** é um mecanismo de acompanhamento financeiro.
+
+Exemplo:
+
+```text
+Budget mensal
+R$ 1.000
+```
+
+Ele permite comparar:
+
+```text
+custo acumulado
+vs
+valor definido para o Budget
+```
+
+A principal ideia:
+
+```text
+Budget
+≠
+hard limit
+```
+
+Atingir 100% do Budget **não desliga automaticamente** VMs nem bloqueia consumo.
+
+---
+
+# 9. Budget thresholds
+
+Os **thresholds** definem quando uma notificação deve ser acionada.
+
+Exemplo:
+
+```text
+Budget: R$ 1.000
+
+50%
+→ R$ 500
+
+80%
+→ R$ 800
+
+100%
+→ R$ 1.000
+```
+
+Há dois conceitos importantes:
+
+```text
+Actual spend
+→ custo efetivamente acumulado até aquele momento
+
+Forecasted spend
+→ previsão de custo para o final do período
 ```
 
 Exemplo:
 
 ```text
-AD group "cloud-readers"
-        ↓ GCDS
-Cloud Identity group
-        ↓ IAM binding
-roles/viewer
-        ↓
-Project
-```
+Budget: R$ 1.000
+Actual threshold: 80%
+→ alerta quando gasto real alcançar R$ 800
 
-### Prática guiada P*
-
-Este laboratório é `P*` porque GCDS exige diretório corporativo e privilégios administrativos.
-
-Se você possui domínio de laboratório:
-
-1. crie um usuário manualmente no Admin Console;
-2. crie um grupo;
-3. adicione o usuário ao grupo;
-4. observe o grupo como principal IAM;
-5. identifique no Admin Console as opções de importação em massa;
-6. documente qual das opções seria usada em um ambiente com AD/LDAP:
-   - GCDS;
-   - Admin SDK Directory API.
-
-### Questão estilo ACE
-
-Uma empresa possui milhares de usuários no Active Directory e quer evitar criação manual duplicada no Cloud Identity.
-
-**Resposta:** usar sincronização/provisionamento automatizado, como GCDS, em vez de criar cada usuário manualmente.
-
-A pegadinha é escolher IAM como ferramenta de criação de usuários. IAM controla autorização; ele não substitui o diretório de identidades.
-
-### Billing Account e vinculação de projeto
-
-**Nível:** `P*` — exige permissões de Billing Account.
-
-Inspecione:
-
-```bash
-# Explicação: Lista contas de faturamento acessíveis à identidade atual.
-gcloud billing accounts list
-# Explicação: Mostra a associação de faturamento do projeto para verificar se há Billing Account vinculada.
-gcloud billing projects describe "$PROJECT_ID"
-```
-
-Se possuir uma Billing Account de laboratório, pratique o fluxo no Console:
-
-```text
-Billing → Account management → My projects
-→ selecionar projeto
-→ Change billing
-→ escolher Billing Account autorizada
-```
-
-Não altere vínculo de billing de projeto corporativo.
-
-### Billing Export
-
-**Nível:** `P*`.
-
-No Console:
-
-```text
-Billing → Billing export → BigQuery export
-```
-
-Pratique:
-
-1. selecionar/criar dataset de laboratório;
-2. identificar export de uso/custos disponível;
-3. configurar o dataset quando tiver permissão;
-4. depois verificar as tabelas criadas no BigQuery.
-
-O objetivo é sair de:
-
-```text
-Billing export = “sei que existe”
-```
-
-para:
-
-```text
-Billing Account → BigQuery dataset → tabelas de custo → consulta SQL
-```
-
-### Solicitar aumento de quota
-
-**Nível:** `P*` — o pedido real pode exigir autorização e aprovação.
-
-Primeiro inspecione quotas:
-
-```bash
-# Explicação: Exibe metadados/configurações do Compute Engine no projeto.
-gcloud compute project-info describe --format='yaml(quotas)'
-```
-
-No Console:
-
-```text
-IAM & Admin → Quotas & System Limits
-```
-
-Pratique o fluxo:
-
-1. filtre por serviço/métrica;
-2. selecione a quota;
-3. abra **Edit quotas**;
-4. observe limite atual e região/escopo;
-5. não envie aumento desnecessário em projeto corporativo.
-
-### Critério de prova
-
-```text
-Budget → alerta financeiro
-Quota → limite técnico
-Billing Export → análise detalhada de custo
-Cloud Identity Group → administração de acesso em escala
+Forecast threshold: 100%
+→ alerta quando previsão indicar que o período terminará acima de R$ 1.000
 ```
 
 ---
 
-<!-- MEP-ACCEPTANCE-V9 -->
-# Critério de aceite M/E/P desta aula
+# 10. Configurar Budget e alertas
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
+> **Nível:** `P*` — exige permissões adequadas na Billing Account.
 
-Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+No Console:
 
 ```text
-conceito operacional
-   ↓
-configuração/comando
-   ↓
-inspeção
-   ↓
-teste ou comportamento observável
+Billing
+→ Budgets & alerts
+→ Create budget
 ```
 
-Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+Configure:
 
-## Tópicos do guia mapeados para esta aula
+1. nome do Budget;
+2. escopo;
+3. período;
+4. valor;
+5. thresholds;
+6. `Actual` ou `Forecasted`;
+7. notificações disponíveis.
 
-| Seção | Tópico | Esperado | Nível da matriz |
-|---|---|---:|---:|
-| 1.1 | Cloud Identity usuários/grupos manual/automático | `P` | `P*` |
-| 1.1 | Provisionar/configurar Observability | `P` | `P` |
-| 1.1 | Avaliar quotas | `P` | `P` |
-| 1.1 | Pedir aumento de quota | `P` | `P*` |
-| 1.2 | Criar Billing Account | `P` | `P*` |
-| 1.2 | Vincular projeto ao billing | `P` | `P*` |
-| 1.2 | Budgets e alerts | `P` | `P*` |
-| 1.2 | Billing export | `P` | `P*` |
+Exemplo didático:
+
+```text
+Budget
+→ R$ 100
+
+Threshold 1
+→ 50% Actual
+
+Threshold 2
+→ 80% Actual
+
+Threshold 3
+→ 100% Forecasted
+```
+
+Depois inspecione o Budget criado.
+
+### O que observar
+
+```text
+Budget
+→ monitora custo
+
+Threshold
+→ define evento de notificação
+
+Notification
+→ informa que condição foi atingida
+
+Budget
+→ não é quota
+```
+
+Não crie Budgets desnecessários em Billing Accounts corporativas.
+
+---
+
+# 11. Billing Export
+
+Budgets ajudam a acompanhar gasto.
+
+Mas, para análise detalhada de custos, precisamos dos dados de Billing.
+
+Modelo:
+
+```text
+Cloud Billing
+    ↓ export
+BigQuery Dataset
+    ↓
+Billing tables
+    ↓
+SQL
+    ↓
+FinOps / dashboards / análise
+```
+
+Billing Export permite enviar dados de faturamento para BigQuery automaticamente.
+
+---
+
+# 12. O que pode ser analisado com Billing Export
+
+Dependendo do tipo de export configurado, os dados podem incluir:
+
+```text
+Billing Account
+Project
+Service
+SKU
+location
+usage
+cost
+credits
+labels
+resource-level cost
+```
+
+Exemplo de pergunta:
+
+```text
+Quanto o Project X gastou este mês?
+```
+
+ou:
+
+```text
+Qual serviço gerou mais custo?
+```
+
+ou ainda:
+
+```text
+Quais recursos específicos estão aumentando o custo?
+```
+
+---
+
+# 13. Tipos principais de Billing Export
+
+Para ACE, não é necessário decorar todo o schema.
+
+Entenda principalmente:
+
+```text
+Standard usage cost
+→ análise geral de custos e tendências
+
+Detailed usage cost
+→ adiciona granularidade de custo por recurso
+
+Pricing data
+→ informações de preços/SKUs
+```
+
+---
+
+# 14. Configurar Billing Export
+
+> **Nível:** `P*` — depende de permissão na Billing Account e no BigQuery.
+
+No Console:
+
+```text
+Billing
+→ Billing export
+→ BigQuery export
+```
+
+Fluxo:
+
+```text
+Billing Account
+      ↓
+selecionar tipo de export
+      ↓
+Project + BigQuery Dataset
+      ↓
+ativar export
+      ↓
+tabelas criadas automaticamente
+```
+
+Depois:
+
+```text
+BigQuery
+→ Dataset
+→ tabela de Billing
+→ consulta SQL
+```
+
+A ativação não significa que todo o histórico anterior aparecerá obrigatoriamente; a disponibilidade dos dados depende do tipo e da localização do dataset.
+
+---
+
+# 15. Quotas
+
+Uma **quota** é um limite técnico aplicado ao consumo de determinado serviço ou recurso.
+
+Exemplos conceituais:
+
+```text
+número de CPUs
+número de IPs
+quantidade de recursos
+taxa de requests
+```
+
+Compare:
+
+```text
+Budget
+→ referência financeira
+
+Quota
+→ limite técnico
+```
+
+---
+
+# 16. Quota, metric e dimensions
+
+Uma quota normalmente está associada a:
+
+```text
+service
+quota metric
+scope/dimensions
+value
+```
+
+Exemplo conceitual:
+
+```text
+Service
+→ Compute Engine
+
+Quota
+→ CPUs
+
+Dimension
+→ region=us-central1
+
+Value
+→ limite disponível naquela dimensão
+```
+
+Por isso, duas regiões podem ter valores diferentes para determinada quota.
+
+---
+
+# 17. Inspecionar quotas
+
+Para Compute Engine:
+
+```bash
+# Exibe quotas e uso do Compute Engine para o Project.
+gcloud compute project-info describe \
+  --format="yaml(quotas)"
+```
+
+No Console:
+
+```text
+IAM & Admin
+→ Quotas & System Limits
+```
+
+Procure campos como:
+
+```text
+Service
+Quota
+Dimensions
+Current usage
+Current value
+```
+
+---
+
+# 18. Solicitar aumento de quota
+
+> **Nível:** `P*` — exige permissão e pode depender de aprovação do Google.
+
+Fluxo no Console:
+
+```text
+IAM & Admin
+→ Quotas & System Limits
+→ filtrar service/quota
+→ selecionar quota
+→ Edit quotas
+→ informar novo valor
+→ Submit request
+```
+
+Nem toda solicitação é aprovada instantaneamente.
+
+Algumas podem:
+
+```text
+ser aprovadas automaticamente
+ou
+entrar em análise
+```
+
+Depois você pode acompanhar o status da solicitação.
+
+### Permissões relevantes
+
+Para ambientes reais, existem roles específicas para visualização e administração de quotas.
+
+Nesta semana, o importante é reconhecer que:
+
+```text
+não conseguir aumentar quota
+≠ problema no recurso
+
+pode ser:
+→ falta de IAM
+→ quota não ajustável
+→ solicitação pendente
+→ limite sujeito a análise
+```
+
+---
+
+# 19. Google Cloud Observability
+
+Google Cloud Observability reúne serviços que ajudam a entender:
+
+```text
+saúde
+comportamento
+desempenho
+falhas
+```
+
+dos sistemas.
+
+Para a Semana 1, o objetivo é reconhecer os componentes básicos.
+
+A operação profunda fica para a Semana 6.
+
+---
+
+# 20. Cloud Monitoring
+
+Cloud Monitoring trabalha principalmente com **métricas**.
+
+Exemplos:
+
+```text
+CPU utilization
+request count
+latency
+memory metric
+custom metric
+```
+
+Modelo:
+
+```text
+Resource
+   ↓ métricas
+Cloud Monitoring
+   ↓
+Charts / Dashboards / Alerts
+```
+
+Use Monitoring quando a pergunta for:
+
+```text
+quanto?
+com que frequência?
+qual valor ao longo do tempo?
+```
+
+---
+
+# 21. Cloud Logging
+
+Cloud Logging trabalha com **logs e eventos**.
+
+Exemplos:
+
+```text
+application log
+system log
+audit log
+error message
+request log
+```
+
+Modelo:
+
+```text
+Resource / Application
+       ↓ logs
+Cloud Logging
+       ↓
+search / filter / analysis
+```
+
+Use Logging quando precisar responder:
+
+```text
+o que aconteceu?
+quando aconteceu?
+qual mensagem foi registrada?
+```
+
+---
+
+# 22. Metrics x Logs
+
+Não confunda:
+
+```text
+Metric
+→ série temporal numérica
+→ CPU = 82%
+
+Log
+→ evento/registro
+→ "database connection failed"
+```
+
+Exemplo de troubleshooting:
+
+```text
+Monitoring
+→ mostra aumento de erros
+
+Logging
+→ mostra a mensagem concreta do erro
+```
+
+---
+
+# 23. Dashboards
+
+Dashboard é uma forma de visualizar informações operacionais, normalmente por meio de charts.
+
+Modelo:
+
+```text
+Metrics
+  ↓
+Charts
+  ↓
+Dashboard
+```
+
+Exemplo:
+
+```text
+Dashboard da aplicação
+├── CPU
+├── request count
+├── latency
+└── error rate
+```
+
+Dashboard:
+
+```text
+visualiza
+```
+
+Ele não é, por si só, o mecanismo que corrige o problema.
+
+---
+
+# 24. Alerting
+
+Alerting avalia uma condição e pode gerar notificações.
+
+Modelo:
+
+```text
+Metric / condição
+      ↓
+Alert Policy
+      ↓
+Incident
+      ↓
+Notification
+```
+
+Exemplo:
+
+```text
+CPU > 80%
+por 5 minutos
+      ↓
+incident
+      ↓
+notification
+```
+
+Não confunda:
+
+```text
+Billing Budget alert
+→ condição financeira
+
+Monitoring alert
+→ condição operacional
+```
+
+---
+
+# 25. Error Reporting e Cloud Trace
+
+O conjunto Google Cloud Observability também inclui outros serviços.
+
+Para reconhecimento:
+
+```text
+Error Reporting
+→ agrega erros de aplicações
+
+Cloud Trace
+→ ajuda a analisar latência distribuída
+```
+
+Esses serviços serão tratados apenas no nível necessário ao roadmap; Monitoring e Logging são os componentes centrais desta primeira introdução.
+
+---
+
+# 26. Preparar Observability
+
+Habilite as APIs principais:
+
+```bash
+# Habilita Monitoring e Logging.
+gcloud services enable \
+  monitoring.googleapis.com \
+  logging.googleapis.com
+```
+
+Valide:
+
+```bash
+# Confirma que as APIs estão habilitadas.
+gcloud services list \
+  --enabled \
+  --filter="NAME:(monitoring.googleapis.com logging.googleapis.com)"
+```
+
+---
+
+# 27. Inspecionar no Console
+
+Abra:
+
+```text
+Monitoring
+→ Metrics Explorer
+```
+
+Objetivo:
+
+```text
+ver que Monitoring consulta métricas
+```
+
+Depois:
+
+```text
+Logging
+→ Logs Explorer
+```
+
+Objetivo:
+
+```text
+ver que Logging pesquisa registros
+```
+
+Na Semana 6 você criará dashboards, alert policies, log-based metrics, routing e troubleshooting completo.
+
+---
+
+# 28. Teste integrado
+
+Explique, sem consultar:
+
+```text
+Cloud Identity
+→ usuários/grupos
+
+IAM
+→ autorização
+
+Billing Account
+→ paga pelos Projects
+
+Budget
+→ acompanha custo e alerta
+
+Billing Export
+→ envia dados de custo para BigQuery
+
+Quota
+→ limita consumo técnico
+
+Monitoring
+→ métricas
+
+Logging
+→ logs
+
+Dashboard
+→ visualização
+
+Alert Policy
+→ condição operacional + incident/notificação
+```
+
+Se algum desses itens ainda parece equivalente a outro, revise antes de seguir.
+
+---
+
+# 29. Quebrar propositalmente
+
+Considere a afirmação:
+
+```text
+"Configurei um Budget de R$ 100.
+Quando chegar a 100%, novas VMs serão bloqueadas."
+```
+
+Essa afirmação está errada.
+
+---
+
+# 30. Troubleshooting
+
+## Sintoma
+
+A equipe esperava bloqueio automático ao atingir o Budget.
+
+## Hipótese
+
+Budget foi confundido com quota.
+
+## Evidência
+
+```text
+Billing
+→ Budget
+
+IAM & Admin
+→ Quotas & System Limits
+```
+
+São mecanismos diferentes.
+
+## Causa
+
+```text
+Budget
+→ mecanismo financeiro
+
+Quota
+→ limite técnico
+```
+
+## Correção
+
+Use:
+
+```text
+Budget
+→ acompanhar/alertar custo
+
+Quota
+→ controlar limite técnico disponível
+```
+
+Se a empresa quiser automação de desligamento baseada em Billing notifications, isso exige arquitetura adicional e não deve ser confundido com o comportamento padrão do Budget.
+
+---
+
+# 31. Questões estilo ACE
+
+## Questão 1
+
+Uma empresa quer conceder `roles/compute.viewer` a 200 pessoas com a mesma função.
+
+Melhor abordagem:
+
+**Resposta:** criar/usar um Cloud Identity group e conceder a role ao grupo.
+
+---
+
+## Questão 2
+
+Qual componente paga pelo consumo associado a um Project?
+
+**Resposta:** Cloud Billing Account vinculada ao Project.
+
+---
+
+## Questão 3
+
+Uma equipe quer receber aviso quando atingir 80% de um valor mensal.
+
+**Resposta:** Budget com threshold de 80%.
+
+---
+
+## Questão 4
+
+A equipe quer saber quais serviços e Projects geraram mais custos ao longo do mês.
+
+**Resposta:** Billing Export para BigQuery.
+
+---
+
+## Questão 5
+
+Uma implantação falha porque o limite de CPUs da região foi atingido.
+
+**Resposta:** investigar quota, não Budget.
+
+---
+
+## Questão 6
+
+Você precisa responder:
+
+> “A CPU ficou acima de 80%?”
+
+**Resposta:** Cloud Monitoring.
+
+---
+
+## Questão 7
+
+Você precisa responder:
+
+> “Qual mensagem de erro a aplicação registrou?”
+
+**Resposta:** Cloud Logging.
+
+---
+
+# 32. Cleanup
+
+Se criou um Budget somente para laboratório:
+
+```text
+Billing
+→ Budgets & alerts
+→ excluir Budget de laboratório
+```
+
+Se habilitou Billing Export apenas para teste e possui permissão, remova-o somente se tiver certeza de que não é usado por outras pessoas.
+
+Não desabilite Monitoring e Logging se continuar usando o mesmo Project no roadmap.
+
+---
+
+# 33. Checklist
+
+- [ ] Sei explicar Cloud Identity;
+- [ ] Sei diferenciar user e group;
+- [ ] Sei diferenciar provisionamento manual e automatizado;
+- [ ] Sei explicar Billing Account;
+- [ ] Sei explicar a relação Billing Account → Project → Resource;
+- [ ] Sei inspecionar o vínculo de Billing de um Project;
+- [ ] Sei explicar Budget;
+- [ ] Sei explicar threshold;
+- [ ] Sei diferenciar Actual e Forecasted spend;
+- [ ] Sei que Budget não bloqueia consumo automaticamente;
+- [ ] Sei explicar Billing Export;
+- [ ] Sei diferenciar Standard e Detailed usage cost;
+- [ ] Sei explicar quota;
+- [ ] Sei reconhecer service, quota e dimension;
+- [ ] Sei descrever o processo de solicitação de aumento;
+- [ ] Sei diferenciar Budget e Quota;
+- [ ] Sei explicar Cloud Monitoring;
+- [ ] Sei explicar Cloud Logging;
+- [ ] Sei diferenciar metric e log;
+- [ ] Sei explicar Dashboard;
+- [ ] Sei explicar Alert Policy;
+- [ ] Sei diferenciar Billing alert de Monitoring alert.
+
+---
+
+# 34. Critério de aceite M/E/P
+
+| Objetivo | Nível | Evidência |
+|---|---:|---|
+| Cloud Identity users/groups | E/P* | conceito + modelo + fluxo manual/automatizado |
+| Billing Account → Project → Resource | E/P | conceito + `billing projects describe` |
+| Inspecionar billing linkage | P | `gcloud billing projects describe` |
+| Budget e alerts | E/P* | threshold, Actual/Forecasted + configuração guiada |
+| Billing Export | E/P* | tipos + arquitetura BigQuery + configuração guiada |
+| Quotas | E/P* | conceito + inspeção + fluxo de aumento |
+| Google Cloud Observability | E/P | Monitoring, Logging, dashboards, alerts + APIs e inspeção |
+
+---
+
+## Resumo para prova
+
+```text
+Cloud Identity
+→ identidade
+
+IAM
+→ autorização
+
+Billing Account
+→ paga
+
+Budget
+→ acompanha e alerta custo
+
+Billing Export
+→ dados de custo no BigQuery
+
+Quota
+→ limite técnico
+
+Monitoring
+→ métricas
+
+Logging
+→ logs
+
+Dashboard
+→ visualização
+
+Alert Policy
+→ condição operacional e notificação
+```
