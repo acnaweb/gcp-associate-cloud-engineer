@@ -370,65 +370,185 @@ Forecast threshold: 100%
 
 ---
 
-# 10. Configurar Budget e alertas
+# 10. Criar Budget e threshold por gcloud
 
-> **Nível:** `P*` — exige permissões adequadas na Billing Account.
+> **Nível:** `P*` — exige permissão adequada na Billing Account.
 
-No Console:
+Primeiro obtenha a Billing Account vinculada ao projeto.
 
-```text
-Billing
-→ Budgets & alerts
-→ Create budget
+```bash
+# Obtém o Project ID ativo.
+export PROJECT_ID="$(gcloud config get-value project)"
+
+# Obtém a Billing Account associada ao projeto.
+# A saída costuma ter o formato billingAccounts/XXXXXX-XXXXXX-XXXXXX.
+export BILLING_ACCOUNT_RESOURCE="$(gcloud billing projects describe "$PROJECT_ID" \
+  --format='value(billingAccountName)')"
+
+# Extrai somente o ID da Billing Account.
+export BILLING_ACCOUNT="${BILLING_ACCOUNT_RESOURCE#billingAccounts/}"
+
+echo "$BILLING_ACCOUNT"
 ```
 
-Configure:
+Valide que a Billing Account foi encontrada:
 
-1. nome do Budget;
-2. escopo;
-3. período;
-4. valor;
-5. thresholds;
-6. `Actual` ou `Forecasted`;
-7. notificações disponíveis.
-
-Exemplo didático:
-
-```text
-Budget
-→ R$ 100
-
-Threshold 1
-→ 50% Actual
-
-Threshold 2
-→ 80% Actual
-
-Threshold 3
-→ 100% Forecasted
+```bash
+# Mostra a associação de Billing do projeto.
+gcloud billing projects describe "$PROJECT_ID"
 ```
 
-Depois inspecione o Budget criado.
+Crie um Budget pequeno de laboratório:
 
-### O que observar
-
-```text
-Budget
-→ monitora custo
-
-Threshold
-→ define evento de notificação
-
-Notification
-→ informa que condição foi atingida
-
-Budget
-→ não é quota
+```bash
+# Cria um Budget mensal de laboratório.
+#
+# --billing-account:
+#   Billing Account onde o Budget será criado.
+#
+# --display-name:
+#   Nome amigável do Budget.
+#
+# --budget-amount:
+#   Valor do Budget. Se a moeda não for informada,
+#   a moeda da Billing Account é utilizada.
+#
+# --calendar-period=month:
+#   Faz o Budget se repetir mensalmente.
+#
+# --threshold-rule:
+#   percent usa escala de 0 a 1.
+#   0.50 = 50%.
+#
+# basis=current-spend:
+#   avalia gasto real acumulado.
+gcloud billing budgets create \
+  --billing-account="$BILLING_ACCOUNT" \
+  --display-name="ACE-LAB-BUDGET" \
+  --budget-amount=10 \
+  --calendar-period=month \
+  --threshold-rule=percent=0.50,basis=current-spend
 ```
 
-Não crie Budgets desnecessários em Billing Accounts corporativas.
+A documentação atual do `gcloud billing budgets create` confirma que
+`--threshold-rule` pode ser repetido e que `percent=0.50` significa 50%.
+O `basis` pode ser `current-spend` ou `forecasted-spend`.
 
----
+## 10.1 Criar mais de um threshold
+
+Exemplo:
+
+```bash
+gcloud billing budgets create \
+  --billing-account="$BILLING_ACCOUNT" \
+  --display-name="ACE-LAB-BUDGET-2" \
+  --budget-amount=10 \
+  --calendar-period=month \
+  --threshold-rule=percent=0.50,basis=current-spend \
+  --threshold-rule=percent=0.80,basis=current-spend \
+  --threshold-rule=percent=1.00,basis=forecasted-spend
+```
+
+Modelo:
+
+```text
+50% current-spend
+→ alerta por gasto real
+
+80% current-spend
+→ alerta por gasto real
+
+100% forecasted-spend
+→ alerta quando a previsão atingir 100%
+```
+
+## 10.2 Listar Budgets
+
+```bash
+# Lista Budgets da Billing Account.
+gcloud billing budgets list \
+  --billing-account="$BILLING_ACCOUNT"
+```
+
+Guarde o nome do Budget:
+
+```bash
+# Captura o resource name do Budget criado.
+export BUDGET_NAME="$(gcloud billing budgets list \
+  --billing-account="$BILLING_ACCOUNT" \
+  --filter='displayName=ACE-LAB-BUDGET' \
+  --format='value(name)' \
+  --limit=1)"
+
+echo "$BUDGET_NAME"
+```
+
+## 10.3 Descrever o Budget
+
+```bash
+# Mostra amount, thresholdRules e demais propriedades.
+gcloud billing budgets describe "$BUDGET_NAME" \
+  --billing-account="$BILLING_ACCOUNT"
+```
+
+Confirme que existe algo equivalente a:
+
+```text
+amount
+thresholdRules
+  thresholdPercent: 0.5
+  spendBasis: CURRENT_SPEND
+```
+
+## 10.4 Confirmar que Budget não desliga recursos
+
+A criação de um Budget não altera o estado dos recursos.
+
+Se você já possuir uma VM de laboratório:
+
+```bash
+# Lista as VMs antes/depois de criar o Budget.
+gcloud compute instances list
+```
+
+O Budget não executa:
+
+```text
+stop VM
+delete VM
+disable API
+block resource creation
+```
+
+Ele é um mecanismo de acompanhamento/notificação financeira.
+
+Portanto:
+
+```text
+Budget atingido
+≠
+recursos desligados automaticamente
+```
+
+## 10.5 Cleanup do Budget de laboratório
+
+Liste antes de excluir:
+
+```bash
+gcloud billing budgets list \
+  --billing-account="$BILLING_ACCOUNT"
+```
+
+Exclua:
+
+```bash
+# Remove somente o Budget de laboratório.
+gcloud billing budgets delete "$BUDGET_NAME" \
+  --billing-account="$BILLING_ACCOUNT" \
+  --quiet
+```
+
+> Não exclua Budgets corporativos ou compartilhados.
 
 # 11. Billing Export
 
@@ -885,12 +1005,12 @@ Esses serviços serão tratados apenas no nível necessário ao roadmap; Monitor
 
 ---
 
-# 26. Preparar Observability
+# 26. Preparar Observability por CLI
 
 Habilite as APIs principais:
 
 ```bash
-# Habilita Monitoring e Logging.
+# Habilita Cloud Monitoring e Cloud Logging.
 gcloud services enable \
   monitoring.googleapis.com \
   logging.googleapis.com
@@ -907,37 +1027,159 @@ gcloud services list \
 
 ---
 
-# 27. Inspecionar no Console
+# 27. Confirmar consulta de métricas sem Metrics Explorer
 
-Abra:
+O objetivo do exercício é provar que o projeto consegue consultar dados do Cloud Monitoring.
 
-```text
-Monitoring
-→ Metrics Explorer
-```
-
-Objetivo:
+A CLI estável atual possui:
 
 ```text
-ver que Monitoring consulta métricas
+gcloud monitoring dashboards
+gcloud monitoring policies
+gcloud monitoring snoozes
+gcloud monitoring uptime
 ```
 
-Depois:
+Ela **não possui um subcomando estável equivalente a**:
 
 ```text
-Logging
-→ Logs Explorer
+gcloud monitoring metrics list
 ```
 
-Objetivo:
+nem a:
 
 ```text
-ver que Logging pesquisa registros
+gcloud monitoring time-series list
 ```
 
-Na Semana 6 você criará dashboards, alert policies, log-based metrics, routing e troubleshooting completo.
+Por isso, para consultar métricas sem usar o Console, use:
 
----
+```text
+gcloud
+→ autenticação
+
+Monitoring REST API
+→ consulta
+```
+
+## 27.1 Obter access token com gcloud
+
+```bash
+# Gera um access token OAuth da identidade ativa.
+export ACCESS_TOKEN="$(gcloud auth print-access-token)"
+```
+
+## 27.2 Consultar metric descriptors
+
+```bash
+# Consulta a Monitoring API e lista alguns tipos de métricas
+# disponíveis para o projeto.
+#
+# Se a chamada retornar JSON com "metricDescriptors",
+# o projeto e a identidade atual conseguem consultar a API.
+curl -sS \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "https://monitoring.googleapis.com/v3/projects/$PROJECT_ID/metricDescriptors?pageSize=5"
+```
+
+Resultado esperado:
+
+```json
+{
+  "metricDescriptors": [
+    ...
+  ]
+}
+```
+
+Isso valida:
+
+```text
+Monitoring API habilitada
++
+autenticação válida
++
+autorização de leitura
++
+consulta de métricas/descritores possível
+```
+
+A operação usada é:
+
+```text
+projects.metricDescriptors.list
+```
+
+## 27.3 Consultar uma métrica específica
+
+Se você possui uma VM produzindo métricas, pode consultar séries temporais.
+
+Defina o intervalo:
+
+```bash
+# Horário atual em UTC.
+export END_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# 20 minutos atrás em UTC.
+export START_TIME="$(date -u -d '20 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
+```
+
+Consulte CPU de Compute Engine:
+
+```bash
+# URL-encode do filtro é feito pelo curl com --get/--data-urlencode.
+curl -sS --get \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  --data-urlencode 'filter=metric.type="compute.googleapis.com/instance/cpu/utilization"' \
+  --data-urlencode "interval.startTime=$START_TIME" \
+  --data-urlencode "interval.endTime=$END_TIME" \
+  "https://monitoring.googleapis.com/v3/projects/$PROJECT_ID/timeSeries"
+```
+
+Se não houver VM ou amostras recentes, a resposta pode conter:
+
+```json
+{
+  "timeSeries": []
+}
+```
+
+Isso não significa necessariamente erro.
+
+Significa:
+
+```text
+consulta funcionou
+mas não houve série temporal correspondente no intervalo
+```
+
+## 27.4 Diferenciar acesso de ausência de dados
+
+```text
+HTTP 200 + lista com dados
+→ acesso e dados OK
+
+HTTP 200 + lista vazia
+→ acesso OK, sem dados no filtro/intervalo
+
+HTTP 403
+→ problema de IAM/permissão
+
+HTTP 404/400
+→ revisar endpoint, projeto ou filtro
+```
+
+## 27.5 Alternativa simples com gcloud monitoring
+
+Embora isso não consulte séries temporais, você pode validar que o projeto acessa a API de Monitoring com:
+
+```bash
+# Lista Alert Policies visíveis no projeto.
+# Lista vazia é válida se nenhuma policy existir.
+gcloud monitoring policies list
+```
+
+Este comando prova acesso ao recurso de Alerting, mas **não substitui** a consulta de métricas acima.
 
 # 28. Teste integrado
 
@@ -1108,10 +1350,8 @@ Você precisa responder:
 
 Se criou um Budget somente para laboratório:
 
-```text
-Billing
-→ Budgets & alerts
-→ excluir Budget de laboratório
+```bash
+gcloud billing budgets delete "$BUDGET_NAME"   --billing-account="$BILLING_ACCOUNT"   --quiet
 ```
 
 Se habilitou Billing Export apenas para teste e possui permissão, remova-o somente se tiver certeza de que não é usado por outras pessoas.
