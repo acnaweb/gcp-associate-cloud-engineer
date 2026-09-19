@@ -54,6 +54,69 @@ serviceAccount:app@projeto.iam.gserviceaccount.com
 
 Nesta aula, o principal principal do laboratório será uma **Service Account**.
 
+## 2.1 Tipos de principal no Google Cloud
+
+Os principals mais comuns que podem aparecer em IAM allow policies são:
+
+| Tipo de principal | Identificador / exemplo | Uso típico |
+|---|---|---|
+| Google Account | `user:ana@example.com` | Pessoa individual |
+| Google Group | `group:devops@example.com` | Conceder acesso a várias pessoas de forma centralizada |
+| Service Account | `serviceAccount:app@projeto.iam.gserviceaccount.com` | Workloads, VMs, Cloud Run, automações |
+| Google domain | `domain:example.com` | Todos os usuários de um domínio Google Workspace ou Cloud Identity |
+| Workforce Identity principal | `principal://iam.googleapis.com/locations/global/workforcePools/...` | Pessoas externas federadas por um Identity Provider |
+| Workload Identity principal | `principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/...` | Workloads externas federadas sem chave de Service Account |
+| `allAuthenticatedUsers` | `allAuthenticatedUsers` | Google Accounts e service accounts autenticados; não inclui identidades federadas de Workforce/Workload Identity |
+| `allUsers` | `allUsers` | Qualquer pessoa na internet, inclusive usuários não autenticados |
+
+### Para a prova ACE
+
+Priorize estes três:
+
+```text
+User
+→ pessoa
+
+Group
+→ conjunto de pessoas
+
+Service Account
+→ identidade de workload
+```
+
+Modelo mental:
+
+```text
+Principal
+   ↓ recebe
+Role
+   ↓ contém
+Permissions
+   ↓ aplicadas sobre
+Resource
+```
+
+Exemplos de bindings:
+
+```bash
+# Usuário individual.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="user:ana@example.com" \
+  --role="roles/viewer"
+
+# Grupo.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="group:devops@example.com" \
+  --role="roles/viewer"
+
+# Service Account.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:app@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+```
+
+> Uma Service Account é um **principal** quando recebe acesso a outros recursos. Em IAM avançado, ela também pode ser tratada como **resource** sobre o qual outros principals recebem permissões. Esse segundo caso será aprofundado na Semana 7.
+
 ---
 
 # 3. Permission
