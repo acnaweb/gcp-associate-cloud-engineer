@@ -52,7 +52,66 @@ Cloud Identity users/groups
 
 # 2. Cloud Identity
 
-## 2.1 O que é
+## 2.1 Onde acessar o Cloud Identity
+
+O gerenciamento de usuários, grupos e configurações do Cloud Identity é feito principalmente pelo **Google Admin Console**:
+
+```text
+https://admin.google.com/
+```
+
+Acesse com uma conta administradora do domínio.
+
+No Google Admin Console você poderá administrar, conforme suas permissões:
+
+```text
+Users
+Groups
+Group memberships
+Cloud Identity
+Domain
+Admin roles
+Licenses
+```
+
+> **Importante:** não procure o Cloud Identity como se fosse um serviço operacional comum no menu do Google Cloud Console, como Compute Engine, Cloud Storage ou Cloud Run.
+
+O modelo mental é:
+
+```text
+Google Admin Console
+→ usuários, grupos e administração do domínio/Cloud Identity
+
+Google Cloud Console
+→ IAM, Projects, Resources, Billing e serviços Google Cloud
+```
+
+Links úteis:
+
+- Google Admin Console: https://admin.google.com/
+- Guia oficial de configuração do Cloud Identity:
+  https://docs.cloud.google.com/identity/docs/how-to/set-up-cloud-identity-admin?hl=pt-br
+
+Depois de criar ou administrar usuários e grupos no Google Admin Console, essas identidades podem ser usadas como principals no IAM do Google Cloud.
+
+Exemplo:
+
+```text
+Google Admin Console
+      ↓
+cria group
+cloud-viewers@example.com
+      ↓
+Google Cloud IAM
+      ↓
+roles/viewer
+      ↓
+Project
+```
+
+---
+
+## 2.2 O que é
 
 Cloud Identity fornece gerenciamento centralizado de identidades para organizações que usam serviços Google Cloud.
 
