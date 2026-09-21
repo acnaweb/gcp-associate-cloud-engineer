@@ -10,6 +10,8 @@ Ao final, você deverá:
 - Entender os conceitos de **frontend**, **forwarding rule**, **target proxy**, **URL map**, **backend service**, **health check** e **backend**;
 - Entender a integração entre **Load Balancer e Managed Instance Group (MIG)**;
 - Criar um **Global External Application Load Balancer HTTP** usando `gcloud`;
+- Criar um **Internal Passthrough Network Load Balancer regional** usando `gcloud`;
+- Criar um **Regional Internal Application Load Balancer HTTP** usando `gcloud`;
 - Testar a distribuição de tráfego entre múltiplas VMs;
 - Simular a falha de uma aplicação e observar o comportamento do health check;
 - Diferenciar **Load Balancing**, **Health Check**, **Autohealing** e **Autoscaling**;
@@ -1187,6 +1189,1313 @@ Qual recurso define o IP e porta de entrada?
 
 ---
 
+# Laboratório 2 — Internal Passthrough Network Load Balancer
+
+Agora vamos construir um segundo Load Balancer, desta vez **interno**.
+
+O primeiro laboratório criou:
+
+```text
+Internet
+   ↓
+Global External Application Load Balancer
+   ↓
+MIG
+```
+
+Agora construiremos:
+
+```text
+VM cliente
+   ↓
+IP interno
+   ↓
+Internal Passthrough Network Load Balancer
+   ↓
+mesmo MIG
+```
+
+O objetivo é comparar as duas arquiteturas sem recriar desnecessariamente os backends.
+
+---
+
+## Arquitetura do Laboratório 2
+
+```text
+                      VPC default
+                          |
+                          |
+                  +----------------+
+                  | VM cliente     |
+                  +----------------+
+                          |
+                          | HTTP :80
+                          v
+                  +----------------+
+                  | Internal IP    |
+                  | regional       |
+                  +----------------+
+                          |
+                          v
+                  +----------------+
+                  | Forwarding Rule|
+                  | INTERNAL       |
+                  +----------------+
+                          |
+                          v
+                  +----------------+
+                  | Backend Service|
+                  | regional / TCP |
+                  +----------------+
+                          |
+                    Health Check
+                          |
+                          v
+                  +----------------+
+                  | Regional MIG   |
+                  +----------------+
+                     |          |
+                     v          v
+                   VM 1        VM 2
+                   nginx       nginx
+```
+
+Observe uma diferença importante em relação ao Application Load Balancer:
+
+```text
+Internal Passthrough Network Load Balancer
+→ não usa Target HTTP Proxy
+→ não usa URL Map
+```
+
+Ele opera como um Load Balancer de camada 4.
+
+---
+
+## Variáveis do Laboratório 2
+
+```bash
+# Nome do health check regional.
+export ILB_HEALTH_CHECK=ace-ilb-health-check
+
+# Nome do backend service regional.
+export ILB_BACKEND=ace-ilb-backend
+
+# Nome do endereço IP interno reservado.
+export ILB_IP_NAME=ace-ilb-ip
+
+# Nome da forwarding rule interna.
+export ILB_FORWARDING_RULE=ace-ilb-forwarding-rule
+
+# VM que atuará como cliente do Internal Load Balancer.
+export ILB_CLIENT=ace-ilb-client
+
+# Zona da VM cliente.
+export ILB_CLIENT_ZONE=us-central1-a
+```
+
+---
+
+## Inspecionar a subnet usada
+
+Neste laboratório vamos reutilizar a subnet `default` da região.
+
+```bash
+# Exibe a faixa CIDR da subnet default em us-central1.
+gcloud compute networks subnets describe default \
+  --region="$REGION" \
+  --format="table(name,region,ipCidrRange,network)"
+```
+
+Armazene o CIDR:
+
+```bash
+export ILB_SUBNET_CIDR="$(gcloud compute networks subnets describe default \
+  --region="$REGION" \
+  --format='value(ipCidrRange)')"
+
+echo "$ILB_SUBNET_CIDR"
+```
+
+---
+
+## Criar o Health Check regional
+
+O primeiro laboratório usou um health check global.
+
+Para este Internal Passthrough Network Load Balancer, usaremos um **health check regional**.
+
+```bash
+# Cria um health check HTTP regional na porta 80.
+gcloud compute health-checks create http "$ILB_HEALTH_CHECK" \
+  --region="$REGION" \
+  --port=80
+```
+
+Inspecione:
+
+```bash
+gcloud compute health-checks describe "$ILB_HEALTH_CHECK" \
+  --region="$REGION"
+```
+
+---
+
+## Criar o Backend Service interno
+
+```bash
+# Cria o backend service regional do Internal Passthrough Network Load Balancer.
+#
+# --load-balancing-scheme=INTERNAL
+#   define que este backend pertence a um Internal Passthrough Network Load Balancer.
+#
+# --protocol=TCP
+#   define o protocolo de camada 4 usado pelo backend service.
+gcloud compute backend-services create "$ILB_BACKEND" \
+  --load-balancing-scheme=INTERNAL \
+  --protocol=TCP \
+  --region="$REGION" \
+  --health-checks="$ILB_HEALTH_CHECK" \
+  --health-checks-region="$REGION"
+```
+
+Inspecione:
+
+```bash
+gcloud compute backend-services describe "$ILB_BACKEND" \
+  --region="$REGION"
+```
+
+---
+
+## Adicionar o MIG ao backend interno
+
+Vamos reutilizar o mesmo Regional MIG criado no primeiro laboratório.
+
+```bash
+# Adiciona o Regional MIG como backend do serviço interno.
+gcloud compute backend-services add-backend "$ILB_BACKEND" \
+  --region="$REGION" \
+  --instance-group="$MIG" \
+  --instance-group-region="$REGION"
+```
+
+Verifique:
+
+```bash
+gcloud compute backend-services describe "$ILB_BACKEND" \
+  --region="$REGION"
+```
+
+Modelo:
+
+```text
+External Application LB
+          \
+           \
+            → Regional MIG
+           /
+          /
+Internal Passthrough LB
+```
+
+O mesmo grupo pode participar de diferentes arquiteturas de Load Balancing, desde que as configurações sejam compatíveis.
+
+---
+
+## Reservar um IP interno regional
+
+```bash
+# Reserva um IP interno na subnet default da região.
+gcloud compute addresses create "$ILB_IP_NAME" \
+  --region="$REGION" \
+  --subnet=default
+```
+
+Obtenha o endereço:
+
+```bash
+export ILB_IP="$(gcloud compute addresses describe "$ILB_IP_NAME" \
+  --region="$REGION" \
+  --format='value(address)')"
+
+echo "$ILB_IP"
+```
+
+Modelo:
+
+```text
+IP interno
+→ pertence à subnet
+→ não é endereço público da internet
+```
+
+---
+
+## Criar regra de firewall para clientes internos
+
+O firewall existente já permite os health checks para as VMs do MIG.
+
+Agora precisamos permitir que clientes da subnet acessem HTTP nos backends.
+
+```bash
+# Permite TCP/80 a partir da própria subnet
+# para as VMs do MIG que possuem a tag allow-health-check.
+gcloud compute firewall-rules create ace-ilb-allow-client \
+  --network=default \
+  --direction=INGRESS \
+  --action=ALLOW \
+  --rules=tcp:80 \
+  --source-ranges="$ILB_SUBNET_CIDR" \
+  --target-tags=allow-health-check
+```
+
+Inspecione:
+
+```bash
+gcloud compute firewall-rules describe ace-ilb-allow-client
+```
+
+---
+
+## Criar a Forwarding Rule interna
+
+A forwarding rule será regional e usará o IP interno reservado.
+
+```bash
+# Cria o frontend do Internal Passthrough Network Load Balancer.
+gcloud compute forwarding-rules create "$ILB_FORWARDING_RULE" \
+  --region="$REGION" \
+  --load-balancing-scheme=INTERNAL \
+  --network=default \
+  --subnet=default \
+  --address="$ILB_IP" \
+  --ip-protocol=TCP \
+  --ports=80 \
+  --backend-service="$ILB_BACKEND" \
+  --backend-service-region="$REGION"
+```
+
+Inspecione:
+
+```bash
+gcloud compute forwarding-rules describe "$ILB_FORWARDING_RULE" \
+  --region="$REGION"
+```
+
+Observe:
+
+```text
+loadBalancingScheme
+→ INTERNAL
+
+IPAddress
+→ endereço privado
+
+region
+→ us-central1
+```
+
+---
+
+## Verificar a saúde dos backends
+
+```bash
+# Consulta a saúde do backend regional.
+gcloud compute backend-services get-health "$ILB_BACKEND" \
+  --region="$REGION"
+```
+
+Espere até os backends aparecerem como:
+
+```text
+HEALTHY
+```
+
+---
+
+## Criar uma VM cliente
+
+Cloud Shell está fora da VPC do laboratório e não é o melhor local para testar diretamente um frontend privado.
+
+Por isso, criaremos uma VM cliente na mesma VPC.
+
+```bash
+# Cria uma VM cliente na VPC default.
+gcloud compute instances create "$ILB_CLIENT" \
+  --zone="$ILB_CLIENT_ZONE" \
+  --machine-type=e2-micro \
+  --image-family=debian-12 \
+  --image-project=debian-cloud \
+  --network=default
+```
+
+Inspecione:
+
+```bash
+gcloud compute instances describe "$ILB_CLIENT" \
+  --zone="$ILB_CLIENT_ZONE" \
+  --format="table(name,networkInterfaces[0].networkIP,status)"
+```
+
+---
+
+## Testar o Internal Load Balancer
+
+Execute o teste diretamente por SSH, sem abrir sessão interativa:
+
+```bash
+# Instala curl na VM cliente e acessa o IP interno do Load Balancer.
+gcloud compute ssh "$ILB_CLIENT" \
+  --zone="$ILB_CLIENT_ZONE" \
+  --command="sudo apt-get update -qq && sudo apt-get install -y curl >/dev/null && curl -s http://$ILB_IP"
+```
+
+Execute várias vezes:
+
+```bash
+for i in {1..10}; do
+  gcloud compute ssh "$ILB_CLIENT" \
+    --zone="$ILB_CLIENT_ZONE" \
+    --command="curl -s http://$ILB_IP | grep ace-web-mig"
+done
+```
+
+Você deverá observar respostas dos backends do MIG.
+
+O fluxo agora é:
+
+```text
+VM cliente
+   |
+   | IP privado :80
+   v
+Internal Forwarding Rule
+   |
+   v
+Regional Backend Service
+   |
+   v
+Regional MIG
+```
+
+---
+
+## Comparação prática dos dois laboratórios
+
+| Item | Laboratório 1 | Laboratório 2 |
+|---|---|---|
+| Tipo | Application Load Balancer | Passthrough Network Load Balancer |
+| Alcance | External | Internal |
+| Escopo | Global | Regional |
+| Protocolo de frontend | HTTP | TCP |
+| IP | Público | Privado |
+| Target Proxy | Sim | Não |
+| URL Map | Sim | Não |
+| Backend Service | Global | Regional |
+| Health Check | Global | Regional |
+| Backend | Regional MIG | Mesmo Regional MIG |
+
+Para a ACE:
+
+```text
+Application Load Balancer
+→ entende HTTP
+→ pode usar URL Map
+
+Passthrough Network Load Balancer
+→ camada 4
+→ não usa URL Map
+→ não usa Target HTTP Proxy
+```
+
+---
+
+## Quebrar propositalmente
+
+Agora vamos quebrar **somente o firewall de tráfego do cliente**.
+
+Remova a regra:
+
+```bash
+# Remove a regra que permite o tráfego da VM cliente aos backends.
+gcloud compute firewall-rules delete ace-ilb-allow-client \
+  --quiet
+```
+
+Repita o teste:
+
+```bash
+gcloud compute ssh "$ILB_CLIENT" \
+  --zone="$ILB_CLIENT_ZONE" \
+  --command="curl --connect-timeout 5 -s http://$ILB_IP"
+```
+
+Resultado esperado:
+
+```text
+timeout
+ou
+falha de conexão
+```
+
+---
+
+## Troubleshooting do Internal Load Balancer
+
+### Sintoma
+
+```text
+VM cliente não consegue acessar o IP interno do Load Balancer.
+```
+
+### Hipótese
+
+A forwarding rule existe, os backends estão saudáveis, mas o firewall pode estar bloqueando o tráfego do cliente.
+
+### Evidência
+
+Verifique o frontend:
+
+```bash
+gcloud compute forwarding-rules describe "$ILB_FORWARDING_RULE" \
+  --region="$REGION"
+```
+
+Verifique os backends:
+
+```bash
+gcloud compute backend-services get-health "$ILB_BACKEND" \
+  --region="$REGION"
+```
+
+Liste as regras:
+
+```bash
+gcloud compute firewall-rules list \
+  --filter="network:default"
+```
+
+Observe que:
+
+```text
+ace-ilb-allow-client
+→ não existe
+```
+
+### Causa
+
+A regra que permitia `tcp:80` da subnet para os backends foi removida.
+
+### Correção
+
+Recrie exatamente a regra:
+
+```bash
+gcloud compute firewall-rules create ace-ilb-allow-client \
+  --network=default \
+  --direction=INGRESS \
+  --action=ALLOW \
+  --rules=tcp:80 \
+  --source-ranges="$ILB_SUBNET_CIDR" \
+  --target-tags=allow-health-check
+```
+
+### Reteste
+
+```bash
+gcloud compute ssh "$ILB_CLIENT" \
+  --zone="$ILB_CLIENT_ZONE" \
+  --command="curl -s http://$ILB_IP"
+```
+
+Resultado esperado:
+
+```text
+HTTP response
+```
+
+Modelo mental:
+
+```text
+Sintoma
+→ Internal LB não responde
+
+Hipótese
+→ firewall
+
+Evidência
+→ frontend existe
+→ backend HEALTHY
+→ regra do cliente ausente
+
+Causa
+→ tcp:80 bloqueado
+
+Correção
+→ recriar firewall rule
+```
+
+---
+
+## Cleanup do Laboratório 2
+
+Remova primeiro a forwarding rule:
+
+```bash
+gcloud compute forwarding-rules delete "$ILB_FORWARDING_RULE" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o endereço interno:
+
+```bash
+gcloud compute addresses delete "$ILB_IP_NAME" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o backend service regional:
+
+```bash
+gcloud compute backend-services delete "$ILB_BACKEND" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o health check regional:
+
+```bash
+gcloud compute health-checks delete "$ILB_HEALTH_CHECK" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova a VM cliente:
+
+```bash
+gcloud compute instances delete "$ILB_CLIENT" \
+  --zone="$ILB_CLIENT_ZONE" \
+  --quiet
+```
+
+Remova a regra de firewall do cliente:
+
+```bash
+gcloud compute firewall-rules delete ace-ilb-allow-client \
+  --quiet
+```
+
+> Não remova o MIG neste momento. Ele ainda pertence ao Laboratório 1 e será removido no cleanup principal abaixo.
+
+---
+
+# Laboratório 3 — Regional Internal Application Load Balancer
+
+Agora vamos construir um Load Balancer **interno de camada 7**.
+
+Nos laboratórios anteriores:
+
+```text
+Laboratório 1
+→ Global External Application Load Balancer
+
+Laboratório 2
+→ Internal Passthrough Network Load Balancer
+```
+
+Agora:
+
+```text
+Laboratório 3
+→ Regional Internal Application Load Balancer
+```
+
+A diferença essencial é:
+
+```text
+Internal Passthrough Network LB
+→ camada 4
+→ TCP
+→ sem URL Map
+→ sem Target HTTP Proxy
+
+Internal Application LB
+→ camada 7
+→ HTTP
+→ URL Map
+→ Target HTTP Proxy
+```
+
+---
+
+## Arquitetura do Laboratório 3
+
+```text
+VM cliente
+   |
+   | HTTP :80
+   v
+IP interno regional
+   |
+   v
+Internal Managed Forwarding Rule
+   |
+   v
+Regional Target HTTP Proxy
+   |
+   v
+Regional URL Map
+   |
+   v
+Regional Backend Service HTTP
+   |
+   v
+Regional MIG
+   |
+   +--> VM 1
+   |
+   +--> VM 2
+```
+
+Transversalmente:
+
+```text
+Proxy-only subnet
+   |
+   v
+Google-managed Envoy proxies
+   |
+   v
+Backends
+```
+
+> A proxy-only subnet é usada pelos proxies gerenciados pelo Google. Ela **não** deve fornecer o IP do frontend.
+
+---
+
+## Variáveis do Laboratório 3
+
+```bash
+export IALB_PROXY_SUBNET=ace-ialb-proxy-only
+export IALB_PROXY_CIDR=172.16.0.0/23
+export IALB_HEALTH_CHECK=ace-ialb-health-check
+export IALB_BACKEND=ace-ialb-backend
+export IALB_URL_MAP=ace-ialb-url-map
+export IALB_HTTP_PROXY=ace-ialb-http-proxy
+export IALB_IP_NAME=ace-ialb-ip
+export IALB_FORWARDING_RULE=ace-ialb-forwarding-rule
+export IALB_CLIENT=ace-ialb-client
+export IALB_CLIENT_ZONE=us-central1-a
+```
+
+---
+
+## Validar o Named Port do MIG
+
+O Internal Application Load Balancer usará o mesmo Regional MIG criado no primeiro laboratório.
+
+Confirme o named port:
+
+```bash
+# Inspeciona os named ports do Regional MIG.
+gcloud compute instance-groups managed get-named-ports "$MIG" \
+  --region="$REGION"
+```
+
+Resultado esperado:
+
+```text
+NAME  PORT
+http  80
+```
+
+Se ainda não existir:
+
+```bash
+# Define o named port http:80 no Regional MIG.
+gcloud compute instance-groups managed set-named-ports "$MIG" \
+  --region="$REGION" \
+  --named-ports=http:80
+```
+
+---
+
+## Criar a proxy-only subnet
+
+Um Regional Internal Application Load Balancer precisa de uma subnet reservada para os proxies gerenciados.
+
+```bash
+# Cria uma proxy-only subnet para Envoy proxies gerenciados pelo Google.
+#
+# --purpose=REGIONAL_MANAGED_PROXY
+#   identifica a subnet como exclusiva dos proxies regionais gerenciados.
+#
+# --role=ACTIVE
+#   define esta subnet como a proxy-only subnet ativa da região.
+gcloud compute networks subnets create "$IALB_PROXY_SUBNET" \
+  --network=default \
+  --region="$REGION" \
+  --range="$IALB_PROXY_CIDR" \
+  --purpose=REGIONAL_MANAGED_PROXY \
+  --role=ACTIVE
+```
+
+Inspecione:
+
+```bash
+gcloud compute networks subnets describe "$IALB_PROXY_SUBNET" \
+  --region="$REGION"
+```
+
+Observe:
+
+```text
+purpose
+→ REGIONAL_MANAGED_PROXY
+
+role
+→ ACTIVE
+```
+
+Modelo mental:
+
+```text
+Proxy-only subnet
+→ origem das conexões dos proxies até os backends
+
+Frontend IP
+→ vem de uma subnet normal
+```
+
+---
+
+## Criar o Health Check regional
+
+```bash
+# Cria um health check HTTP regional.
+# --use-serving-port usa o named port do backend.
+gcloud compute health-checks create http "$IALB_HEALTH_CHECK" \
+  --region="$REGION" \
+  --use-serving-port
+```
+
+Inspecione:
+
+```bash
+gcloud compute health-checks describe "$IALB_HEALTH_CHECK" \
+  --region="$REGION"
+```
+
+---
+
+## Criar o Backend Service regional
+
+```bash
+# Cria um Backend Service regional para Internal Application Load Balancer.
+gcloud compute backend-services create "$IALB_BACKEND" \
+  --load-balancing-scheme=INTERNAL_MANAGED \
+  --protocol=HTTP \
+  --health-checks="$IALB_HEALTH_CHECK" \
+  --health-checks-region="$REGION" \
+  --region="$REGION"
+```
+
+Inspecione:
+
+```bash
+gcloud compute backend-services describe "$IALB_BACKEND" \
+  --region="$REGION"
+```
+
+Confirme:
+
+```text
+loadBalancingScheme
+→ INTERNAL_MANAGED
+
+protocol
+→ HTTP
+```
+
+---
+
+## Adicionar o Regional MIG
+
+```bash
+# Adiciona o Regional MIG ao Backend Service interno L7.
+gcloud compute backend-services add-backend "$IALB_BACKEND" \
+  --region="$REGION" \
+  --instance-group="$MIG" \
+  --instance-group-region="$REGION" \
+  --balancing-mode=UTILIZATION
+```
+
+Inspecione:
+
+```bash
+gcloud compute backend-services describe "$IALB_BACKEND" \
+  --region="$REGION"
+```
+
+---
+
+## Permitir tráfego da proxy-only subnet para os backends
+
+Os proxies gerenciados precisam alcançar as VMs do MIG.
+
+```bash
+# Permite HTTP da proxy-only subnet para as VMs do MIG.
+gcloud compute firewall-rules create ace-ialb-allow-proxy \
+  --network=default \
+  --direction=INGRESS \
+  --action=ALLOW \
+  --rules=tcp:80 \
+  --source-ranges="$IALB_PROXY_CIDR" \
+  --target-tags=allow-health-check
+```
+
+Inspecione:
+
+```bash
+gcloud compute firewall-rules describe ace-ialb-allow-proxy
+```
+
+Modelo:
+
+```text
+Envoy proxy
+IP da proxy-only subnet
+        |
+        | tcp:80
+        v
+Firewall
+        |
+        v
+VM backend
+```
+
+---
+
+## Criar o URL Map regional
+
+```bash
+# Cria um URL Map regional apontando para o Backend Service interno.
+gcloud compute url-maps create "$IALB_URL_MAP" \
+  --default-service="$IALB_BACKEND" \
+  --region="$REGION"
+```
+
+Inspecione:
+
+```bash
+gcloud compute url-maps describe "$IALB_URL_MAP" \
+  --region="$REGION"
+```
+
+Modelo:
+
+```text
+URL Map
+→ decide para qual Backend Service a requisição será enviada
+```
+
+---
+
+## Criar o Target HTTP Proxy regional
+
+```bash
+# Cria o Target HTTP Proxy regional.
+gcloud compute target-http-proxies create "$IALB_HTTP_PROXY" \
+  --url-map="$IALB_URL_MAP" \
+  --url-map-region="$REGION" \
+  --region="$REGION"
+```
+
+Inspecione:
+
+```bash
+gcloud compute target-http-proxies describe "$IALB_HTTP_PROXY" \
+  --region="$REGION"
+```
+
+Modelo:
+
+```text
+Forwarding Rule
+   ↓
+Target HTTP Proxy
+   ↓
+URL Map
+```
+
+---
+
+## Reservar o IP interno do frontend
+
+O IP do frontend deve vir de uma subnet normal, **não** da proxy-only subnet.
+
+```bash
+# Reserva um IP interno regional na subnet default.
+gcloud compute addresses create "$IALB_IP_NAME" \
+  --region="$REGION" \
+  --subnet=default
+```
+
+Obtenha o endereço:
+
+```bash
+export IALB_IP="$(gcloud compute addresses describe "$IALB_IP_NAME" \
+  --region="$REGION" \
+  --format='value(address)')"
+
+echo "$IALB_IP"
+```
+
+---
+
+## Criar a Forwarding Rule interna L7
+
+```bash
+# Cria o frontend do Regional Internal Application Load Balancer.
+gcloud compute forwarding-rules create "$IALB_FORWARDING_RULE" \
+  --load-balancing-scheme=INTERNAL_MANAGED \
+  --network=default \
+  --subnet=default \
+  --address="$IALB_IP_NAME" \
+  --ports=80 \
+  --region="$REGION" \
+  --target-http-proxy="$IALB_HTTP_PROXY" \
+  --target-http-proxy-region="$REGION"
+```
+
+Inspecione:
+
+```bash
+gcloud compute forwarding-rules describe "$IALB_FORWARDING_RULE" \
+  --region="$REGION"
+```
+
+Confirme:
+
+```text
+loadBalancingScheme
+→ INTERNAL_MANAGED
+
+IPAddress
+→ IP privado
+
+target
+→ Regional Target HTTP Proxy
+```
+
+---
+
+## Verificar a saúde dos backends
+
+```bash
+gcloud compute backend-services get-health "$IALB_BACKEND" \
+  --region="$REGION"
+```
+
+Aguarde:
+
+```text
+HEALTHY
+```
+
+---
+
+## Criar VM cliente interna
+
+```bash
+# Cria uma VM cliente na mesma VPC.
+gcloud compute instances create "$IALB_CLIENT" \
+  --zone="$IALB_CLIENT_ZONE" \
+  --machine-type=e2-micro \
+  --image-family=debian-12 \
+  --image-project=debian-cloud \
+  --network=default
+```
+
+Inspecione:
+
+```bash
+gcloud compute instances describe "$IALB_CLIENT" \
+  --zone="$IALB_CLIENT_ZONE" \
+  --format="table(name,networkInterfaces[0].networkIP,status)"
+```
+
+---
+
+## Testar o Internal Application Load Balancer
+
+```bash
+# Instala curl e acessa o frontend interno HTTP.
+gcloud compute ssh "$IALB_CLIENT" \
+  --zone="$IALB_CLIENT_ZONE" \
+  --command="sudo apt-get update -qq && sudo apt-get install -y curl >/dev/null && curl -s http://$IALB_IP"
+```
+
+Repita:
+
+```bash
+for i in {1..10}; do
+  gcloud compute ssh "$IALB_CLIENT" \
+    --zone="$IALB_CLIENT_ZONE" \
+    --command="curl -s http://$IALB_IP | grep ace-web-mig"
+done
+```
+
+Fluxo:
+
+```text
+Cliente
+   ↓ HTTP
+Internal IP
+   ↓
+Forwarding Rule
+   ↓
+Target HTTP Proxy
+   ↓
+URL Map
+   ↓
+Backend Service
+   ↓
+MIG
+```
+
+---
+
+## Comparação dos três laboratórios
+
+| Item | Lab 1 | Lab 2 | Lab 3 |
+|---|---|---|---|
+| Produto | External Application LB | Internal Passthrough Network LB | Internal Application LB |
+| Camada | L7 | L4 | L7 |
+| Alcance | External | Internal | Internal |
+| Escopo | Global | Regional | Regional |
+| Protocolo | HTTP | TCP | HTTP |
+| URL Map | Sim | Não | Sim |
+| Target HTTP Proxy | Sim | Não | Sim |
+| Proxy-only subnet | Não neste lab | Não | Sim |
+| Backend Service | Global | Regional | Regional |
+| Frontend IP | Público | Privado | Privado |
+
+Modelo para memorizar:
+
+```text
+Internal Passthrough
+→ INTERNAL
+→ L4
+→ sem proxy L7
+
+Internal Application
+→ INTERNAL_MANAGED
+→ L7
+→ Target Proxy + URL Map
+→ proxy-only subnet
+```
+
+---
+
+## Quebrar propositalmente
+
+Agora vamos quebrar **somente a comunicação dos proxies com os backends**.
+
+Remova a regra:
+
+```bash
+# Remove a regra que permite tráfego da proxy-only subnet aos backends.
+gcloud compute firewall-rules delete ace-ialb-allow-proxy \
+  --quiet
+```
+
+Aguarde alguns segundos e repita:
+
+```bash
+gcloud compute ssh "$IALB_CLIENT" \
+  --zone="$IALB_CLIENT_ZONE" \
+  --command="curl --connect-timeout 5 -i http://$IALB_IP"
+```
+
+Você poderá observar:
+
+```text
+HTTP 5xx
+ou
+falha/timeout
+```
+
+---
+
+## Troubleshooting do Internal Application Load Balancer
+
+### Sintoma
+
+```text
+Cliente alcança o frontend,
+mas a aplicação não responde corretamente.
+```
+
+### Hipótese
+
+Os proxies gerenciados podem não conseguir alcançar os backends.
+
+### Evidência
+
+Verifique a forwarding rule:
+
+```bash
+gcloud compute forwarding-rules describe "$IALB_FORWARDING_RULE" \
+  --region="$REGION"
+```
+
+Verifique o Target HTTP Proxy:
+
+```bash
+gcloud compute target-http-proxies describe "$IALB_HTTP_PROXY" \
+  --region="$REGION"
+```
+
+Verifique o URL Map:
+
+```bash
+gcloud compute url-maps describe "$IALB_URL_MAP" \
+  --region="$REGION"
+```
+
+Verifique a saúde:
+
+```bash
+gcloud compute backend-services get-health "$IALB_BACKEND" \
+  --region="$REGION"
+```
+
+Liste as regras de firewall:
+
+```bash
+gcloud compute firewall-rules list \
+  --filter="network:default"
+```
+
+Observe:
+
+```text
+ace-ialb-allow-proxy
+→ ausente
+```
+
+### Causa
+
+A proxy-only subnet perdeu permissão para acessar `tcp:80` nos backends.
+
+### Correção
+
+```bash
+gcloud compute firewall-rules create ace-ialb-allow-proxy \
+  --network=default \
+  --direction=INGRESS \
+  --action=ALLOW \
+  --rules=tcp:80 \
+  --source-ranges="$IALB_PROXY_CIDR" \
+  --target-tags=allow-health-check
+```
+
+### Reteste
+
+```bash
+gcloud compute ssh "$IALB_CLIENT" \
+  --zone="$IALB_CLIENT_ZONE" \
+  --command="curl -s http://$IALB_IP"
+```
+
+Resultado esperado:
+
+```text
+HTTP response
+```
+
+---
+
+## Cleanup do Laboratório 3
+
+Remova a forwarding rule:
+
+```bash
+gcloud compute forwarding-rules delete "$IALB_FORWARDING_RULE" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o Target HTTP Proxy:
+
+```bash
+gcloud compute target-http-proxies delete "$IALB_HTTP_PROXY" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o URL Map:
+
+```bash
+gcloud compute url-maps delete "$IALB_URL_MAP" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o Backend Service:
+
+```bash
+gcloud compute backend-services delete "$IALB_BACKEND" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o Health Check:
+
+```bash
+gcloud compute health-checks delete "$IALB_HEALTH_CHECK" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova o IP interno:
+
+```bash
+gcloud compute addresses delete "$IALB_IP_NAME" \
+  --region="$REGION" \
+  --quiet
+```
+
+Remova a VM cliente:
+
+```bash
+gcloud compute instances delete "$IALB_CLIENT" \
+  --zone="$IALB_CLIENT_ZONE" \
+  --quiet
+```
+
+Remova a regra de firewall:
+
+```bash
+gcloud compute firewall-rules delete ace-ialb-allow-proxy \
+  --quiet
+```
+
+Por último, remova a proxy-only subnet:
+
+```bash
+gcloud compute networks subnets delete "$IALB_PROXY_SUBNET" \
+  --region="$REGION" \
+  --quiet
+```
+
+> Não remova o MIG aqui. Ele continua pertencendo ao laboratório principal e será excluído no cleanup geral da aula.
+
+---
+
 # 41. Limpeza do laboratório
 
 ## Forwarding Rule
@@ -1307,7 +2616,14 @@ gcloud config configurations delete ace-lb-lab
 - [ ] Entendo Named Ports;
 - [ ] Entendo Load Balancer x Autoscaling;
 - [ ] Entendo Health Check x Autohealing;
-- [ ] Consegui acessar o Load Balancer;
+- [ ] Consegui acessar o Load Balancer externo;
+- [ ] Criei um Internal Passthrough Network Load Balancer;
+- [ ] Acessei o Internal Load Balancer por uma VM cliente;
+- [ ] Entendo por que o Internal Passthrough LB não usa URL Map nem Target HTTP Proxy;
+- [ ] Criei um Regional Internal Application Load Balancer;
+- [ ] Criei e entendi a função da proxy-only subnet;
+- [ ] Entendo por que o frontend não usa um IP da proxy-only subnet;
+- [ ] Entendo a cadeia Forwarding Rule → Target HTTP Proxy → URL Map → Backend Service;
 - [ ] Observei VMs diferentes respondendo;
 - [ ] Simulei uma falha;
 - [ ] Observei um backend `UNHEALTHY`;
