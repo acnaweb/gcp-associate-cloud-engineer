@@ -437,7 +437,7 @@ Crie `requirements.txt`:
 
 ```bash
 cat > requirements.txt <<'EOF'
-functions-framework>=3.0,<4.0
+functions-framework==3.*
 EOF
 ```
 
@@ -539,7 +539,7 @@ Crie `requirements.txt`:
 
 ```bash
 cat > requirements.txt <<'EOF'
-functions-framework>=3.0,<4.0
+functions-framework==3.*
 EOF
 ```
 
@@ -549,6 +549,67 @@ Inspecione:
 cat main.py
 cat requirements.txt
 ```
+
+## Teste local opcional antes do deploy
+
+Antes de enviar a função ao Google Cloud, você pode validar se o Functions Framework inicia corretamente na porta `8080`.
+
+Crie um ambiente virtual:
+
+```bash
+python3 -m venv .venv
+```
+
+Ative:
+
+```bash
+source .venv/bin/activate
+```
+
+Instale as dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+Inicie a função localmente:
+
+```bash
+functions-framework \
+  --target=cf_backend \
+  --port=8080
+```
+
+Em outro terminal, teste:
+
+```bash
+curl http://localhost:8080/cf-backend
+```
+
+Resultado esperado:
+
+```json
+{
+  "backend": "cf-backend",
+  "service": "Cloud Functions Gen2",
+  "path": "/cf-backend",
+  "method": "GET"
+}
+```
+
+Interrompa o Functions Framework com:
+
+```text
+Ctrl+C
+```
+
+Depois saia do ambiente virtual, se desejar:
+
+```bash
+deactivate
+```
+
+> Este teste ajuda a detectar antecipadamente problemas de `main.py`, `requirements.txt`, imports ou `entry-point` antes do deploy.
 
 ---
 
@@ -580,6 +641,75 @@ gcloud functions describe "$CF_BACKEND" \
   --gen2 \
   --region="$REGION"
 ```
+
+## Troubleshooting — Container não inicia em `PORT=8080`
+
+Se o build concluir, mas o deploy falhar com mensagem semelhante a:
+
+```text
+Container Healthcheck failed.
+The user-provided container failed to start and listen on PORT=8080.
+```
+
+isso significa que o problema ocorreu na inicialização da revisão do Cloud Run criada para a função.
+
+Primeiro confirme:
+
+```bash
+pwd
+ls -la
+cat main.py
+cat requirements.txt
+```
+
+Para este laboratório, o diretório da função deve conter na raiz:
+
+```text
+main.py
+requirements.txt
+```
+
+e `requirements.txt` deve conter:
+
+```text
+functions-framework==3.*
+```
+
+O `entry-point` usado no deploy também deve existir em `main.py`:
+
+```text
+cf_backend
+```
+
+Consulte os logs da revisão:
+
+```bash
+gcloud logging read \
+'resource.type="cloud_run_revision"
+resource.labels.service_name="cf-backend"' \
+  --project="$PROJECT_ID" \
+  --limit=50 \
+  --format="value(timestamp,severity,textPayload)"
+```
+
+Procure mensagens como:
+
+```text
+ModuleNotFoundError
+Function cf_backend not found
+erro de import
+erro de inicialização
+```
+
+Se necessário, volte ao teste local com:
+
+```bash
+functions-framework \
+  --target=cf_backend \
+  --port=8080
+```
+
+Depois de corrigir, execute novamente o deploy.
 
 ---
 
@@ -2575,6 +2705,9 @@ rm -f \
 - [ ] Criei a service account `cf-build-sa`;
 - [ ] Concedi as permissões de build necessárias;
 - [ ] Usei `--build-service-account` nos deploys das Cloud Functions Gen2;
+- [ ] Usei `functions-framework==3.*` nas funções Python;
+- [ ] Sei testar a função localmente com `functions-framework --target=... --port=8080`;
+- [ ] Sei consultar logs de `cloud_run_revision` quando o container não inicia;
 - [ ] Criei `cf-default`;
 - [ ] Entendo que `cf-default` é o backend padrão;
 - [ ] Criei `cf-backend`;
