@@ -2975,6 +2975,22 @@ No Cloud Run deste laboratório:
 - Google Cloud — Regional Internal Application Load Balancer with Cloud Run:
   https://cloud.google.com/load-balancing/docs/l7-internal/setting-up-l7-internal-serverless
 
+  > Referência principal deste laboratório. Na seção **Deploy a Cloud Run service**, o Google recomenda restringir o ingress para `internal` e, no exemplo oficial, faz o deploy com `--allow-unauthenticated`. O tráfego proveniente do Internal Application Load Balancer é considerado tráfego interno.
+
+- Google Cloud — Recomendação oficial para Cloud Run como backend serverless de Internal Application Load Balancer:
+  https://cloud.google.com/load-balancing/docs/l7-internal/setting-up-l7-internal-serverless#deploy_cloud_run
+
+  Exemplo oficial do Google:
+
+  ```bash
+  gcloud run deploy CLOUD_RUN_SERVICE_NAME \
+    --platform=managed \
+    --allow-unauthenticated \
+    --ingress=internal \
+    --region=REGION \
+    --image=IMAGE_URL
+  ```
+
 - Google Cloud — Serverless NEGs:
   https://cloud.google.com/load-balancing/docs/negs/serverless-neg-concepts
 
