@@ -1226,20 +1226,25 @@ hostRules:
 
 pathMatchers:
 - name: ${PATH_MATCHER}
-
   defaultService: projects/${PROJECT_ID}/regions/${REGION}/backendServices/${CF_DEFAULT_BS}
 
-  pathRules:
+  routeRules:
 
-  - paths:
-    - /cf-backend
-    - /cf-backend/*
+  - priority: 10
+    matchRules:
+    - prefixMatch: /cf-backend
+
     service: projects/${PROJECT_ID}/regions/${REGION}/backendServices/${CF_BACKEND_BS}
 
-  - paths:
-    - /cr-backend
-    - /cr-backend/*
+  - priority: 20
+    matchRules:
+    - prefixMatch: /cr-backend
+
     service: projects/${PROJECT_ID}/regions/${REGION}/backendServices/${CR_BACKEND_BS}
+
+    routeAction:
+      urlRewrite:
+        pathPrefixRewrite: /
 EOF
 ```
 
@@ -1364,55 +1369,75 @@ e:
 
 ---
 
-# 29. `urlRewrite` é necessário aqui?
+# 29. `urlRewrite` neste laboratório
 
-Não.
+Sim. Neste laboratório o `urlRewrite` é usado especificamente para o backend Cloud Run.
 
-Neste laboratório queremos:
-
-```text
-Cliente chama:
-GET /cr-backend
-```
-
-e o Cloud Run possui:
-
-```text
-GET /cr-backend
-```
-
-Portanto o backend deve receber o mesmo path:
+O cliente acessa:
 
 ```text
 /cr-backend
 ```
 
-Da mesma forma:
+mas o `cr-backend` implementa internamente apenas:
 
 ```text
-Cliente chama:
-GET /cf-backend
+/
 ```
 
-e `cf-backend` recebe:
+Da mesma forma, o cliente acessa:
 
 ```text
-/cf-backend
+/cr-backend/info
 ```
 
-Logo, não há necessidade de reescrever a URL.
-
-Modelo:
+enquanto o Cloud Run implementa:
 
 ```text
-Routing
-→ escolhe o backend
+/info
 ```
 
-```text
-URL Rewrite
-→ altera host e/ou path antes de enviar ao backend
+Por isso a regra:
+
+```yaml
+routeAction:
+  urlRewrite:
+    pathPrefixRewrite: /
 ```
+
+remove o prefixo correspondente a `/cr-backend` antes de encaminhar a requisição ao backend.
+
+Fluxo:
+
+```text
+GET /cr-backend
+      |
+      v
+prefixMatch: /cr-backend
+      |
+      v
+pathPrefixRewrite: /
+      |
+      v
+Cloud Run recebe GET /
+```
+
+E:
+
+```text
+GET /cr-backend/info
+      |
+      v
+prefixMatch: /cr-backend
+      |
+      v
+pathPrefixRewrite: /
+      |
+      v
+Cloud Run recebe GET /info
+```
+
+Assim, o Cloud Run permanece desacoplado do prefixo externo usado pelo Load Balancer.
 
 ---
 
