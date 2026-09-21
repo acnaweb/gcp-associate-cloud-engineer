@@ -375,6 +375,10 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${BUILD_SA_EMAIL}" \
+  --role="roles/run.builder"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${BUILD_SA_EMAIL}" \
   --role="roles/storage.objectViewer"
 ```
 
@@ -392,10 +396,11 @@ Resultado esperado:
 ```text
 roles/artifactregistry.writer
 roles/logging.logWriter
+roles/run.builder
 roles/storage.objectViewer
 ```
 
-> A service account de build é diferente da identidade de runtime da função. Neste laboratório estamos configurando explicitamente apenas a identidade usada pelo Cloud Build durante o deploy.
+> A service account de build é diferente da identidade de runtime da aplicação. Neste laboratório, `cf-build-sa` é usada pelo Cloud Build para construir tanto as Cloud Functions Gen2 quanto o Cloud Run implantado a partir de source. A identidade usada em runtime é uma configuração separada.
 
 ---
 
@@ -805,7 +810,9 @@ cat Dockerfile
 gcloud run deploy "$CR_BACKEND" \
   --source=. \
   --region="$REGION" \
-  --ingress=internal
+  --ingress=internal \
+  --no-allow-unauthenticated \
+  --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
 
 Volte:
@@ -820,6 +827,36 @@ Inspecione:
 gcloud run services describe "$CR_BACKEND" \
   --region="$REGION"
 ```
+
+O deploy acima utiliza:
+
+```text
+--build-service-account
+→ identidade usada pelo Cloud Build
+```
+
+e:
+
+```text
+--no-allow-unauthenticated
+→ não concede invocação pública para allUsers
+```
+
+Não confunda:
+
+```text
+Build Service Account
+→ identidade usada durante o build
+```
+
+com:
+
+```text
+Runtime Service Account
+→ identidade usada pela aplicação durante a execução
+```
+
+Neste laboratório estamos customizando explicitamente a identidade de **build**.
 
 ---
 
@@ -2700,8 +2737,11 @@ rm -f \
 # 64. Checklist final
 
 - [ ] Criei a service account `cf-build-sa`;
-- [ ] Concedi as permissões de build necessárias;
+- [ ] Concedi as permissões de build necessárias, incluindo `roles/run.builder`;
 - [ ] Usei `--build-service-account` nos deploys das Cloud Functions Gen2;
+- [ ] Usei `--build-service-account` no deploy `--source` do Cloud Run;
+- [ ] Mantive o Cloud Run sem invocação pública com `--no-allow-unauthenticated`;
+- [ ] Entendo Build Service Account x Runtime Service Account;
 - [ ] Usei `functions-framework==3.*` nas funções Python;
 - [ ] Sei testar a função localmente com `functions-framework --target=... --port=8080`;
 - [ ] Sei consultar logs de `cloud_run_revision` quando o container não inicia;
@@ -2783,9 +2823,23 @@ Também:
 
 ```text
 Cloud Functions Gen2
-→ build executado pelo Cloud Build
-→ pode usar uma service account dedicada
-→ neste laboratório: cf-build-sa
+      \ 
+       +--> Cloud Build --> cf-build-sa
+
+Cloud Run --source
+      /
+```
+
+Portanto:
+
+```text
+cf-build-sa
+→ identidade de build
+
+runtime service account
+→ identidade da aplicação em execução
+
+São conceitos diferentes.
 ```
 
 E:
