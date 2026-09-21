@@ -686,7 +686,147 @@ Teste novamente.
 
 ---
 
-# 20. Troubleshooting — ordem mental
+# 20. Troubleshooting 2 — quebrando o VPC Peering
+
+Agora vamos quebrar **somente o Peering**, mantendo firewall, subnets e VMs inalterados.
+
+Antes de quebrar, confirme que o Peering está ativo:
+
+```bash
+# Explicação: Lista os peerings existentes e permite verificar o estado da associação.
+gcloud compute networks peerings list
+```
+
+Estado esperado:
+
+```text
+peer-a-to-b   ACTIVE
+peer-b-to-a   ACTIVE
+```
+
+## Sintoma que vamos provocar
+
+```text
+VM A
+  |
+  X  Peering indisponível
+  |
+VM B
+```
+
+## Quebrar propositalmente
+
+Remova apenas o lado `peer-a-to-b`:
+
+```bash
+# Explicação: Remove somente o lado A → B do VPC Network Peering.
+gcloud compute networks peerings delete peer-a-to-b   --network=ace-vpc-a
+```
+
+Inspecione novamente:
+
+```bash
+# Explicação: Lista os peerings para verificar o impacto da remoção.
+gcloud compute networks peerings list
+```
+
+## Testar
+
+Execute o ping a partir da VM A sem abrir uma sessão interativa:
+
+```bash
+# Explicação: Executa o ping remotamente a partir da VM A para o IP interno da VM B.
+gcloud compute ssh vm-a   --zone=$ZONE   --command="ping -c 4 $VM_B_IP"
+```
+
+Resultado esperado:
+
+```text
+timeout
+ou
+100% packet loss
+```
+
+---
+
+## Troubleshooting da falha de Peering
+
+### Sintoma
+
+```text
+VM A não alcança VM B
+```
+
+### Hipótese
+
+O VPC Peering pode estar ausente ou inativo.
+
+### Evidência
+
+```bash
+# Explicação: Verifica os peerings configurados e seus estados.
+gcloud compute networks peerings list
+```
+
+Compare com o estado esperado:
+
+```text
+peer-a-to-b
+peer-b-to-a
+ACTIVE
+```
+
+### Causa
+
+O lado `peer-a-to-b` foi removido propositalmente.
+
+### Correção
+
+Recrie exatamente o Peering removido:
+
+```bash
+# Explicação: Recria o lado A → B do VPC Network Peering.
+gcloud compute networks peerings create peer-a-to-b   --network=ace-vpc-a   --peer-network=ace-vpc-b
+```
+
+Inspecione até que o Peering volte ao estado esperado:
+
+```bash
+gcloud compute networks peerings list
+```
+
+### Reteste
+
+```bash
+# Explicação: Repete o mesmo teste após a correção.
+gcloud compute ssh vm-a   --zone=$ZONE   --command="ping -c 4 $VM_B_IP"
+```
+
+Resultado esperado:
+
+```text
+0% packet loss
+```
+
+Agora a aula pratica duas falhas separadamente:
+
+```text
+Falha 1
+→ firewall
+
+Falha 2
+→ VPC Peering
+```
+
+Regra do laboratório:
+
+```text
+uma variável de falha por vez
+```
+
+---
+
+# 22. Troubleshooting — ordem mental
 
 Quando uma conexão não funciona:
 
@@ -714,7 +854,7 @@ Quando uma conexão não funciona:
 
 ---
 
-# 21. Comandos fundamentais de troubleshooting
+# 22. Comandos fundamentais de troubleshooting
 
 ## IPs
 
@@ -761,7 +901,7 @@ gcloud compute networks peerings list
 
 ---
 
-# 22. Connectivity Tests
+# 23. Connectivity Tests
 
 O **Connectivity Tests**, do Network Intelligence Center, ajuda a analisar o caminho entre endpoints.
 
@@ -779,7 +919,7 @@ Connectivity Tests
 
 ---
 
-# 23. Criando um Connectivity Test
+# 24. Criando um Connectivity Test
 
 Instale nginx na VM B:
 
@@ -823,7 +963,7 @@ gcloud network-management connectivity-tests describe \
 
 ---
 
-# 24. Testando HTTP de verdade
+# 25. Testando HTTP de verdade
 
 ```bash
 # Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
@@ -839,7 +979,7 @@ Você deverá receber a página padrão do nginx.
 
 ---
 
-# 25. Troubleshooting 2 — falha na porta 80
+# 26. Troubleshooting 2 — falha na porta 80
 
 Delete a regra:
 
@@ -870,7 +1010,7 @@ Firewall       bloqueando TCP:80
 
 ---
 
-# 26. Shared VPC — laboratório com Organization
+# 27. Shared VPC — laboratório com Organization
 
 > Esta seção exige uma Google Cloud Organization e pelo menos dois projetos. Contas pessoais sem Organization normalmente não conseguem executar o laboratório completo.
 
@@ -896,7 +1036,7 @@ Organization
 
 ---
 
-# 27. Habilitando um Host Project
+# 28. Habilitando um Host Project
 
 ```bash
 # Explicação: Define a variável `HOST_PROJECT_ID` usada nas próximas etapas do laboratório.
@@ -928,7 +1068,7 @@ gcloud compute shared-vpc organizations list-host-projects \
 
 ---
 
-# 28. Associando um Service Project
+# 29. Associando um Service Project
 
 ```bash
 # Explicação: Executa `gcloud compute shared-vpc associated-projects add $SERVICE_PROJECT_ID --host-project…` nesta etapa para aplicar ou inspecionar a configuração indicada.
@@ -947,7 +1087,7 @@ gcloud compute shared-vpc get-host-project \
 
 ---
 
-# 29. IAM no Shared VPC
+# 30. IAM no Shared VPC
 
 Padrão conceitual:
 
@@ -986,7 +1126,7 @@ Para o ACE:
 
 ---
 
-# 30. Pegadinha Shared VPC
+# 31. Pegadinha Shared VPC
 
 Vários projetos precisam usar uma rede corporativa central.
 
@@ -1000,7 +1140,7 @@ Não crie uma malha de Peerings quando o requisito real é centralização de re
 
 ---
 
-# 31. Cloud VPN
+# 32. Cloud VPN
 
 Cloud VPN cria túneis criptografados IPsec.
 
@@ -1018,7 +1158,7 @@ Google Cloud VPC
 
 ---
 
-# 32. HA VPN
+# 33. HA VPN
 
 Arquitetura simplificada:
 
@@ -1042,7 +1182,7 @@ Um HA VPN Gateway possui duas interfaces.
 
 ---
 
-# 33. Cloud Router
+# 34. Cloud Router
 
 Cloud Router é utilizado com roteamento dinâmico/BGP.
 
@@ -1061,7 +1201,7 @@ Google VPC
 
 ---
 
-# 34. BGP
+# 35. BGP
 
 ```text
 Border Gateway Protocol
@@ -1085,7 +1225,7 @@ Google anuncia:
 
 ---
 
-# 35. Laboratório de observação — HA VPN
+# 36. Laboratório de observação — HA VPN
 
 Crie uma VPC:
 
@@ -1126,7 +1266,7 @@ Observe as duas interfaces.
 
 ---
 
-# 36. Criando um Cloud Router
+# 37. Criando um Cloud Router
 
 ```bash
 # Explicação: Cria um Cloud Router, necessário para recursos que usam roteamento dinâmico/BGP e também como componente do Cloud NAT.
@@ -1165,7 +1305,7 @@ Ainda falta o peer.
 
 ---
 
-# 37. O que falta para completar uma HA VPN?
+# 38. O que falta para completar uma HA VPN?
 
 ```text
 Peer VPN Gateway
@@ -1200,7 +1340,7 @@ Para o ACE, entenda a função de cada componente.
 
 ---
 
-# 38. Cloud VPN x VPC Peering
+# 39. Cloud VPN x VPC Peering
 
 ## VPC Peering
 
@@ -1223,7 +1363,7 @@ Google Cloud
 
 ---
 
-# 39. Cloud Interconnect
+# 40. Cloud Interconnect
 
 Cloud Interconnect é utilizado para conectividade de alta capacidade e baixa latência entre redes externas e o Google Cloud.
 
@@ -1256,7 +1396,7 @@ Interconnect
 
 ---
 
-# 40. Dedicated Interconnect
+# 41. Dedicated Interconnect
 
 ```text
 Data Center
@@ -1282,7 +1422,7 @@ Indicado quando há requisitos como:
 
 ---
 
-# 41. Partner Interconnect
+# 42. Partner Interconnect
 
 ```text
 Data Center
@@ -1305,7 +1445,7 @@ VPC
 
 ---
 
-# 42. Dedicated x Partner Interconnect
+# 43. Dedicated x Partner Interconnect
 
 | Característica | Dedicated | Partner |
 |---|---|---|
@@ -1316,7 +1456,7 @@ VPC
 
 ---
 
-# 43. Cloud VPN x Interconnect
+# 44. Cloud VPN x Interconnect
 
 | Característica | Cloud VPN | Cloud Interconnect |
 |---|---|---|
@@ -1330,7 +1470,7 @@ VPC
 
 ---
 
-# 44. Fluxo de decisão para o ACE
+# 45. Fluxo de decisão para o ACE
 
 ```text
 Preciso compartilhar uma VPC entre projetos?
@@ -1352,7 +1492,7 @@ Preciso alta capacidade e conectividade dedicada?
 
 ---
 
-# 45. Troubleshooting — camada por camada
+# 46. Troubleshooting — camada por camada
 
 ```text
 Aplicação
@@ -1374,7 +1514,7 @@ Recurso
 
 ---
 
-# 46. Diagnóstico 1 — recurso
+# 47. Diagnóstico 1 — recurso
 
 Perguntas:
 
@@ -1391,7 +1531,7 @@ gcloud compute instances describe vm-a \
 
 ---
 
-# 47. Diagnóstico 2 — aplicação
+# 48. Diagnóstico 2 — aplicação
 
 ```bash
 # Explicação: Consulta o estado do serviço systemd indicado sem alterar sua execução.
@@ -1411,7 +1551,7 @@ Aplicação funcionando
 
 ---
 
-# 48. Diagnóstico 3 — porta
+# 49. Diagnóstico 3 — porta
 
 ```bash
 # Explicação: Executa `sudo ss -lntp` nesta etapa para aplicar ou inspecionar a configuração indicada.
@@ -1426,7 +1566,7 @@ Exemplo:
 
 ---
 
-# 49. Diagnóstico 4 — firewall
+# 50. Diagnóstico 4 — firewall
 
 ```bash
 # Explicação: Lista regras de firewall para inspecionar a política efetiva da VPC.
@@ -1444,7 +1584,7 @@ Verifique:
 
 ---
 
-# 50. Diagnóstico 5 — rotas
+# 51. Diagnóstico 5 — rotas
 
 ```bash
 # Explicação: Lista rotas efetivas/estáticas visíveis no projeto para análise de caminho de rede.
@@ -1457,7 +1597,7 @@ Pergunta:
 
 ---
 
-# 51. Diagnóstico 6 — Peering
+# 52. Diagnóstico 6 — Peering
 
 ```bash
 # Explicação: Lista peerings da VPC para verificar estado e rede pareada.
@@ -1472,7 +1612,7 @@ ACTIVE
 
 ---
 
-# 52. Diagnóstico 7 — VPN
+# 53. Diagnóstico 7 — VPN
 
 ```bash
 # Explicação: Executa `gcloud compute vpn-gateways list` nesta etapa para aplicar ou inspecionar a configuração indicada.
@@ -1503,7 +1643,7 @@ UP / DOWN
 
 ---
 
-# 53. Diagnóstico 8 — DNS
+# 54. Diagnóstico 8 — DNS
 
 Se isto funciona:
 
@@ -1535,7 +1675,7 @@ dig servidor.internal
 
 ---
 
-# 54. Exercício prático de troubleshooting
+# 55. Exercício prático de troubleshooting
 
 Cenário:
 
@@ -1573,7 +1713,7 @@ Investigue na ordem:
 
 ---
 
-# 55. Cenários estilo ACE
+# 56. Cenários estilo ACE
 
 ## Cenário 1
 
@@ -1619,7 +1759,7 @@ Peering está `ACTIVE`, as rotas existem, mas TCP 443 não funciona.
 
 ---
 
-# 56. Pegadinhas ACE
+# 57. Pegadinhas ACE
 
 ## Pegadinha 1
 
@@ -1665,7 +1805,7 @@ Peering está `ACTIVE`, as rotas existem, mas TCP 443 não funciona.
 
 ---
 
-# 57. Questões estilo ACE
+# 58. Questões estilo ACE
 
 ## Questão 1
 
@@ -1711,7 +1851,7 @@ Uma VM não consegue acessar outra. O peering está ativo e há rota para a subn
 
 ---
 
-# 58. Desafio de interpretação
+# 59. Desafio de interpretação
 
 Associe:
 
@@ -1748,7 +1888,7 @@ F -> 1
 
 ---
 
-# 59. Limpeza — Connectivity Test
+# 60. Limpeza — Connectivity Test
 
 ```bash
 # Explicação: Executa `gcloud network-management connectivity-tests delete ace-a-to-b-http --quiet` nesta etapa para aplicar ou inspecionar a configuração indicada.
@@ -1759,7 +1899,7 @@ gcloud network-management connectivity-tests delete \
 
 ---
 
-# 60. Limpeza — VPN de laboratório
+# 61. Limpeza — VPN de laboratório
 
 ```bash
 # Explicação: Executa `gcloud compute vpn-gateways delete ace-ha-vpn-gw --region=$REGION --quiet` nesta etapa para aplicar ou inspecionar a configuração indicada.
@@ -1790,7 +1930,7 @@ gcloud compute networks delete ace-vpn-vpc \
 
 ---
 
-# 61. Limpeza — Peering
+# 62. Limpeza — Peering
 
 ```bash
 # Explicação: Remove o VPC Network Peering configurado no laboratório.
@@ -1808,7 +1948,7 @@ gcloud compute networks peerings delete peer-b-to-a \
 
 ---
 
-# 62. Limpeza — VMs
+# 63. Limpeza — VMs
 
 ```bash
 # Explicação: Exclui a VM indicada e libera os recursos associados que não foram preservados.
@@ -1819,7 +1959,7 @@ gcloud compute instances delete vm-a vm-b \
 
 ---
 
-# 63. Limpeza — Firewall
+# 64. Limpeza — Firewall
 
 ```bash
 # Explicação: Remove a regra de firewall criada ou alterada para o laboratório.
@@ -1842,7 +1982,7 @@ gcloud compute firewall-rules delete \
 
 ---
 
-# 64. Limpeza — Subnets
+# 65. Limpeza — Subnets
 
 ```bash
 # Explicação: Exclui a sub-rede indicada.
@@ -1860,7 +2000,7 @@ gcloud compute networks subnets delete subnet-b \
 
 ---
 
-# 65. Limpeza — VPCs
+# 66. Limpeza — VPCs
 
 ```bash
 # Explicação: Exclui a VPC depois que os recursos dependentes foram removidos.
@@ -1876,7 +2016,7 @@ gcloud compute networks delete ace-vpc-b \
 
 ---
 
-# 66. Checklist final
+# 67. Checklist final
 
 - [ ] Entendo Shared VPC;
 - [ ] Sei identificar Host Project;
@@ -1905,7 +2045,7 @@ gcloud compute networks delete ace-vpc-b \
 
 ---
 
-# 67. O que você deve memorizar para o ACE
+# 68. O que você deve memorizar para o ACE
 
 ## Shared VPC
 

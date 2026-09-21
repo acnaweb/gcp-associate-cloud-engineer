@@ -192,27 +192,138 @@ A regra `100` é avaliada antes da `1000`.
 
 ---
 
-# 6. Targets
+# 6. Source ranges, tags e Service Accounts
 
-Uma regra pode ser aplicada a:
-
-- todas as VMs da rede;
-- VMs com determinada **network tag**;
-- VMs usando determinada **service account**.
-
-Exemplo com tag:
+Uma regra de firewall precisa responder duas perguntas:
 
 ```text
-web-server
+Quem é a origem?
+Quem é o destino/alvo da regra?
 ```
 
-A regra pode permitir:
+## 6.1 `source-ranges`
+
+Em uma regra **INGRESS**, `source-ranges` define quais faixas IP de origem podem corresponder à regra.
+
+Exemplo:
 
 ```text
-tcp:80
+Origem
+10.10.0.5
+   |
+   | pertence a 10.10.0.0/24
+   v
+Firewall ingress
+--source-ranges=10.10.0.0/24
+   |
+   v
+Destino
 ```
 
-somente para VMs que tenham essa tag.
+Modelo mental:
+
+```text
+source-ranges
+→ origem identificada por endereço IP/CIDR
+```
+
+Exemplo:
+
+```bash
+# Permite ICMP somente quando a origem estiver dentro de 10.10.0.0/24.
+gcloud compute firewall-rules create allow-icmp-from-subnet-a   --network=ace-firewall-vpc   --direction=INGRESS   --action=ALLOW   --rules=icmp   --source-ranges=10.10.0.0/24
+```
+
+> Em regras INGRESS, se você não informar uma origem mais restritiva, tome cuidado para não abrir acesso desnecessariamente.
+
+## 6.2 `target-tags`
+
+`target-tags` identifica **quais VMs de destino** recebem a regra.
+
+Exemplo:
+
+```text
+VM A
+tag=app
+   |
+   | tráfego
+   v
+VM B
+tag=web
+```
+
+Uma regra com:
+
+```text
+--target-tags=web
+```
+
+aplica-se às VMs que possuem a tag `web`.
+
+Exemplo:
+
+```bash
+# Permite TCP/80 apenas para VMs que possuem a tag web.
+gcloud compute firewall-rules create allow-http-to-web   --network=ace-firewall-vpc   --direction=INGRESS   --action=ALLOW   --rules=tcp:80   --source-ranges=10.10.0.0/24   --target-tags=web
+```
+
+## 6.3 Service Accounts em regras de firewall
+
+Também é possível identificar workloads pelas **Service Accounts associadas às VMs**.
+
+Os controles principais são:
+
+```text
+--source-service-accounts
+→ identifica VMs de origem pela Service Account
+
+--target-service-accounts
+→ identifica VMs de destino pela Service Account
+```
+
+Modelo:
+
+```text
+VM origem
+Service Account: app-client
+        |
+        | TCP 443
+        v
+Firewall
+        |
+        v
+VM destino
+Service Account: app-server
+```
+
+Exemplo conceitual em `gcloud`:
+
+```bash
+# Permite TCP/443 de VMs que usam app-client
+# para VMs que usam app-server.
+gcloud compute firewall-rules create allow-app-client-to-server   --network=ace-firewall-vpc   --direction=INGRESS   --action=ALLOW   --rules=tcp:443   --source-service-accounts="app-client@$PROJECT_ID.iam.gserviceaccount.com"   --target-service-accounts="app-server@$PROJECT_ID.iam.gserviceaccount.com"
+```
+
+Para a ACE, compare:
+
+```text
+source-ranges
+→ origem por IP/CIDR
+
+source-tags
+→ origem por network tag
+
+source-service-accounts
+→ origem pela identidade da VM
+
+target-tags
+→ destino por network tag
+
+target-service-accounts
+→ destino pela identidade da VM
+```
+
+> Tags e Service Accounts não são simplesmente combinadas em qualquer configuração. Ao usar Service Accounts como origem/alvo, valide as restrições das flags do comando.
 
 ---
 

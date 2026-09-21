@@ -126,10 +126,22 @@ UDP
 
 # 4. External x Internal
 
+A diferença principal está em **quem consegue alcançar o frontend** do Load Balancer.
+
+| Característica | External Load Balancer | Internal Load Balancer |
+|---|---|---|
+| Clientes | Internet e/ou origens externas permitidas | Clientes internos autorizados |
+| Frontend | Endereço externo | Endereço interno |
+| Uso típico | Site público, API pública | API interna, serviço entre aplicações |
+| Exposição | Fora da conectividade privada | Dentro da conectividade privada |
+
 ## External
 
 ```text
 Internet
+   |
+   v
+Frontend externo
    |
    v
 External Load Balancer
@@ -138,16 +150,33 @@ External Load Balancer
 Backends
 ```
 
+Use quando o serviço precisa receber tráfego externo.
+
 ## Internal
 
 ```text
 VM / Serviço interno
         |
         v
+Frontend interno
+        |
+        v
 Internal Load Balancer
         |
         v
 Backends privados
+```
+
+Use quando o serviço deve permanecer acessível apenas por conectividade privada autorizada.
+
+Modelo mental para a ACE:
+
+```text
+External
+→ entrada externa
+
+Internal
+→ entrada privada
 ```
 
 ---
@@ -221,9 +250,56 @@ Cliente
 
 # 7. Como pensar nos componentes
 
+## Frontend
+
+O **frontend** é o ponto de entrada usado pelo cliente para acessar o Load Balancer.
+
+Pense nele como a combinação de:
+
+```text
+IP
++
+porta
++
+protocolo
++
+forwarding rule
+```
+
+Exemplo:
+
+```text
+Cliente
+   |
+   v
+IP:porta do frontend
+   |
+   v
+Forwarding Rule
+   |
+   v
+Target Proxy
+   |
+   v
+URL Map
+   |
+   v
+Backend Service
+```
+
+Modelo mental:
+
+```text
+Frontend
+→ onde o cliente chega
+
+Backend
+→ onde a aplicação executa
+```
+
 ## Forwarding Rule
 
-É a entrada do Load Balancer.
+É um componente do frontend do Load Balancer.
 
 Define principalmente:
 
