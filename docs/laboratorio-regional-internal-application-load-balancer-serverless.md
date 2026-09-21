@@ -460,7 +460,6 @@ gcloud functions deploy "$CF_DEFAULT" \
   --source=. \
   --entry-point=cf_default \
   --trigger-http \
-  --allow-unauthenticated \
   --ingress-settings=internal-only \
   --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
@@ -623,7 +622,6 @@ gcloud functions deploy "$CF_BACKEND" \
   --source=. \
   --entry-point=cf_backend \
   --trigger-http \
-  --allow-unauthenticated \
   --ingress-settings=internal-only \
   --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
@@ -807,7 +805,6 @@ cat Dockerfile
 gcloud run deploy "$CR_BACKEND" \
   --source=. \
   --region="$REGION" \
-  --allow-unauthenticated \
   --ingress=internal
 ```
 
@@ -2708,6 +2705,7 @@ rm -f \
 - [ ] Usei `functions-framework==3.*` nas funções Python;
 - [ ] Sei testar a função localmente com `functions-framework --target=... --port=8080`;
 - [ ] Sei consultar logs de `cloud_run_revision` quando o container não inicia;
+- [ ] Mantive os serviços sem habilitar invocação pública direta no deploy;
 - [ ] Criei `cf-default`;
 - [ ] Entendo que `cf-default` é o backend padrão;
 - [ ] Criei `cf-backend`;
