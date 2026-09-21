@@ -1120,29 +1120,16 @@ Porém firewall continua sendo aplicado.
 
 # 28. Testando ICMP antes da regra
 
-Entre na VM dos EUA:
+Execute o teste diretamente da VM dos EUA para a VM do Brasil, sem abrir uma sessão SSH interativa:
 
 ```bash
-# Explicação: Abre uma sessão SSH na VM indicada; flags adicionais podem executar um comando remotamente.
+# Explicação: Abre uma sessão SSH na VM indicada e executa o ping remotamente.
 gcloud compute ssh vm-us \
-  --zone=$ZONE_US
-```
-
-Teste:
-
-```bash
-# Explicação: Envia pacotes ICMP para testar alcance IP entre origem e destino.
-ping -c 4 IP_INTERNO_VM_BR
+  --zone=$ZONE_US \
+  --command="ping -c 4 $VM_BR_IP"
 ```
 
 Pode falhar porque ainda não liberamos ICMP.
-
-Saia:
-
-```bash
-# Explicação: Encerra a sessão atual do shell/SSH e retorna ao terminal anterior.
-exit
-```
 
 ---
 
