@@ -341,7 +341,9 @@ VM 2 -> HTTP :80 -> OK
 
 ---
 
-# 8. Laboratório — visão geral
+# Laboratório 1 — Global External Application Load Balancer
+
+## Visão geral do Laboratório 1
 
 Vamos criar:
 
@@ -1581,36 +1583,6 @@ Regional MIG
 
 ---
 
-## Comparação prática dos dois laboratórios
-
-| Item | Laboratório 1 | Laboratório 2 |
-|---|---|---|
-| Tipo | Application Load Balancer | Passthrough Network Load Balancer |
-| Alcance | External | Internal |
-| Escopo | Global | Regional |
-| Protocolo de frontend | HTTP | TCP |
-| IP | Público | Privado |
-| Target Proxy | Sim | Não |
-| URL Map | Sim | Não |
-| Backend Service | Global | Regional |
-| Health Check | Global | Regional |
-| Backend | Regional MIG | Mesmo Regional MIG |
-
-Para a ACE:
-
-```text
-Application Load Balancer
-→ entende HTTP
-→ pode usar URL Map
-
-Passthrough Network Load Balancer
-→ camada 4
-→ não usa URL Map
-→ não usa Target HTTP Proxy
-```
-
----
-
 ## Quebrar propositalmente
 
 Agora vamos quebrar **somente o firewall de tráfego do cliente**.
@@ -2268,38 +2240,6 @@ MIG
 
 ---
 
-## Comparação dos três laboratórios
-
-| Item | Lab 1 | Lab 2 | Lab 3 |
-|---|---|---|---|
-| Produto | External Application LB | Internal Passthrough Network LB | Internal Application LB |
-| Camada | L7 | L4 | L7 |
-| Alcance | External | Internal | Internal |
-| Escopo | Global | Regional | Regional |
-| Protocolo | HTTP | TCP | HTTP |
-| URL Map | Sim | Não | Sim |
-| Target HTTP Proxy | Sim | Não | Sim |
-| Proxy-only subnet | Não neste lab | Não | Sim |
-| Backend Service | Global | Regional | Regional |
-| Frontend IP | Público | Privado | Privado |
-
-Modelo para memorizar:
-
-```text
-Internal Passthrough
-→ INTERNAL
-→ L4
-→ sem proxy L7
-
-Internal Application
-→ INTERNAL_MANAGED
-→ L7
-→ Target Proxy + URL Map
-→ proxy-only subnet
-```
-
----
-
 ## Quebrar propositalmente
 
 Agora vamos quebrar **somente a comunicação dos proxies com os backends**.
@@ -2495,6 +2435,73 @@ gcloud compute networks subnets delete "$IALB_PROXY_SUBNET" \
 > Não remova o MIG aqui. Ele continua pertencendo ao laboratório principal e será excluído no cleanup geral da aula.
 
 ---
+
+# Comparação prática dos três laboratórios
+
+Depois de concluir os três laboratórios, compare as arquiteturas lado a lado.
+
+| Item | Laboratório 1 | Laboratório 2 | Laboratório 3 |
+|---|---|---|---|
+| Produto | Global External Application Load Balancer | Internal Passthrough Network Load Balancer | Regional Internal Application Load Balancer |
+| Camada | L7 | L4 | L7 |
+| Alcance | External | Internal | Internal |
+| Escopo | Global | Regional | Regional |
+| Protocolo do frontend | HTTP | TCP | HTTP |
+| Frontend IP | Público | Privado | Privado |
+| Load balancing scheme | `EXTERNAL_MANAGED` / externo gerenciado | `INTERNAL` | `INTERNAL_MANAGED` |
+| Target HTTP Proxy | Sim | Não | Sim |
+| URL Map | Sim | Não | Sim |
+| Proxy-only subnet | Não neste laboratório | Não | Sim |
+| Backend Service | Global | Regional | Regional |
+| Health Check | Global | Regional | Regional |
+| Backend | Regional MIG | Mesmo Regional MIG | Mesmo Regional MIG |
+
+## Modelo mental
+
+```text
+Laboratório 1
+Global External Application Load Balancer
+→ L7
+→ externo
+→ HTTP
+→ Target HTTP Proxy
+→ URL Map
+```
+
+```text
+Laboratório 2
+Internal Passthrough Network Load Balancer
+→ L4
+→ interno
+→ TCP
+→ sem Target HTTP Proxy
+→ sem URL Map
+```
+
+```text
+Laboratório 3
+Regional Internal Application Load Balancer
+→ L7
+→ interno
+→ HTTP
+→ Target HTTP Proxy
+→ URL Map
+→ proxy-only subnet
+```
+
+## Escolha conceitual
+
+```text
+Precisa publicar HTTP/HTTPS externamente?
+→ External Application Load Balancer
+
+Precisa distribuir TCP/UDP internamente em camada 4?
+→ Internal Passthrough Network Load Balancer
+
+Precisa rotear HTTP/HTTPS internamente em camada 7?
+→ Internal Application Load Balancer
+```
+
 
 # 41. Limpeza do laboratório
 
