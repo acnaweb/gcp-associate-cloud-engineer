@@ -165,7 +165,15 @@ Ao criar uma VPC no Google Cloud, você pode encontrar dois modelos principais.
 
 ## Auto Mode
 
-O Google cria subnets automaticamente em regiões suportadas.
+Em **auto mode**, o Google Cloud cria automaticamente uma subnet IPv4 em cada região.
+
+As subnets automáticas usam faixas predefinidas dentro de:
+
+```text
+10.128.0.0/9
+```
+
+À medida que novas regiões do Google Cloud surgem, uma nova subnet pode ser adicionada automaticamente à VPC auto mode.
 
 Exemplo conceitual:
 
@@ -178,11 +186,25 @@ auto-vpc
    +--> ...
 ```
 
-É simples para começar.
+Vantagem:
+
+```text
+menos configuração inicial
+```
+
+Desvantagens para ambientes corporativos:
+
+```text
+menos controle sobre o plano de endereçamento
+novas regiões podem ganhar subnets automaticamente
+maior risco de conflito com redes conectadas
+```
 
 ---
 
 ## Custom Mode
+
+Em **custom mode**, nenhuma subnet é criada automaticamente.
 
 Você decide:
 
@@ -207,6 +229,34 @@ custom-vpc
 ```
 
 Para ambientes corporativos, **custom mode** oferece maior controle.
+
+### Conversão
+
+É possível converter:
+
+```text
+Auto Mode
+   ↓
+Custom Mode
+```
+
+Mas a conversão é de mão única:
+
+```text
+Custom Mode
+   ✕
+Auto Mode
+```
+
+### Resumo para prova
+
+```text
+Auto Mode
+→ subnets criadas automaticamente
+
+Custom Mode
+→ você controla regiões e CIDRs
+```
 
 Neste laboratório utilizaremos custom mode.
 
@@ -323,6 +373,125 @@ Exemplo:
 ```text
 /24
 ```
+
+## 8.1 Como calcular uma faixa básica
+
+Use:
+
+```text
+quantidade total de endereços
+=
+2^(32 - prefixo)
+```
+
+### Exemplo 1 — `/24`
+
+```text
+10.10.0.0/24
+```
+
+Cálculo:
+
+```text
+32 - 24 = 8 bits
+
+2^8 = 256 endereços
+```
+
+Faixa total:
+
+```text
+10.10.0.0
+até
+10.10.0.255
+```
+
+No intervalo IPv4 primário de uma subnet, o Google Cloud reserva quatro endereços:
+
+```text
+10.10.0.0
+→ endereço de rede
+
+10.10.0.1
+→ gateway virtual
+
+10.10.0.254
+→ reservado pelo Google Cloud
+
+10.10.0.255
+→ último endereço / broadcast
+```
+
+Portanto, endereços utilizáveis por recursos nesse exemplo:
+
+```text
+10.10.0.2
+até
+10.10.0.253
+```
+
+Quantidade utilizável:
+
+```text
+256 - 4 = 252
+```
+
+### Exemplo 2 — `/28`
+
+```text
+10.10.1.0/28
+```
+
+Cálculo:
+
+```text
+32 - 28 = 4 bits
+
+2^4 = 16 endereços
+```
+
+Faixa total:
+
+```text
+10.10.1.0
+até
+10.10.1.15
+```
+
+Reservados:
+
+```text
+10.10.1.0
+10.10.1.1
+10.10.1.14
+10.10.1.15
+```
+
+Utilizáveis:
+
+```text
+10.10.1.2
+até
+10.10.1.13
+```
+
+Quantidade utilizável:
+
+```text
+16 - 4 = 12
+```
+
+## 8.2 Regra rápida para a ACE
+
+```text
+Total IPv4
+= 2^(32-prefixo)
+
+Primary subnet range no Google Cloud
+= total - 4 endereços reservados
+```
+
+> Os quatro endereços reservados se aplicam ao intervalo IPv4 **primário** da subnet. Intervalos IPv4 secundários não usam esse mesmo conjunto de quatro endereços reservados.
 
 ---
 
@@ -444,44 +613,87 @@ O IP externo pode permitir comunicação com a internet, dependendo das regras e
 
 # 13. IP efêmero x estático
 
+A classificação:
+
+```text
+interno x externo
+```
+
+é diferente de:
+
+```text
+efêmero x estático
+```
+
+Ou seja:
+
+```text
+IP interno
+→ pode ser efêmero ou estático
+
+IP externo
+→ pode ser efêmero ou estático
+```
+
 ## Efêmero
 
-Um IP externo criado automaticamente pode ser efêmero.
+Um endereço efêmero é atribuído sem reserva explícita.
 
-Conceito:
+Modelo:
 
 ```text
 recurso
    |
    v
-IP temporário
+IP efêmero
 ```
 
-Ele não deve ser tratado como um endereço permanente.
+Em geral, esse endereço pode ser liberado quando o recurso associado é interrompido ou excluído.
 
----
+Portanto:
+
+```text
+efêmero
+→ não deve ser tratado como endereço permanente
+```
 
 ## Estático
 
-Pode ser reservado.
+Um endereço estático é reservado no projeto.
 
-Exemplo:
+Modelo:
 
 ```text
-IP estático
-   |
-   v
-34.x.x.x
+Project
+  |
+  +--> endereço reservado
+         |
+         v
+       recurso
 ```
 
-É útil quando um endereço precisa permanecer estável.
+A reserva mantém o endereço associado ao projeto até que ele seja explicitamente liberado.
 
-Exemplos:
+Exemplos de uso:
 
-- Load Balancer;
 - DNS;
 - allowlist;
-- endpoint externo.
+- endpoints que precisam manter endereço;
+- Load Balancers;
+- VMs com requisito de IP estável.
+
+### Matriz mental
+
+| Tipo | Efêmero | Estático |
+|---|---|---|
+| Interno | possível | possível |
+| Externo | possível | possível |
+
+Nesta aula, o laboratório praticará especificamente um:
+
+```text
+IP externo estático regional
+```
 
 ---
 
