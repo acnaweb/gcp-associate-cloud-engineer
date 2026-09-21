@@ -278,6 +278,10 @@ export CF_DEFAULT=cf-default
 export CF_BACKEND=cf-backend
 export CR_BACKEND=cr-backend
 
+# Service account dedicada aos builds das Cloud Functions Gen2.
+export BUILD_SA=cf-build-sa
+export BUILD_SA_EMAIL="${BUILD_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
+
 export CF_DEFAULT_NEG=cf-default-neg
 export CF_BACKEND_NEG=cf-backend-neg
 export CR_BACKEND_NEG=cr-backend-neg
@@ -308,11 +312,94 @@ echo "$REGION"
 echo "$CF_DEFAULT"
 echo "$CF_BACKEND"
 echo "$CR_BACKEND"
+echo "$BUILD_SA_EMAIL"
 ```
 
 ---
 
-# 7. Criando `cf-default`
+# 9. Criando a service account de build
+
+Em projetos recentes, o Cloud Build pode utilizar a **Compute Engine default service account** durante o deploy de Cloud Functions Gen2.
+
+Para evitar depender dessa conta default e tornar o laboratório mais previsível, criaremos uma service account dedicada:
+
+```text
+cf-build-sa
+```
+
+Modelo:
+
+```text
+gcloud functions deploy
+        |
+        v
+Cloud Build
+        |
+        v
+cf-build-sa
+        |
+        +--> lê o source
+        |
+        +--> grava logs
+        |
+        +--> grava artefatos/imagens
+```
+
+Crie:
+
+```bash
+gcloud iam service-accounts create "$BUILD_SA" \
+  --display-name="Cloud Functions Build Service Account"
+```
+
+Inspecione:
+
+```bash
+gcloud iam service-accounts describe "$BUILD_SA_EMAIL"
+```
+
+---
+
+# 10. Concedendo permissões à service account de build
+
+Conceda as permissões necessárias para o laboratório:
+
+```bash
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${BUILD_SA_EMAIL}" \
+  --role="roles/logging.logWriter"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${BUILD_SA_EMAIL}" \
+  --role="roles/artifactregistry.writer"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${BUILD_SA_EMAIL}" \
+  --role="roles/storage.objectViewer"
+```
+
+Verifique:
+
+```bash
+gcloud projects get-iam-policy "$PROJECT_ID" \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:${BUILD_SA_EMAIL}" \
+  --format="table(bindings.role)"
+```
+
+Resultado esperado:
+
+```text
+roles/artifactregistry.writer
+roles/logging.logWriter
+roles/storage.objectViewer
+```
+
+> A service account de build é diferente da identidade de runtime da função. Neste laboratório estamos configurando explicitamente apenas a identidade usada pelo Cloud Build durante o deploy.
+
+---
+
+# 11. Criando `cf-default`
 
 Crie o diretório:
 
@@ -363,7 +450,7 @@ cat requirements.txt
 
 ---
 
-# 8. Deploy de `cf-default`
+# 10. Deploy de `cf-default`
 
 ```bash
 gcloud functions deploy "$CF_DEFAULT" \
@@ -374,7 +461,8 @@ gcloud functions deploy "$CF_DEFAULT" \
   --entry-point=cf_default \
   --trigger-http \
   --allow-unauthenticated \
-  --ingress-settings=internal-only
+  --ingress-settings=internal-only \
+  --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
 
 Volte:
@@ -391,9 +479,32 @@ gcloud functions describe "$CF_DEFAULT" \
   --region="$REGION"
 ```
 
+Se o deploy falhar na etapa de build, inspecione o build mais recente:
+
+```bash
+gcloud builds list \
+  --region="$REGION" \
+  --limit=1
+```
+
+Depois confirme qual service account foi usada:
+
+```bash
+gcloud builds describe BUILD_ID \
+  --region="$REGION" \
+  --format="yaml(serviceAccount,status)"
+```
+
+O esperado é:
+
+```text
+serviceAccount:
+projects/PROJECT_ID/serviceAccounts/cf-build-sa@PROJECT_ID.iam.gserviceaccount.com
+```
+
 ---
 
-# 9. Criando `cf-backend`
+# 11. Criando `cf-backend`
 
 ```bash
 mkdir -p cf-backend
@@ -441,7 +552,7 @@ cat requirements.txt
 
 ---
 
-# 10. Deploy de `cf-backend`
+# 12. Deploy de `cf-backend`
 
 ```bash
 gcloud functions deploy "$CF_BACKEND" \
@@ -452,7 +563,8 @@ gcloud functions deploy "$CF_BACKEND" \
   --entry-point=cf_backend \
   --trigger-http \
   --allow-unauthenticated \
-  --ingress-settings=internal-only
+  --ingress-settings=internal-only \
+  --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
 
 Volte:
@@ -471,7 +583,7 @@ gcloud functions describe "$CF_BACKEND" \
 
 ---
 
-# 11. Criando `cr-backend`
+# 13. Criando `cr-backend`
 
 ```bash
 mkdir -p cr-backend
@@ -559,7 +671,7 @@ cat Dockerfile
 
 ---
 
-# 12. Deploy de `cr-backend`
+# 14. Deploy de `cr-backend`
 
 ```bash
 gcloud run deploy "$CR_BACKEND" \
@@ -584,7 +696,7 @@ gcloud run services describe "$CR_BACKEND" \
 
 ---
 
-# 13. Aplicações criadas
+# 15. Aplicações criadas
 
 Temos:
 
@@ -608,7 +720,7 @@ cr-backend
 
 ---
 
-# 14. Criando a proxy-only subnet
+# 16. Criando a proxy-only subnet
 
 Regional Internal Application Load Balancers usam proxies gerenciados pelo Google.
 
@@ -654,7 +766,7 @@ Frontend IP
 
 ---
 
-# 15. Criando o Serverless NEG de `cf-default`
+# 17. Criando o Serverless NEG de `cf-default`
 
 Cloud Functions Gen2 executa sobre a infraestrutura do Cloud Run e pode ser utilizada como backend por meio de Serverless NEG.
 
@@ -674,7 +786,7 @@ gcloud compute network-endpoint-groups describe "$CF_DEFAULT_NEG" \
 
 ---
 
-# 16. Criando o Serverless NEG de `cf-backend`
+# 18. Criando o Serverless NEG de `cf-backend`
 
 ```bash
 gcloud compute network-endpoint-groups create "$CF_BACKEND_NEG" \
@@ -692,7 +804,7 @@ gcloud compute network-endpoint-groups describe "$CF_BACKEND_NEG" \
 
 ---
 
-# 17. Criando o Serverless NEG de `cr-backend`
+# 19. Criando o Serverless NEG de `cr-backend`
 
 ```bash
 gcloud compute network-endpoint-groups create "$CR_BACKEND_NEG" \
@@ -710,7 +822,7 @@ gcloud compute network-endpoint-groups describe "$CR_BACKEND_NEG" \
 
 ---
 
-# 18. Listando os Serverless NEGs
+# 20. Listando os Serverless NEGs
 
 ```bash
 gcloud compute network-endpoint-groups list \
@@ -742,7 +854,7 @@ cr-backend
 
 ---
 
-# 19. Criando Backend Service de `cf-default`
+# 21. Criando Backend Service de `cf-default`
 
 ```bash
 gcloud compute backend-services create "$CF_DEFAULT_BS" \
@@ -769,7 +881,7 @@ gcloud compute backend-services describe "$CF_DEFAULT_BS" \
 
 ---
 
-# 20. Criando Backend Service de `cf-backend`
+# 22. Criando Backend Service de `cf-backend`
 
 ```bash
 gcloud compute backend-services create "$CF_BACKEND_BS" \
@@ -796,7 +908,7 @@ gcloud compute backend-services describe "$CF_BACKEND_BS" \
 
 ---
 
-# 21. Criando Backend Service de `cr-backend`
+# 23. Criando Backend Service de `cr-backend`
 
 ```bash
 gcloud compute backend-services create "$CR_BACKEND_BS" \
@@ -823,7 +935,7 @@ gcloud compute backend-services describe "$CR_BACKEND_BS" \
 
 ---
 
-# 22. Health Check e firewall
+# 24. Health Check e firewall
 
 Observe que não criamos:
 
@@ -864,7 +976,7 @@ Cloud Run / Cloud Functions Gen2
 
 ---
 
-# 23. Criando o URL Map base
+# 25. Criando o URL Map base
 
 O backend padrão será:
 
@@ -898,7 +1010,7 @@ gcloud compute url-maps describe "$URL_MAP" \
 
 ---
 
-# 24. Configurando o roteamento com YAML
+# 26. Configurando o roteamento com YAML
 
 Em vez de adicionar as regras de path de forma imperativa, vamos declarar o estado completo do URL Map em YAML.
 
@@ -921,7 +1033,7 @@ qualquer outro path
 
 ---
 
-# 25. Criando `url-map.yaml`
+# 27. Criando `url-map.yaml`
 
 ```bash
 cat > url-map.yaml <<EOF
@@ -961,7 +1073,7 @@ cat url-map.yaml
 
 ---
 
-# 26. Entendendo o YAML
+# 28. Entendendo o YAML
 
 ## `defaultService`
 
@@ -1043,7 +1155,7 @@ Resultado:
 
 ---
 
-# 27. `urlRewrite` é necessário aqui?
+# 29. `urlRewrite` é necessário aqui?
 
 Não.
 
@@ -1095,7 +1207,7 @@ URL Rewrite
 
 ---
 
-# 28. Quando usar `routeAction.urlRewrite`?
+# 30. Quando usar `routeAction.urlRewrite`?
 
 Imagine que o cliente deva acessar:
 
@@ -1200,7 +1312,7 @@ porque queremos apenas roteamento simples.
 
 ---
 
-# 29. Aplicando o URL Map com `gcloud import`
+# 31. Aplicando o URL Map com `gcloud import`
 
 Aplique:
 
@@ -1225,7 +1337,7 @@ Regional URL Map
 
 ---
 
-# 30. Inspecionando a configuração aplicada
+# 32. Inspecionando a configuração aplicada
 
 ```bash
 gcloud compute url-maps describe "$URL_MAP" \
@@ -1251,7 +1363,7 @@ defaultService
 
 ---
 
-# 31. Exportando o URL Map
+# 33. Exportando o URL Map
 
 Exporte:
 
@@ -1289,7 +1401,7 @@ comparação entre ambientes
 
 ---
 
-# 32. Criando o Target HTTP Proxy regional
+# 34. Criando o Target HTTP Proxy regional
 
 ```bash
 gcloud compute target-http-proxies create "$HTTP_PROXY" \
@@ -1306,7 +1418,7 @@ gcloud compute target-http-proxies describe "$HTTP_PROXY" \
 
 ---
 
-# 33. Reservando o IP interno
+# 35. Reservando o IP interno
 
 O IP do frontend deve vir de uma subnet normal.
 
@@ -1348,7 +1460,7 @@ Proxy-only subnet
 
 ---
 
-# 34. Criando a Forwarding Rule
+# 36. Criando a Forwarding Rule
 
 ```bash
 gcloud compute forwarding-rules create "$FORWARDING_RULE" \
@@ -1378,7 +1490,7 @@ loadBalancingScheme
 
 ---
 
-# 35. Arquitetura construída
+# 37. Arquitetura construída
 
 ```text
                            VM CLIENTE
@@ -1423,7 +1535,7 @@ loadBalancingScheme
 
 ---
 
-# 36. Criando uma VM cliente
+# 38. Criando uma VM cliente
 
 Como o frontend é interno, teste a partir de dentro da VPC.
 
@@ -1449,7 +1561,7 @@ gcloud compute instances describe "$CLIENT" \
 
 ---
 
-# 37. Permitindo SSH somente via IAP
+# 39. Permitindo SSH somente via IAP
 
 Evite:
 
@@ -1479,7 +1591,7 @@ gcloud compute firewall-rules describe \
 
 ---
 
-# 38. Testando o backend default
+# 40. Testando o backend default
 
 ```bash
 gcloud compute ssh "$CLIENT" \
@@ -1517,7 +1629,7 @@ cf-default
 
 ---
 
-# 39. Testando outro path sem regra
+# 41. Testando outro path sem regra
 
 ```bash
 gcloud compute ssh "$CLIENT" \
@@ -1536,7 +1648,7 @@ Isso comprova o funcionamento do backend default.
 
 ---
 
-# 40. Testando `/cf-backend`
+# 42. Testando `/cf-backend`
 
 ```bash
 gcloud compute ssh "$CLIENT" \
@@ -1576,7 +1688,7 @@ cf-backend
 
 ---
 
-# 41. Testando `/cr-backend`
+# 43. Testando `/cr-backend`
 
 ```bash
 gcloud compute ssh "$CLIENT" \
@@ -1597,7 +1709,7 @@ Resultado esperado:
 
 ---
 
-# 42. Teste completo
+# 44. Teste completo
 
 ```bash
 for PATH in / /teste /cf-backend /cr-backend; do
@@ -1639,7 +1751,7 @@ Resultado conceitual:
 
 ---
 
-# 43. Tabela de roteamento
+# 45. Tabela de roteamento
 
 | Request | Regra encontrada? | Backend |
 |---|---|---|
@@ -1653,7 +1765,7 @@ Resultado conceitual:
 
 ---
 
-# 44. Investigando a arquitetura
+# 46. Investigando a arquitetura
 
 Forwarding Rule:
 
@@ -1706,7 +1818,7 @@ gcloud run services list \
 
 ---
 
-# 45. Quebrar propositalmente usando YAML
+# 47. Quebrar propositalmente usando YAML
 
 O estado correto é:
 
@@ -1776,7 +1888,7 @@ quando deveria ser:
 
 ---
 
-# 46. Importando a configuração incorreta
+# 48. Importando a configuração incorreta
 
 ```bash
 gcloud compute url-maps import "$URL_MAP" \
@@ -1794,7 +1906,7 @@ gcloud compute url-maps describe "$URL_MAP" \
 
 ---
 
-# 47. Testando a falha
+# 49. Testando a falha
 
 ```bash
 gcloud compute ssh "$CLIENT" \
@@ -1827,7 +1939,7 @@ roteamento L7
 
 ---
 
-# 48. Troubleshooting
+# 50. Troubleshooting
 
 Temos:
 
@@ -1884,7 +1996,7 @@ URL Map / Path Rule
 
 ---
 
-# 49. Exportando o estado atual
+# 51. Exportando o estado atual
 
 ```bash
 gcloud compute url-maps export "$URL_MAP" \
@@ -1913,7 +2025,7 @@ Você deverá identificar:
 
 ---
 
-# 50. Comparando arquivos
+# 52. Comparando arquivos
 
 Temos:
 
@@ -1937,7 +2049,7 @@ O arquivo exportado pelo Google pode conter campos adicionais, mas a comparaçã
 
 ---
 
-# 51. Diagnóstico
+# 53. Diagnóstico
 
 ```text
 Sintoma
@@ -1970,7 +2082,7 @@ Path Rule incorreta
 
 ---
 
-# 52. Corrigindo
+# 54. Corrigindo
 
 O arquivo original:
 
@@ -1991,7 +2103,7 @@ gcloud compute url-maps import "$URL_MAP" \
 
 ---
 
-# 53. Inspecionando após a correção
+# 55. Inspecionando após a correção
 
 ```bash
 gcloud compute url-maps export "$URL_MAP" \
@@ -2013,7 +2125,7 @@ cr-backend-backend-service
 
 ---
 
-# 54. Reteste
+# 56. Reteste
 
 ```bash
 gcloud compute ssh "$CLIENT" \
@@ -2049,7 +2161,7 @@ done
 
 ---
 
-# 55. Fluxo declarativo aprendido
+# 57. Fluxo declarativo aprendido
 
 ```text
 Criar recursos
@@ -2095,7 +2207,7 @@ YAML
 
 ---
 
-# 56. Backend Service x Serverless NEG
+# 58. Backend Service x Serverless NEG
 
 Não confunda:
 
@@ -2129,7 +2241,7 @@ cr-backend
 
 ---
 
-# 57. Comparando os três backends
+# 59. Comparando os três backends
 
 | Item | `cf-default` | `cf-backend` | `cr-backend` |
 |---|---|---|---|
@@ -2143,7 +2255,7 @@ cr-backend
 
 ---
 
-# 58. Comparação com backend baseado em MIG
+# 60. Comparação com backend baseado em MIG
 
 | Característica | MIG | Serverless NEG |
 |---|---|---|
@@ -2158,7 +2270,7 @@ cr-backend
 
 ---
 
-# 59. Questões estilo ACE
+# 61. Questões estilo ACE
 
 ## Questão 1
 
@@ -2275,7 +2387,7 @@ Nesse caso pode-se usar:
 
 ---
 
-# 60. Exercício de investigação
+# 62. Exercício de investigação
 
 Usando somente `gcloud`, encontre:
 
@@ -2297,7 +2409,7 @@ Usando somente `gcloud`, encontre:
 
 ---
 
-# 61. Cleanup
+# 63. Cleanup
 
 A ordem é importante porque existem dependências entre os recursos.
 
@@ -2423,6 +2535,15 @@ gcloud run services delete "$CR_BACKEND" \
   --quiet
 ```
 
+## Service account de build
+
+Remova a service account dedicada após excluir as funções:
+
+```bash
+gcloud iam service-accounts delete "$BUILD_SA_EMAIL" \
+  --quiet
+```
+
 ## Proxy-only subnet
 
 ```bash
@@ -2449,8 +2570,11 @@ rm -f \
 
 ---
 
-# 62. Checklist final
+# 64. Checklist final
 
+- [ ] Criei a service account `cf-build-sa`;
+- [ ] Concedi as permissões de build necessárias;
+- [ ] Usei `--build-service-account` nos deploys das Cloud Functions Gen2;
 - [ ] Criei `cf-default`;
 - [ ] Entendo que `cf-default` é o backend padrão;
 - [ ] Criei `cf-backend`;
@@ -2483,7 +2607,7 @@ rm -f \
 
 ---
 
-# 63. O que memorizar para o ACE
+# 65. O que memorizar para o ACE
 
 ```text
 Forwarding Rule
@@ -2524,6 +2648,15 @@ Path sem regra
 → Default Backend
 ```
 
+Também:
+
+```text
+Cloud Functions Gen2
+→ build executado pelo Cloud Build
+→ pode usar uma service account dedicada
+→ neste laboratório: cf-build-sa
+```
+
 E:
 
 ```text
@@ -2538,7 +2671,7 @@ URL Rewrite
 
 ---
 
-# 64. Referências oficiais
+# 66. Referências oficiais
 
 - Google Cloud — Regional Internal Application Load Balancer with Cloud Run:
   https://cloud.google.com/load-balancing/docs/l7-internal/setting-up-l7-internal-serverless
