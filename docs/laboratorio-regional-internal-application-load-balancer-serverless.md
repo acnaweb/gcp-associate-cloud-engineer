@@ -465,6 +465,7 @@ gcloud functions deploy "$CF_DEFAULT" \
   --source=. \
   --entry-point=cf_default \
   --trigger-http \
+  --allow-unauthenticated \
   --ingress-settings=internal-only \
   --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
@@ -627,6 +628,7 @@ gcloud functions deploy "$CF_BACKEND" \
   --source=. \
   --entry-point=cf_backend \
   --trigger-http \
+  --allow-unauthenticated \
   --ingress-settings=internal-only \
   --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
@@ -811,7 +813,7 @@ gcloud run deploy "$CR_BACKEND" \
   --source=. \
   --region="$REGION" \
   --ingress=internal \
-  --no-allow-unauthenticated \
+  --allow-unauthenticated \
   --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}"
 ```
 
@@ -838,8 +840,22 @@ O deploy acima utiliza:
 e:
 
 ```text
---no-allow-unauthenticated
-→ não concede invocação pública para allUsers
+--allow-unauthenticated
+→ permite invocação sem token IAM
+```
+
+A proteção de rede continua sendo feita por:
+
+```text
+--ingress=internal
+```
+
+Portanto:
+
+```text
+não autenticado
+≠
+publicamente exposto à internet
 ```
 
 Não confunda:
@@ -2739,13 +2755,14 @@ rm -f \
 - [ ] Criei a service account `cf-build-sa`;
 - [ ] Concedi as permissões de build necessárias, incluindo `roles/run.builder`;
 - [ ] Usei `--build-service-account` nos deploys das Cloud Functions Gen2;
+- [ ] Usei `--allow-unauthenticated` nas Cloud Functions Gen2 com `--ingress-settings=internal-only`;
 - [ ] Usei `--build-service-account` no deploy `--source` do Cloud Run;
-- [ ] Mantive o Cloud Run sem invocação pública com `--no-allow-unauthenticated`;
+- [ ] Usei `--allow-unauthenticated` no Cloud Run com `--ingress=internal`;
 - [ ] Entendo Build Service Account x Runtime Service Account;
 - [ ] Usei `functions-framework==3.*` nas funções Python;
 - [ ] Sei testar a função localmente com `functions-framework --target=... --port=8080`;
 - [ ] Sei consultar logs de `cloud_run_revision` quando o container não inicia;
-- [ ] Mantive os serviços sem habilitar invocação pública direta no deploy;
+- [ ] Usei `--allow-unauthenticated` mantendo o ingress restrito ao tráfego interno;
 - [ ] Criei `cf-default`;
 - [ ] Entendo que `cf-default` é o backend padrão;
 - [ ] Criei `cf-backend`;
@@ -2840,6 +2857,29 @@ runtime service account
 → identidade da aplicação em execução
 
 São conceitos diferentes.
+```
+
+Neste laboratório:
+
+```text
+IAM authentication
+→ desabilitada para invocação
+
+Ingress
+→ restrito ao tráfego interno
+
+Internal Application Load Balancer
+→ frontend privado
+```
+
+Portanto:
+
+```text
+--allow-unauthenticated
++
+ingress interno
+→ backend invocável pelo Load Balancer sem token
+→ sem exposição direta à internet
 ```
 
 E:
