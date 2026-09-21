@@ -64,6 +64,11 @@ GET /cf-backend
 
 ```text
 GET /cr-backend
+→ rewrite para /
+→ cr-backend
+
+/cr-backend/info
+→ rewrite para /info
 → cr-backend
 ```
 
@@ -738,15 +743,8 @@ app = Flask(__name__)
 def index():
     return jsonify({
         "backend": "cr-backend",
-        "service": "Cloud Run"
-    })
-
-@app.get("/cr-backend")
-def backend():
-    return jsonify({
-        "backend": "cr-backend",
         "service": "Cloud Run",
-        "path": "/cr-backend",
+        "endpoint": "/",
         "revision": os.environ.get("K_REVISION", "unknown")
     })
 
@@ -1251,6 +1249,20 @@ Inspecione:
 cat url-map.yaml
 ```
 
+Confirme que as variáveis foram expandidas. O arquivo deve conter valores reais, por exemplo:
+
+```yaml
+name: serverless-ialb-url-map
+```
+
+e não:
+
+```yaml
+name: ${URL_MAP}
+```
+
+O `gcloud compute url-maps import` não expande variáveis de shell dentro do arquivo YAML.
+
 ---
 
 # 28. Entendendo o YAML
@@ -1295,16 +1307,17 @@ pathMatchers:
 - name: serverless-path-matcher
 ```
 
-O Path Matcher contém as regras de roteamento por caminho.
+O Path Matcher contém as `routeRules` que fazem o roteamento por caminho e, quando necessário, ações adicionais como `urlRewrite`.
 
 ---
 
 ## `/cf-backend`
 
 ```yaml
-- paths:
-  - /cf-backend
-  - /cf-backend/*
+- priority: 10
+  matchRules:
+  - prefixMatch: /cf-backend
+
   service: projects/PROJECT_ID/regions/REGION/backendServices/cf-backend-backend-service
 ```
 
@@ -1315,21 +1328,37 @@ Resultado:
 → cf-backend
 ```
 
+Essa regra demonstra **routing** sem reescrita de URL.
+
 ---
 
 ## `/cr-backend`
 
 ```yaml
-- paths:
-  - /cr-backend
-  - /cr-backend/*
+- priority: 20
+  matchRules:
+  - prefixMatch: /cr-backend
+
   service: projects/PROJECT_ID/regions/REGION/backendServices/cr-backend-backend-service
+
+  routeAction:
+    urlRewrite:
+      pathPrefixRewrite: /
 ```
 
 Resultado:
 
 ```text
 /cr-backend
+→ rewrite para /
+→ cr-backend
+```
+
+e:
+
+```text
+/cr-backend/info
+→ rewrite para /info
 → cr-backend
 ```
 
@@ -1892,7 +1921,7 @@ Resultado esperado:
 # 44. Teste completo
 
 ```bash
-for PATH in / /teste /cf-backend /cr-backend; do
+for PATH in / /teste /cf-backend /cr-backend /cr-backend/info; do
 
   echo
   echo "===== GET $PATH ====="
@@ -1940,8 +1969,8 @@ Resultado conceitual:
 | `/qualquer-coisa` | Não | `cf-default` |
 | `/cf-backend` | Sim | `cf-backend` |
 | `/cf-backend/teste` | Sim | `cf-backend` |
-| `/cr-backend` | Sim | `cr-backend` |
-| `/cr-backend/teste` | Sim | `cr-backend` |
+| `/cr-backend` | Sim | `cr-backend` após rewrite para `/` |
+| `/cr-backend/info` | Sim | `cr-backend` após rewrite para `/info` |
 
 ---
 
@@ -2038,17 +2067,23 @@ pathMatchers:
 
   defaultService: projects/${PROJECT_ID}/regions/${REGION}/backendServices/${CF_DEFAULT_BS}
 
-  pathRules:
+  routeRules:
 
-  - paths:
-    - /cf-backend
-    - /cf-backend/*
+  - priority: 10
+    matchRules:
+    - prefixMatch: /cf-backend
+
     service: projects/${PROJECT_ID}/regions/${REGION}/backendServices/${CF_BACKEND_BS}
 
-  - paths:
-    - /cr-backend
-    - /cr-backend/*
+  - priority: 20
+    matchRules:
+    - prefixMatch: /cr-backend
+
     service: projects/${PROJECT_ID}/regions/${REGION}/backendServices/${CF_DEFAULT_BS}
+
+    routeAction:
+      urlRewrite:
+        pathPrefixRewrite: /
 EOF
 ```
 
@@ -2324,7 +2359,7 @@ backend
 Teste tudo novamente:
 
 ```bash
-for PATH in / /teste /cf-backend /cr-backend; do
+for PATH in / /teste /cf-backend /cr-backend /cr-backend/info; do
 
   echo
   echo "===== GET $PATH ====="
@@ -2774,10 +2809,11 @@ rm -f \
 - [ ] Criei `url-map.yaml`;
 - [ ] Configurei `cf-default` como `defaultService`;
 - [ ] Configurei `/cf-backend → cf-backend`;
-- [ ] Configurei `/cr-backend → cr-backend`;
+- [ ] Configurei `/cr-backend → cr-backend` com `routeAction.urlRewrite`;
 - [ ] Apliquei o YAML com `gcloud compute url-maps import`;
 - [ ] Exportei o URL Map com `gcloud compute url-maps export`;
 - [ ] Entendo quando `urlRewrite` é necessário;
+- [ ] Entendo `routeRules`, `prefixMatch` e `pathPrefixRewrite`;
 - [ ] Entendo a diferença entre routing e rewriting;
 - [ ] Criei o Target HTTP Proxy;
 - [ ] Criei a Forwarding Rule `INTERNAL_MANAGED`;
@@ -2785,6 +2821,7 @@ rm -f \
 - [ ] Testei um path sem regra e observei `cf-default`;
 - [ ] Testei `/cf-backend`;
 - [ ] Testei `/cr-backend`;
+- [ ] Testei `/cr-backend/info`;
 - [ ] Quebrei propositalmente `/cr-backend`;
 - [ ] Identifiquei o problema no URL Map;
 - [ ] Corrigi o YAML;
@@ -2892,6 +2929,18 @@ Routing
 ```text
 URL Rewrite
 → altera o host e/ou path enviado ao backend
+```
+
+No Cloud Run deste laboratório:
+
+```text
+/cr-backend
+→ /
+```
+
+```text
+/cr-backend/info
+→ /info
 ```
 
 ---
