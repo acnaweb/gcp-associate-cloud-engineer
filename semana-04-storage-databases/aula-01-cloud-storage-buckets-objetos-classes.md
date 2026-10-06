@@ -34,61 +34,318 @@ Bucket
 
 ---
 
-# 2. Criar
+# 2. Criar o bucket
+
+Defina as variáveis do laboratório:
 
 ```bash
-# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
-export PROJECT_ID=$(gcloud config get-value project)
-# Explicação: Define `BUCKET` com o nome do bucket usado no laboratório.
-export BUCKET="gs://$PROJECT_ID-ace-storage-$RANDOM"
+# Define o Project ID ativo.
+export PROJECT_ID="$(gcloud config get-value project)"
 
-# Explicação: Cria um bucket Cloud Storage com localização e opções informadas.
+# Define um nome globalmente único para o bucket.
+export BUCKET="gs://$PROJECT_ID-ace-storage-$RANDOM"
+```
+
+Crie o bucket:
+
+```bash
+# Cria um bucket Cloud Storage na região us-central1
+# usando STANDARD como classe padrão.
 gcloud storage buckets create "$BUCKET" \
   --location=us-central1 \
   --default-storage-class=STANDARD
+```
 
-# Explicação: Exibe ou grava o valor/texto informado, normalmente para validar variável ou criar conteúdo de teste.
+Valide a criação:
+
+```bash
+# Exibe as propriedades do bucket recém-criado.
+gcloud storage buckets describe "$BUCKET"
+```
+
+Confirme principalmente:
+
+```text
+location
+→ US-CENTRAL1
+
+storage_class
+→ STANDARD
+```
+
+---
+
+# 3. Operações com objetos — carregar, listar, ler e copiar
+
+Este bloco atende diretamente ao objetivo:
+
+```text
+carregar
+→ listar
+→ ler
+→ copiar
+```
+
+Crie um arquivo local para o laboratório:
+
+```bash
+# Cria um arquivo local simples.
 echo "arquivo 1" > arquivo.txt
-# Explicação: Copia arquivo(s) entre o ambiente local e Cloud Storage, ou entre localizações no Cloud Storage.
+
+# Confirma o conteúdo antes do upload.
+cat arquivo.txt
+```
+
+---
+
+## 3.1 Carregar um objeto
+
+No Cloud Storage, fazer upload de um arquivo cria um **objeto** dentro do bucket.
+
+```bash
+# Copia o arquivo local para o bucket.
+#
+# Origem:
+# arquivo.txt
+#
+# Destino:
+# gs://.../arquivo.txt
 gcloud storage cp arquivo.txt "$BUCKET/"
 ```
 
----
+Modelo mental:
 
-# 3. Inspecionar
+```text
+arquivo local
+arquivo.txt
+     |
+     | gcloud storage cp
+     v
+Cloud Storage
+$BUCKET/arquivo.txt
+```
 
-Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
+Valide imediatamente:
 
 ```bash
-# Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
-gcloud storage buckets describe "$BUCKET"
-# Explicação: Lista buckets/objetos; flags podem incluir versões antigas e detalhes adicionais.
-gcloud storage ls -L "$BUCKET"
-# Explicação: Exibe metadados de um objeto Cloud Storage, como geração, tamanho e storage class.
+# Exibe os metadados do objeto criado.
 gcloud storage objects describe "$BUCKET/arquivo.txt"
+```
+
+Você deverá identificar informações como:
+
+```text
+name
+size
+storage_class
+creation_time
 ```
 
 ---
 
-# 4. Testar
+## 3.2 Listar objetos
+
+Liste os objetos do bucket:
 
 ```bash
-# Explicação: Lê o conteúdo de um objeto do Cloud Storage diretamente no terminal.
+# Lista os objetos existentes no bucket.
+gcloud storage ls "$BUCKET/"
+```
+
+Resultado esperado:
+
+```text
+gs://.../arquivo.txt
+```
+
+Para visualizar tamanho e data:
+
+```bash
+# Lista o objeto com informações adicionais.
+gcloud storage ls "$BUCKET/arquivo.txt" --long
+```
+
+A operação de listagem permite responder:
+
+```text
+Quais objetos existem neste bucket?
+```
+
+---
+
+## 3.3 Ler um objeto
+
+Use `cat` para enviar o conteúdo do objeto diretamente para o terminal:
+
+```bash
+# Lê o conteúdo do objeto sem precisar baixá-lo para um arquivo local.
 gcloud storage cat "$BUCKET/arquivo.txt"
-# Explicação: Copia arquivo(s) entre o ambiente local e Cloud Storage, ou entre localizações no Cloud Storage.
-gcloud storage cp "$BUCKET/arquivo.txt" "$BUCKET/copia.txt"
+```
 
-# Explicação: Atualiza metadados/configurações suportadas do objeto Cloud Storage.
-gcloud storage objects update "$BUCKET/copia.txt" \
-  --storage-class=NEARLINE
+Resultado esperado:
 
-# Explicação: Exibe metadados de um objeto Cloud Storage, como geração, tamanho e storage class.
+```text
+arquivo 1
+```
+
+Modelo mental:
+
+```text
+Cloud Storage object
+      |
+      | gcloud storage cat
+      v
+stdout / terminal
+```
+
+---
+
+## 3.4 Copiar um objeto
+
+Agora copie um objeto **dentro do próprio Cloud Storage**:
+
+```bash
+# Copia arquivo.txt para um novo objeto chamado copia.txt.
+gcloud storage cp \
+  "$BUCKET/arquivo.txt" \
+  "$BUCKET/copia.txt"
+```
+
+Valide a cópia:
+
+```bash
+# Lista novamente o bucket.
+gcloud storage ls "$BUCKET/"
+```
+
+Agora devem existir:
+
+```text
+arquivo.txt
+copia.txt
+```
+
+Leia o objeto copiado:
+
+```bash
+# Confirma que o conteúdo da cópia é o esperado.
+gcloud storage cat "$BUCKET/copia.txt"
+```
+
+Resultado:
+
+```text
+arquivo 1
+```
+
+Compare os metadados:
+
+```bash
+# Exibe os metadados do objeto original.
+gcloud storage objects describe "$BUCKET/arquivo.txt"
+
+# Exibe os metadados da cópia.
 gcloud storage objects describe "$BUCKET/copia.txt"
 ```
 
 ---
 
-# 5. Quebrar propositalmente
+## 3.5 Resumo das quatro operações
+
+| Operação | Comando principal | Resultado |
+|---|---|---|
+| Carregar | `gcloud storage cp arquivo.txt "$BUCKET/"` | arquivo local vira objeto |
+| Listar | `gcloud storage ls "$BUCKET/"` | mostra os objetos existentes |
+| Ler | `gcloud storage cat "$BUCKET/arquivo.txt"` | envia conteúdo para o terminal |
+| Copiar | `gcloud storage cp "$BUCKET/arquivo.txt" "$BUCKET/copia.txt"` | cria outro objeto |
+
+Para a ACE, reconheça também que:
+
+```text
+gcloud storage cp
+```
+
+pode ser usado em fluxos como:
+
+```text
+local → Cloud Storage
+Cloud Storage → local
+Cloud Storage → Cloud Storage
+```
+
+---
+
+# 4. Inspecionar bucket e objetos
+
+Antes de provocar qualquer erro, confirme o estado criado.
+
+```bash
+# Exibe propriedades do bucket, como localização e storage class padrão.
+gcloud storage buckets describe "$BUCKET"
+
+# Lista os objetos existentes.
+gcloud storage ls "$BUCKET/"
+
+# Exibe metadados do objeto original.
+gcloud storage objects describe "$BUCKET/arquivo.txt"
+
+# Exibe metadados da cópia.
+gcloud storage objects describe "$BUCKET/copia.txt"
+```
+
+O troubleshooting desta aula usará apenas elementos já observados aqui.
+
+---
+
+# 5. Testar Storage Class do objeto
+
+O bucket possui uma classe padrão:
+
+```text
+STANDARD
+```
+
+Mas um objeto pode ter sua Storage Class alterada.
+
+Atualize a cópia:
+
+```bash
+# Altera a Storage Class do objeto copia.txt para NEARLINE.
+gcloud storage objects update "$BUCKET/copia.txt" \
+  --storage-class=NEARLINE
+```
+
+Valide:
+
+```bash
+# Confirma a Storage Class atual do objeto.
+gcloud storage objects describe "$BUCKET/copia.txt"
+```
+
+Procure:
+
+```text
+storage_class
+→ NEARLINE
+```
+
+O objeto original permanece:
+
+```text
+arquivo.txt
+→ STANDARD
+```
+
+enquanto:
+
+```text
+copia.txt
+→ NEARLINE
+```
+
+---
+
+# 6. Quebrar propositalmente
 
 Tente acessar um nome errado:
 
@@ -99,7 +356,7 @@ gcloud storage cat "$BUCKET/arquivo-inexistente.txt"
 
 ---
 
-# 6. Troubleshooting
+# 7. Troubleshooting
 
 Agora o erro já foi produzido e os componentes envolvidos já foram apresentados.
 
@@ -111,8 +368,8 @@ Agora o erro já foi produzido e os componentes envolvidos já foram apresentado
 ```bash
 # Explicação: Exibe propriedades do bucket, como localização, storage class, versioning e políticas.
 gcloud storage buckets describe "$BUCKET"
-# Explicação: Lista buckets/objetos; flags podem incluir versões antigas e detalhes adicionais.
-gcloud storage ls "$BUCKET"
+# Lista os objetos existentes e confirma o nome correto.
+gcloud storage ls "$BUCKET/"
 ```
 
 **Causa:** o nome usado não corresponde a nenhum objeto listado.
@@ -135,7 +392,7 @@ Correção
 
 ---
 
-# 7. Corrigir
+# 8. Corrigir
 
 Use o object name correto:
 
@@ -146,7 +403,7 @@ gcloud storage cat "$BUCKET/arquivo.txt"
 
 ---
 
-# 8. Questões estilo ACE
+# 9. Questões estilo ACE
 
 1. Storage Class define autorização? **Não**.
 2. Bucket name é único em qual escopo? **Global**.
@@ -154,7 +411,7 @@ gcloud storage cat "$BUCKET/arquivo.txt"
 
 ---
 
-# 9. Cleanup
+# 10. Cleanup
 
 ```bash
 # Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
@@ -162,7 +419,7 @@ gcloud storage rm "$BUCKET/**"
 # Explicação: Exclui o bucket; ele precisa estar vazio ou ser removido recursivamente conforme o comando.
 gcloud storage buckets delete "$BUCKET" --quiet
 # Explicação: Remove o arquivo/diretório temporário indicado durante correção ou cleanup.
-rm -f arquivo.txt
+rm -f arquivo.txt nearline.txt
 ```
 
 ---
@@ -252,12 +509,17 @@ Use `describe` e identifique `storageClass`.
 4. Arquivamento de anos? **Archive**.
 5. Padrão imprevisível e desejo de automação de classes? Avalie **Autoclass**.
 
-# 10. Checklist
+# 11. Checklist
 
-- [ ] Entendi os conceitos usados no laboratório;
-- [ ] Criei o recurso;
-- [ ] Inspecionei estado e configuração;
-- [ ] Testei o comportamento esperado;
+- [ ] Criei um bucket;
+- [ ] Carreguei um objeto com `gcloud storage cp`;
+- [ ] Listei objetos com `gcloud storage ls`;
+- [ ] Li um objeto com `gcloud storage cat`;
+- [ ] Copiei um objeto dentro do Cloud Storage;
+- [ ] Inspecionei metadados com `gcloud storage objects describe`;
+- [ ] Entendi localização e Storage Class;
+- [ ] Alterei a Storage Class de um objeto;
+- [ ] Diagnostiquei uma referência a objeto inexistente;
 - [ ] Provoquei a falha descrita;
 - [ ] Diagnostiquei usando evidências;
 - [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
