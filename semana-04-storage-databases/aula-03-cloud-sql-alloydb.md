@@ -433,166 +433,332 @@ Para ACE, escolha pelo requisito; não transforme a questão em tuning avançado
 
 ---
 
-# 9. Cleanup
-
-```bash
-# Explicação: Exclui a instância Cloud SQL e encerra sua cobrança.
-gcloud sql instances delete "$INSTANCE" --quiet
-```
-
 ---
 
+# 9. Backup e Restore — prática completa
 
----
-
-# Cobertura ACE ampliada — backup, restore, HA, replicas e Database Center
-
-## Backup x Restore x HA x Read Replica
+Backup e Restore não são a mesma coisa que HA.
 
 ```text
-Backup       → recuperação de dados
-Restore      → recria/recupera estado a partir do backup
-HA           → disponibilidade/failover
-Read replica → leitura/escala e, conforme configuração, DR; não substitui backup
+HA
+→ disponibilidade/failover
+
+Backup
+→ cópia para recuperação
+
+Restore
+→ recupera o estado da instância a partir de um backup
 ```
 
-Liste backups:
+> **Atenção:** restaurar sobre uma instância existente sobrescreve os dados do destino e causa indisponibilidade durante a operação. Faça este laboratório apenas na instância descartável criada nesta aula.
+
+---
+
+## 9.1 Validar o dado antes do backup
+
+Conecte:
 
 ```bash
-# Explicação: Lista backups disponíveis e seus estados/IDs.
-gcloud sql backups list --instance="$INSTANCE"
+# Abre conexão com o database usado no laboratório.
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database="$DB"
 ```
 
-Crie backup on-demand:
+Execute:
+
+```sql
+SELECT * FROM clientes ORDER BY id;
+```
+
+Resultado esperado:
+
+```text
+1 | Ana
+2 | Bruno
+```
+
+Saia:
+
+```text
+\q
+```
+
+---
+
+## 9.2 Criar backup on-demand
+
+Crie um backup manual:
 
 ```bash
-# Explicação: Cria um backup on-demand da instância Cloud SQL.
-gcloud sql backups create --instance="$INSTANCE"
+# Cria um backup on-demand da instância Cloud SQL.
+gcloud sql backups create \
+  --instance="$INSTANCE"
 ```
 
-Inspecione:
+Liste os backups:
 
 ```bash
-# Explicação: Lista backups disponíveis e seus estados/IDs.
-gcloud sql backups list --instance="$INSTANCE"
+# Lista backups da instância, incluindo ID e estado.
+gcloud sql backups list \
+  --instance="$INSTANCE"
 ```
 
-> Restauração pode criar impacto e deve ser feita em ambiente de laboratório com atenção. Para prova, conheça a operação e objetivo.
+Capture o backup mais recente com estado `SUCCESSFUL`:
 
-## Database Center
+```bash
+# Obtém o ID do backup bem-sucedido mais recente.
+export BACKUP_ID="$(gcloud sql backups list \
+  --instance="$INSTANCE" \
+  --filter="status=SUCCESSFUL" \
+  --sort-by="~endTime" \
+  --limit=1 \
+  --format='value(id)')"
 
-Database Center fornece visão central da frota de bancos do Google Cloud, com inventário e insights compatíveis com os produtos suportados.
+echo "$BACKUP_ID"
+```
 
-No Console: **Database Center**.
+Valide:
+
+```text
+BACKUP_ID
+→ deve conter um ID de backup válido
+```
+
+---
+
+## 9.3 Alterar o dado depois do backup
+
+Agora provoque uma alteração lógica segura **depois** do backup.
+
+Conecte novamente:
+
+```bash
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Apague uma linha:
+
+```sql
+DELETE FROM clientes
+WHERE id = 2;
+
+SELECT * FROM clientes ORDER BY id;
+```
+
+Resultado esperado:
+
+```text
+1 | Ana
+```
+
+Saia:
+
+```text
+\q
+```
+
+Agora temos:
+
+```text
+Backup
+→ contém Ana + Bruno
+
+Estado atual
+→ contém apenas Ana
+```
+
+---
+
+## 9.4 Restaurar o backup
+
+Restaure o backup sobre a própria instância do laboratório:
+
+```bash
+# Restaura o backup selecionado na instância atual.
+#
+# --restore-instance
+#   define a instância de destino.
+#
+# --backup-instance
+#   informa a instância de origem do backup.
+gcloud sql backups restore "$BACKUP_ID" \
+  --restore-instance="$INSTANCE" \
+  --backup-instance="$INSTANCE" \
+  --quiet
+```
+
+Durante o restore:
+
+```text
+instância
+→ temporariamente indisponível
+
+dados atuais do destino
+→ sobrescritos pelo conteúdo do backup
+```
+
+---
+
+## 9.5 Inspecionar o estado após o restore
+
+Confirme que a instância voltou a ficar disponível:
+
+```bash
+# Exibe o estado da instância após a restauração.
+gcloud sql instances describe "$INSTANCE" \
+  --format="value(state)"
+```
+
+Resultado esperado:
+
+```text
+RUNNABLE
+```
+
+Liste as operações recentes:
+
+```bash
+# Mostra as operações recentes da instância.
+gcloud sql operations list \
+  --instance="$INSTANCE" \
+  --limit=5
+```
+
+---
+
+## 9.6 Validar a recuperação do dado
+
+Conecte novamente:
+
+```bash
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Execute:
+
+```sql
+SELECT * FROM clientes ORDER BY id;
+```
+
+Resultado esperado novamente:
+
+```text
+1 | Ana
+2 | Bruno
+```
+
+Isso comprova operacionalmente:
+
+```text
+criar dados
+↓
+backup
+↓
+alterar/apagar dado
+↓
+restore
+↓
+dado recuperado
+```
+
+Saia:
+
+```text
+\q
+```
+
+---
+
+# 10. HA, Read Replica, PITR e Database Center
+
+## 10.1 Backup x Restore x HA x Read Replica
+
+```text
+Backup
+→ recuperação de dados
+
+Restore
+→ recupera estado a partir do backup
+
+HA
+→ disponibilidade/failover
+
+Read replica
+→ leitura/escala e, dependendo da arquitetura, estratégia de DR
+→ não substitui backup
+```
+
+Para a ACE:
+
+```text
+"recuperar dado apagado"
+→ Backup / Restore ou PITR
+
+"reduzir indisponibilidade por falha de zona"
+→ HA
+
+"escalar leitura"
+→ Read Replica
+```
+
+---
+
+## 10.2 PITR
+
+Point-in-Time Recovery é outro mecanismo de recuperação.
+
+Modelo:
+
+```text
+Backup
+→ recupera um estado capturado em um backup
+
+PITR
+→ recupera para um ponto específico no tempo
+```
+
+Não confunda:
+
+```text
+PITR
+≠
+HA
+```
+
+A configuração detalhada de PITR não é necessária para este laboratório; o objetivo aqui é saber escolher o mecanismo correto em cenários de prova.
+
+---
+
+## 10.3 Database Center
+
+Database Center oferece uma visão central da frota de bancos suportados no Google Cloud.
 
 Use para responder perguntas como:
 
 ```text
 Quais bancos existem?
-Quais apresentam alertas/insights?
-Como está a frota multi-projeto?
+Quais possuem alertas ou insights?
+Como está a frota em diferentes projetos?
 ```
 
-## Queries em data instances
+No Console:
 
-A operação da prova inclui executar queries para recuperar dados. Nesta aula isso é feito via PostgreSQL; em outras aulas, via BigQuery/serviços correspondentes.
-
-# 10. Checklist
-
-- [ ] Entendi os conceitos usados no laboratório;
-- [ ] Criei o recurso;
-- [ ] Inspecionei estado e configuração;
-- [ ] Testei o comportamento esperado;
-- [ ] Provoquei a falha descrita;
-- [ ] Diagnostiquei usando evidências;
-- [ ] Corrigi sem aumentar privilégios ou alterar componentes desnecessários;
-- [ ] Consigo relacionar o cenário a uma questão ACE;
-- [ ] Executei o cleanup.
+```text
+Database Center
+```
 
 ---
 
-# Cobertura adicional — Backup e Restore de Cloud SQL
+# 11. Estimativa de custos de banco
 
-O exam guide exige criar backups e restaurar instâncias de banco.
+Antes de usar a Pricing Calculator, decomponha o custo.
 
-## Antes de restaurar, saiba listar backups
-
-```bash
-# Explicação: Lista backups disponíveis e seus estados/IDs.
-gcloud sql backups list --instance="$INSTANCE"
-```
-
-Criar backup on-demand:
-
-```bash
-# Explicação: Cria um backup on-demand da instância Cloud SQL.
-gcloud sql backups create --instance="$INSTANCE"
-```
-
-Inspecione novamente:
-
-```bash
-# Explicação: Lista backups disponíveis e seus estados/IDs.
-gcloud sql backups list --instance="$INSTANCE"
-```
-
-### Modelo mental
-
-```text
-HA
-→ continuidade/disponibilidade da instância
-
-Backup
-→ cópia para recuperação
-
-PITR
-→ recuperação para ponto no tempo quando configurado
-```
-
-### Falha proposital segura
-
-Antes de apagar dados, crie uma tabela de laboratório e backup. Depois remova uma linha e valide que o backup existe. Em projeto descartável, pratique restore seguindo o fluxo suportado pelo Console/CLI para a versão atual.
-
-Na prova, não responda “HA” quando o requisito for recuperar dado apagado logicamente.
-
----
-
-<!-- MEP-ACCEPTANCE-V9 -->
-# Critério de aceite M/E/P desta aula
-
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
-
-Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
-
-```text
-conceito operacional
-   ↓
-configuração/comando
-   ↓
-inspeção
-   ↓
-teste ou comportamento observável
-```
-
-Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
-
-## Tópicos do guia mapeados para esta aula
-
-| Seção | Tópico | Esperado | Nível da matriz |
-|---|---|---:|---:|
-| 3.4 | AlloyDB | `P` | `E/P*` |
-| 4.4 | Queries Cloud SQL | `P` | `P` |
-| 4.4 | Queries AlloyDB | `P` | `E/P*` |
-| 4.4 | Backup/restore Cloud SQL | `P` | `P/P*` |
-
-
-# 11. Refinamento prático — estimativa de custos de banco
-
-## Laboratório guiado — estimar custo de banco relacional
-
-O objetivo é aprender a decompor o custo antes de usar a Pricing Calculator.
-
-### Cloud SQL — fatores principais
+## Cloud SQL
 
 ```text
 compute / machine tier
@@ -603,7 +769,7 @@ compute / machine tier
 + transferência de rede
 ```
 
-### AlloyDB — fatores principais
+## AlloyDB
 
 ```text
 compute dos nós
@@ -611,8 +777,6 @@ compute dos nós
 + arquitetura HA / read pools
 + transferência
 ```
-
-### Cenários
 
 Compare na Pricing Calculator:
 
@@ -627,9 +791,7 @@ Cenário 3
 Cloud SQL com HA + read replica
 ```
 
-Use a **mesma região, engine e horizonte mensal** para não comparar premissas diferentes.
-
-Preencha:
+Use a mesma região, engine e horizonte mensal.
 
 | Cenário | Compute | Storage | HA/Replica | Backup | Estimativa mensal |
 |---|---:|---:|---:|---:|---:|
@@ -637,7 +799,7 @@ Preencha:
 | 2 | | | | | |
 | 3 | | | | | |
 
-### Interpretação para prova
+Para prova:
 
 ```text
 Alta disponibilidade
@@ -649,5 +811,92 @@ Read replica
 HA automática
 
 Mais resiliência / mais capacidade
-→ geralmente mais recursos faturáveis
+→ normalmente mais recursos faturáveis
 ```
+
+---
+
+# 12. Critério de aceite M/E/P desta aula
+
+Para um tópico ser classificado como `P`, não basta existir um comando.
+
+A aula precisa apresentar:
+
+```text
+conceito operacional
+↓
+configuração/comando
+↓
+inspeção
+↓
+teste ou comportamento observável
+```
+
+Quando a execução depender de privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+
+| Tópico | Nível |
+|---|---:|
+| Cloud SQL — criar/inspecionar/conectar/query | `P` |
+| Troubleshooting de database/usuário/senha | `P` |
+| Backup Cloud SQL | `P` |
+| Restore Cloud SQL | `P` |
+| Validação do dado após restore | `P` |
+| Cloud SQL x AlloyDB | `E` |
+| AlloyDB operacional | `E/P*` |
+| Estimativa de custos | `E/P*` |
+
+A diferença importante em relação à versão anterior é:
+
+```text
+Restore
+antes → apenas mencionado/orientado
+
+Restore
+agora → executado, inspecionado e validado
+```
+
+---
+
+# 13. Checklist
+
+- [ ] Entendi o problema que Cloud SQL resolve;
+- [ ] Criei uma instância PostgreSQL gerenciada;
+- [ ] Criei database e usuário;
+- [ ] Inspecionei estado, versão, região, IP e backup;
+- [ ] Conectei pelo Cloud Shell;
+- [ ] Criei tabela e validei persistência;
+- [ ] Provoquei falhas de database, usuário e senha;
+- [ ] Diagnostiquei usando evidências;
+- [ ] Diferenciei Cloud SQL e AlloyDB;
+- [ ] Criei um backup on-demand;
+- [ ] Capturei o `BACKUP_ID`;
+- [ ] Alterei o dado depois do backup;
+- [ ] Executei um restore real;
+- [ ] Confirmei `RUNNABLE` após o restore;
+- [ ] Validei a recuperação do dado;
+- [ ] Diferenciei Backup, Restore, HA, Read Replica e PITR;
+- [ ] Revisei os fatores de custo;
+- [ ] Executei o cleanup.
+
+---
+
+# 14. Cleanup
+
+O Cleanup agora é propositalmente a **última etapa da aula**.
+
+Antes de excluir, confirme que concluiu o exercício de Backup/Restore.
+
+```bash
+# Exclui a instância Cloud SQL e encerra sua cobrança.
+gcloud sql instances delete "$INSTANCE" \
+  --quiet
+```
+
+Valide que a instância não aparece mais:
+
+```bash
+# Lista as instâncias restantes no projeto.
+gcloud sql instances list
+```
+
+> Cloud SQL gera cobrança enquanto a instância existir. Não deixe a instância do laboratório ativa depois de concluir a aula.
