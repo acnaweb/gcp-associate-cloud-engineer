@@ -74,6 +74,7 @@ export DB_USER=aceuser
 
 # Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable sqladmin.googleapis.com
+```
 
 ### 2.1 Escolhendo a edição corretamente
 
@@ -115,6 +116,7 @@ Invalid Tier (db-custom-1-3840) for (ENTERPRISE_PLUS) Edition
 
 Agora crie a instância:
 
+```sh
 # PostgreSQL 16+ usa Enterprise Plus como edição padrão quando --edition
 # não é informado. Enterprise Plus exige tipos de máquina predefinidos.
 #
