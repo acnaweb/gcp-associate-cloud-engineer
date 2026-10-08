@@ -75,9 +75,63 @@ export DB_USER=aceuser
 # Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
 gcloud services enable sqladmin.googleapis.com
 
-# Explicação: Cria uma instância Cloud SQL com engine, região, tier e demais parâmetros definidos.
+### 2.1 Escolhendo a edição corretamente
+
+Para **PostgreSQL 16 ou superior**, o Cloud SQL usa **Enterprise Plus** como edição padrão quando `--edition` não é informado.
+
+Isso é importante porque as edições usam modelos de máquina diferentes:
+
+```text
+Enterprise
+→ aceita tipos de máquina customizados
+→ podemos usar --cpu e --memory
+
+Enterprise Plus
+→ usa tipos de máquina predefinidos
+→ exemplo: db-perf-optimized-N-*
+```
+
+Neste laboratório queremos uma instância pequena e didática:
+
+```text
+POSTGRES_16
++
+1 vCPU
++
+3840 MiB
+```
+
+Por isso, devemos informar explicitamente:
+
+```text
+--edition=ENTERPRISE
+```
+
+Sem essa flag, o comando pode tentar criar uma instância Enterprise Plus e retornar erro semelhante a:
+
+```text
+Invalid Tier (db-custom-1-3840) for (ENTERPRISE_PLUS) Edition
+```
+
+Agora crie a instância:
+
+# PostgreSQL 16+ usa Enterprise Plus como edição padrão quando --edition
+# não é informado. Enterprise Plus exige tipos de máquina predefinidos.
+#
+# Como este laboratório usa uma configuração customizada pequena com
+# --cpu e --memory, fixamos explicitamente a edição Enterprise.
+#
+# --edition=ENTERPRISE
+#   permite o uso do dimensionamento customizado deste laboratório.
+#
+# --cpu=1
+#   define 1 vCPU.
+#
+# --memory=3840MiB
+#   define 3,75 GiB de memória, valor mínimo compatível com este perfil.
 gcloud sql instances create "$INSTANCE" \
   --database-version=POSTGRES_16 \
+  --edition=ENTERPRISE \
   --cpu=1 \
   --memory=3840MiB \
   --region="$REGION" \
@@ -99,7 +153,7 @@ gcloud sql users create "$DB_USER" \
 
 Antes de provocar qualquer erro, confirme a configuração criada. O troubleshooting desta aula usará **somente elementos que você já observou aqui**.
 
-### 3.1 Estado, engine e região
+### 3.1 Estado, engine, edição, tier e região
 
 ```bash
 # Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
@@ -200,6 +254,31 @@ Saia:
 
 ```text
 \q
+```
+
+---
+
+## Enterprise x Enterprise Plus neste laboratório
+
+Para a ACE, não memorize apenas o erro. Entenda a decisão:
+
+| Situação | Escolha |
+|---|---|
+| laboratório pequeno com CPU/memória customizadas | `ENTERPRISE` |
+| Enterprise Plus com PostgreSQL 16+ | tier predefinido compatível |
+| usar `--cpu` e `--memory` | fixar `--edition=ENTERPRISE` |
+
+Modelo mental:
+
+```text
+POSTGRES_16 sem --edition
+→ default pode ser ENTERPRISE_PLUS
+
+ENTERPRISE_PLUS
+→ tier predefinido
+
+ENTERPRISE
+→ pode usar --cpu + --memory
 ```
 
 ---
