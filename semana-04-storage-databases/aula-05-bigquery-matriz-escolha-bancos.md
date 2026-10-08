@@ -16,6 +16,8 @@ Ao final, você deverá:
 - diagnosticar a falha usando informações do job;
 - corrigir a query e validar sua execução;
 - explicar os principais fatores de custo do BigQuery;
+- demonstrar como partitioning pode reduzir dados lidos por partition pruning;
+- explicar como clustering pode reduzir leitura por block pruning em padrões adequados;
 - diferenciar BigQuery de bancos destinados a workloads transacionais;
 - escolher entre Cloud SQL, AlloyDB, Spanner, Firestore, Bigtable e BigQuery a partir de um cenário;
 - justificar a escolha pelo modelo de dados, padrão de acesso, consistência, escala e tipo de workload.
@@ -652,12 +654,196 @@ SELECT *
 
 quando a aplicação precisa de poucas colunas em uma tabela muito larga.
 
+## 13.1 Exemplo prático — Partitioning
+
+Particionamento divide logicamente uma tabela usando uma coluna ou critério de partição.
+
+Vamos criar uma tabela maior somente para tornar a comparação mais visível.
+
+```bash
+# Cria uma tabela particionada por data com dados sintéticos.
+bq --location="$BQ_LOCATION" query \
+  --use_legacy_sql=false \
+  "CREATE OR REPLACE TABLE \`$PROJECT_ID.$BQ_DATASET.vendas_particionadas\`
+   PARTITION BY data_venda AS
+   SELECT
+     numero AS id,
+     DATE_ADD(DATE '2026-01-01', INTERVAL MOD(numero, 365) DAY) AS data_venda,
+     CONCAT('cliente-', CAST(MOD(numero, 1000) AS STRING)) AS cliente,
+     IF(MOD(numero, 2)=0, 'premium', 'standard') AS segmento,
+     CAST(MOD(numero, 10000) / 10.0 AS NUMERIC) AS valor
+   FROM UNNEST(GENERATE_ARRAY(1, 100000)) AS numero"
+```
+
+Inspecione:
+
+```bash
+# Exibe os metadados da tabela particionada.
+bq show \
+  --format=prettyjson \
+  "$PROJECT_ID:$BQ_DATASET.vendas_particionadas"
+```
+
+Primeiro faça um dry run sem filtro de partição:
+
+```bash
+# Estima o processamento ao consultar todo o período.
+bq --location="$BQ_LOCATION" query \
+  --use_legacy_sql=false \
+  --dry_run \
+  "SELECT SUM(valor)
+   FROM \`$PROJECT_ID.$BQ_DATASET.vendas_particionadas\`"
+```
+
+Agora filtre uma única data:
+
+```bash
+# Estima o processamento quando somente uma partição é necessária.
+bq --location="$BQ_LOCATION" query \
+  --use_legacy_sql=false \
+  --dry_run \
+  "SELECT SUM(valor)
+   FROM \`$PROJECT_ID.$BQ_DATASET.vendas_particionadas\`
+   WHERE data_venda = DATE '2026-06-01'"
+```
+
+Compare os bytes estimados.
+
+Modelo mental:
+
+```text
+tabela particionada por data_venda
++
+WHERE data_venda = data específica
+↓
+partition pruning
+↓
+menos partições lidas
+↓
+menos dados processados
+```
+
+A conclusão importante não é:
+
+```text
+partitioning sempre deixa qualquer query mais barata
+```
+
+É:
+
+```text
+partitioning ajuda quando a consulta consegue eliminar partições
+```
+
+Uma consulta que não filtra adequadamente pela coluna de partição pode continuar lendo muitas ou todas as partições.
+
+## 13.2 Exemplo prático — Clustering
+
+Clustering organiza os dados usando uma ou mais colunas de clustering.
+
+Crie uma segunda tabela, agora particionada por data e clusterizada por `segmento` e `cliente`:
+
+```bash
+# Cria tabela particionada e clusterizada a partir dos mesmos dados.
+bq --location="$BQ_LOCATION" query \
+  --use_legacy_sql=false \
+  "CREATE OR REPLACE TABLE \`$PROJECT_ID.$BQ_DATASET.vendas_clusterizadas\`
+   PARTITION BY data_venda
+   CLUSTER BY segmento, cliente AS
+   SELECT *
+   FROM \`$PROJECT_ID.$BQ_DATASET.vendas_particionadas\`"
+```
+
+Inspecione:
+
+```bash
+# Exibe metadados para confirmar partitioning e clustering.
+bq show \
+  --format=prettyjson \
+  "$PROJECT_ID:$BQ_DATASET.vendas_clusterizadas"
+```
+
+Considere uma consulta que usa a partição, mas não filtra pelas colunas de clustering:
+
+```bash
+# Dry run de referência usando somente o filtro de partição.
+bq --location="$BQ_LOCATION" query \
+  --use_legacy_sql=false \
+  --dry_run \
+  "SELECT SUM(valor)
+   FROM \`$PROJECT_ID.$BQ_DATASET.vendas_clusterizadas\`
+   WHERE data_venda BETWEEN DATE '2026-01-01' AND DATE '2026-06-30'"
+```
+
+Agora acrescente um filtro pela primeira coluna de clustering:
+
+```bash
+# Consulta o mesmo período, restringindo também o segmento.
+bq --location="$BQ_LOCATION" query \
+  --use_legacy_sql=false \
+  --dry_run \
+  "SELECT SUM(valor)
+   FROM \`$PROJECT_ID.$BQ_DATASET.vendas_clusterizadas\`
+   WHERE data_venda BETWEEN DATE '2026-01-01' AND DATE '2026-06-30'
+     AND segmento = 'premium'"
+```
+
+Modelo mental:
+
+```text
+PARTITION BY data_venda
+→ elimina partições fora do período
+CLUSTER BY segmento, cliente
+→ organiza blocos dentro dos dados
+→ filtros adequados podem permitir block pruning
+→ menos blocos precisam ser lidos
+```
+
+### Atenção ao interpretar o dry run de clustering
+
+Para tabelas clusterizadas, a quantidade de dados efetivamente processada pode depender dos blocos que forem eliminados durante a execução. Por isso, o `dry run` não deve ser tratado como prova de que o clustering reduzirá uma quantidade específica de bytes.
+
+A prática correta é:
+
+```text
+partitioning
+→ redução mais diretamente estimável quando há partition pruning
+clustering
+→ pode reduzir leitura por block pruning
+→ benefício depende da distribuição dos dados e dos filtros
+```
+
+Em uma tabela muito pequena, como a deste laboratório, a diferença do clustering pode ser pequena ou até não ficar perceptível.
+
+O objetivo é compreender o mecanismo, não produzir artificialmente uma grande economia.
+
+## 13.3 Partitioning x Clustering
+
+| Característica | Partitioning | Clustering |
+|---|---|---|
+| organização | divide tabela em partições | organiza dados em blocos |
+| exemplo | `PARTITION BY data_venda` | `CLUSTER BY segmento, cliente` |
+| benefício | partition pruning | block pruning |
+| filtro importante | coluna de partição | colunas de clustering |
+| combinação | pode ser usado sozinho | pode complementar partitioning |
+
+Exemplo de decisão:
+
+```text
+consultas sempre filtram por data
+→ partitioning por data
+dentro do período, consultas filtram muito por segmento/cliente
+→ clustering pode complementar a partição
+```
+
 A ideia para ACE não é tuning avançado. É reconhecer:
 
 ```text
 arquitetura da tabela
 +
-query
+filtros da query
++
+partition pruning / block pruning
 +
 bytes processados
 +
@@ -912,6 +1098,8 @@ Aplicação existente usa PostgreSQL tradicional e quer banco gerenciado com mí
 | Troubleshooting do job | `P` |
 | Correção e validação | `P` |
 | Fatores de custo | `E/P` |
+| Partitioning / partition pruning | `P` |
+| Clustering / block pruning | `E/P` |
 | BigQuery × OLTP | `E` |
 | Matriz de escolha de bancos | `E/P` |
 | Cenários ACE | `P` |
@@ -939,6 +1127,11 @@ Aplicação existente usa PostgreSQL tradicional e quer banco gerenciado com mí
 - [ ] Executei a query corrigida;
 - [ ] Diferenciei BigQuery de OLTP;
 - [ ] Expliquei os principais fatores de custo;
+- [ ] Criei e inspecionei uma tabela particionada;
+- [ ] Comparei dry runs com e sem filtro de partição;
+- [ ] Criei e inspecionei uma tabela clusterizada;
+- [ ] Expliquei partition pruning e block pruning;
+- [ ] Entendi por que o benefício do clustering pode não aparecer claramente em uma tabela pequena;
 - [ ] Diferenciei Cloud SQL, AlloyDB, Spanner, Firestore, Bigtable e BigQuery;
 - [ ] Resolvi cenários de escolha de banco;
 - [ ] Executei o cleanup.
