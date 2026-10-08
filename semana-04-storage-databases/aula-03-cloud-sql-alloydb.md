@@ -71,30 +71,17 @@ Nenhum desses conceitos aparecerá no troubleshooting sem antes ser inspecionado
 
 
 ```text
-
 Aplicação / Cloud Shell
-
         |
-
         v
-
 Cloud SQL for PostgreSQL
-
  ├─ instance
-
  ├─ database: aceapp
-
  ├─ user: aceuser
-
  ├─ IP/configuração de conexão
-
  └─ backups/configuração
-
-
 AlloyDB
-
  └─ PostgreSQL-compatible para requisitos maiores de performance/HA
-
 ```
 
 
@@ -108,28 +95,16 @@ AlloyDB
 
 
 ```bash
-
 # Explicação: Define `REGION` com o valor da região padrão usada pelos recursos do laboratório.
-
 export REGION=us-central1
-
 # Explicação: Define `INSTANCE` com o nome da instância usada no laboratório.
-
 export INSTANCE=ace-sql
-
 # Explicação: Define a variável `DB` usada nas próximas etapas do laboratório.
-
 export DB=aceapp
-
 # Explicação: Define a variável `DB_USER` usada nas próximas etapas do laboratório.
-
 export DB_USER=aceuser
-
-
 # Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
-
 gcloud services enable sqladmin.googleapis.com
-
 ```
 
 
@@ -143,20 +118,12 @@ Isso é importante porque as edições usam modelos de máquina diferentes:
 
 
 ```text
-
 Enterprise
-
 → aceita tipos de máquina customizados
-
 → podemos usar --cpu e --memory
-
-
 Enterprise Plus
-
 → usa tipos de máquina predefinidos
-
 → exemplo: db-perf-optimized-N-*
-
 ```
 
 
@@ -164,17 +131,11 @@ Neste laboratório queremos uma instância pequena e didática:
 
 
 ```text
-
 POSTGRES_16
-
 +
-
 1 vCPU
-
 +
-
 3840 MiB
-
 ```
 
 
@@ -182,9 +143,7 @@ Por isso, devemos informar explicitamente:
 
 
 ```text
-
 --edition=ENTERPRISE
-
 ```
 
 
@@ -192,9 +151,7 @@ Sem essa flag, o comando pode tentar criar uma instância Enterprise Plus e reto
 
 
 ```text
-
 Invalid Tier (db-custom-1-3840) for (ENTERPRISE_PLUS) Edition
-
 ```
 
 
@@ -202,65 +159,34 @@ Agora crie a instância:
 
 
 ```sh
-
 # PostgreSQL 16+ usa Enterprise Plus como edição padrão quando --edition
-
 # não é informado. Enterprise Plus exige tipos de máquina predefinidos.
-
 #
-
 # Como este laboratório usa uma configuração customizada pequena com
-
 # --cpu e --memory, fixamos explicitamente a edição Enterprise.
-
 #
-
 # --edition=ENTERPRISE
-
 #   permite o uso do dimensionamento customizado deste laboratório.
-
 #
-
 # --cpu=1
-
 #   define 1 vCPU.
-
 #
-
 # --memory=3840MiB
-
 #   define 3,75 GiB de memória, valor mínimo compatível com este perfil.
-
 gcloud sql instances create "$INSTANCE" \
-
   --database-version=POSTGRES_16 \
-
   --edition=ENTERPRISE \
-
   --cpu=1 \
-
   --memory=3840MiB \
-
   --region="$REGION" \
-
   --storage-size=10GB
-
-
 # Explicação: Cria um database lógico dentro da instância Cloud SQL.
-
 gcloud sql databases create "$DB" \
-
   --instance="$INSTANCE"
-
-
 # Explicação: Cria um usuário de banco na instância Cloud SQL.
-
 gcloud sql users create "$DB_USER" \
-
   --instance="$INSTANCE" \
-
   --password='Ace-Lab-12345!'
-
 ```
 
 
@@ -297,13 +223,10 @@ Para este laboratório, confirme:
 ```text
 databaseVersion
 → POSTGRES_16
-
 settings.edition
 → ENTERPRISE
-
 settings.tier
 → db-custom-1-3840
-
 state
 → RUNNABLE
 ```
@@ -314,13 +237,9 @@ Isso confirma que a instância foi criada na edição correta e que o tier custo
 
 
 ```bash
-
 # Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
-
 gcloud sql instances describe "$INSTANCE" \
-
   --format="yaml(ipAddresses)"
-
 ```
 
 
@@ -331,13 +250,9 @@ Agora você sabe se há endereço público configurado.
 
 
 ```bash
-
 # Explicação: Lista databases existentes na instância Cloud SQL.
-
 gcloud sql databases list \
-
   --instance="$INSTANCE"
-
 ```
 
 
@@ -348,13 +263,9 @@ Confirme que `aceapp` existe.
 
 
 ```bash
-
 # Explicação: Lista usuários configurados na instância Cloud SQL.
-
 gcloud sql users list \
-
   --instance="$INSTANCE"
-
 ```
 
 
@@ -365,13 +276,9 @@ Confirme que `aceuser` existe.
 
 
 ```bash
-
 # Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
-
 gcloud sql instances describe "$INSTANCE" \
-
   --format="yaml(settings.backupConfiguration)"
-
 ```
 
 
@@ -402,7 +309,6 @@ precisa encontrar o cliente PostgreSQL e conseguir autenticar o caminho de conex
 ```bash
 # Verifica se o proxy está disponível no PATH.
 command -v cloud-sql-proxy
-
 # Mostra a versão instalada.
 cloud-sql-proxy --version
 ```
@@ -413,13 +319,10 @@ Se não estiver instalado:
 # Baixa o Cloud SQL Auth Proxy v2 para Linux x86_64.
 curl -o cloud-sql-proxy \
   https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.26.0/cloud-sql-proxy.linux.amd64
-
 # Torna o binário executável.
 chmod +x cloud-sql-proxy
-
 # Instala em um diretório normalmente presente no PATH.
 sudo mv cloud-sql-proxy /usr/local/bin/cloud-sql-proxy
-
 # Confirma a instalação.
 cloud-sql-proxy --version
 ```
@@ -433,7 +336,6 @@ cloud-sql-proxy --version
 ```bash
 # Verifica se psql está no PATH.
 command -v psql
-
 # Mostra a versão instalada.
 psql --version
 ```
@@ -455,7 +357,6 @@ O `gcloud sql connect` precisa localizar `psql` para abrir a sessão PostgreSQL.
 ```text
 gcloud auth login
 → autentica a CLI gcloud
-
 Application Default Credentials (ADC)
 → credenciais descobertas automaticamente por aplicações e conectores
 ```
@@ -489,14 +390,11 @@ configure ADC antes de repetir a conexão.
 ```bash
 # 1. Conta ativa no gcloud.
 gcloud auth list
-
 # 2. ADC disponível.
 gcloud auth application-default print-access-token >/dev/null \
   && echo "ADC OK"
-
 # 3. Proxy disponível.
 cloud-sql-proxy --version
-
 # 4. Cliente PostgreSQL disponível.
 psql --version
 ```
@@ -539,21 +437,17 @@ Dentro do `psql`:
 ```sql
 -- Confirma o database atual.
 SELECT current_database();
-
 -- Confirma o usuário atual.
 SELECT current_user;
-
 -- Cria a tabela usada no laboratório.
 CREATE TABLE clientes (
   id INTEGER PRIMARY KEY,
   nome TEXT NOT NULL
 );
-
 -- Insere dados de teste.
 INSERT INTO clientes VALUES
 (1, 'Ana'),
 (2, 'Bruno');
-
 -- Confirma os dados persistidos.
 SELECT * FROM clientes;
 ```
@@ -587,21 +481,12 @@ Modelo mental:
 
 
 ```text
-
 POSTGRES_16 sem --edition
-
 → default pode ser ENTERPRISE_PLUS
-
-
 ENTERPRISE_PLUS
-
 → tier predefinido
-
-
 ENTERPRISE
-
 → pode usar --cpu + --memory
-
 ```
 
 
@@ -618,15 +503,10 @@ Conecte novamente:
 
 
 ```bash
-
 # Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
-
 gcloud sql connect "$INSTANCE" \
-
   --user="$DB_USER" \
-
   --database="$DB"
-
 ```
 
 
@@ -634,11 +514,8 @@ Execute:
 
 
 ```sql
-
 -- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
-
 SELECT * FROM clientes;
-
 ```
 
 
@@ -649,13 +526,9 @@ Os dados devem continuar lá.
 
 
 ```bash
-
 # Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
-
 gcloud sql instances describe "$INSTANCE" \
-
   --format="value(state)"
-
 ```
 
 
@@ -666,13 +539,9 @@ Confira simultaneamente:
 
 
 ```bash
-
 # Explicação: Exibe configuração e estado da instância Cloud SQL para inspeção.
-
 gcloud sql instances describe "$INSTANCE" \
-
   --format="yaml(settings.availabilityType,settings.backupConfiguration)"
-
 ```
 
 
@@ -698,15 +567,10 @@ Vamos quebrar dois elementos **já ensinados**.
 
 
 ```bash
-
 # Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
-
 gcloud sql connect "$INSTANCE" \
-
   --user="$DB_USER" \
-
   --database=banco-que-nao-existe
-
 ```
 
 
@@ -714,15 +578,10 @@ gcloud sql connect "$INSTANCE" \
 
 
 ```bash
-
 # Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
-
 gcloud sql connect "$INSTANCE" \
-
   --user=usuario-que-nao-existe \
-
   --database="$DB"
-
 ```
 
 
@@ -848,11 +707,8 @@ gcloud sql connect "$INSTANCE" \
 **Evidência:**
 
 ```bash
-
 # Explicação: Lista databases existentes na instância Cloud SQL.
-
 gcloud sql databases list --instance="$INSTANCE"
-
 ```
 
 
@@ -877,11 +733,8 @@ gcloud sql databases list --instance="$INSTANCE"
 **Evidência:**
 
 ```bash
-
 # Explicação: Lista usuários configurados na instância Cloud SQL.
-
 gcloud sql users list --instance="$INSTANCE"
-
 ```
 
 
@@ -906,11 +759,8 @@ gcloud sql users list --instance="$INSTANCE"
 **Evidências:**
 
 ```bash
-
 # Explicação: Lista usuários configurados na instância Cloud SQL.
-
 gcloud sql users list --instance="$INSTANCE"
-
 ```
 
 
@@ -924,15 +774,10 @@ Isso confirma que o usuário existe. A senha não é exibida pelo serviço.
 
 
 ```bash
-
 # Explicação: Redefine a senha do usuário Cloud SQL indicado.
-
 gcloud sql users set-password "$DB_USER" \
-
   --instance="$INSTANCE" \
-
   --password='Ace-Lab-12345!'
-
 ```
 
 
@@ -946,15 +791,10 @@ Não comece por:
 
 
 ```text
-
 VPC
-
 Firewall
-
 Route
-
 Cloud NAT
-
 ```
 
 
@@ -968,25 +808,15 @@ Use sempre:
 
 
 ```text
-
 Sintoma
-
    ↓
-
 Hipótese
-
    ↓
-
 Evidência
-
    ↓
-
 Causa
-
    ↓
-
 Correção
-
 ```
 
 
@@ -1000,15 +830,10 @@ Conecte com os três valores corretos:
 
 
 ```bash
-
 # Explicação: Abre uma conexão SQL autenticada com a instância e database informados.
-
 gcloud sql connect "$INSTANCE" \
-
   --user="$DB_USER" \
-
   --database="$DB"
-
 ```
 
 
@@ -1016,9 +841,7 @@ Senha:
 
 
 ```text
-
 Ace-Lab-12345!
-
 ```
 
 
@@ -1026,15 +849,10 @@ Valide:
 
 
 ```sql
-
 -- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
-
 SELECT current_database(), current_user;
-
 -- Explicação: Executa uma consulta para recuperar/validar os dados descritos nesta etapa.
-
 SELECT * FROM clientes;
-
 ```
 
 
@@ -1045,26 +863,15 @@ Use este modelo:
 
 
 ```text
-
 Cloud SQL
-
 → MySQL, PostgreSQL, SQL Server
-
 → aplicações relacionais tradicionais
-
 → operação gerenciada
-
 → HA e backups configuráveis
-
-
 AlloyDB
-
 → PostgreSQL-compatible
-
 → arquitetura própria do Google
-
 → workloads PostgreSQL exigentes em performance/escala
-
 ```
 
 
@@ -1101,21 +908,12 @@ Backup e Restore não são a mesma coisa que HA.
 
 
 ```text
-
 HA
-
 → disponibilidade/failover
-
-
 Backup
-
 → cópia para recuperação
-
-
 Restore
-
 → recupera o estado da instância a partir de um backup
-
 ```
 
 
@@ -1132,15 +930,10 @@ Conecte:
 
 
 ```bash
-
 # Abre conexão com o database usado no laboratório.
-
 gcloud sql connect "$INSTANCE" \
-
   --user="$DB_USER" \
-
   --database="$DB"
-
 ```
 
 
@@ -1148,9 +941,7 @@ Execute:
 
 
 ```sql
-
 SELECT * FROM clientes ORDER BY id;
-
 ```
 
 
@@ -1158,11 +949,8 @@ Resultado esperado:
 
 
 ```text
-
 1 | Ana
-
 2 | Bruno
-
 ```
 
 
@@ -1170,9 +958,7 @@ Saia:
 
 
 ```text
-
 \q
-
 ```
 
 
@@ -1186,13 +972,9 @@ Crie um backup manual:
 
 
 ```bash
-
 # Cria um backup on-demand da instância Cloud SQL.
-
 gcloud sql backups create \
-
   --instance="$INSTANCE"
-
 ```
 
 
@@ -1200,13 +982,9 @@ Liste os backups:
 
 
 ```bash
-
 # Lista backups da instância, incluindo ID e estado.
-
 gcloud sql backups list \
-
   --instance="$INSTANCE"
-
 ```
 
 
@@ -1214,24 +992,14 @@ Capture o backup mais recente com estado `SUCCESSFUL`:
 
 
 ```bash
-
 # Obtém o ID do backup bem-sucedido mais recente.
-
 export BACKUP_ID="$(gcloud sql backups list \
-
   --instance="$INSTANCE" \
-
   --filter="status=SUCCESSFUL" \
-
   --sort-by="~endTime" \
-
   --limit=1 \
-
   --format='value(id)')"
-
-
 echo "$BACKUP_ID"
-
 ```
 
 
@@ -1239,11 +1007,8 @@ Valide:
 
 
 ```text
-
 BACKUP_ID
-
 → deve conter um ID de backup válido
-
 ```
 
 
@@ -1260,13 +1025,9 @@ Conecte novamente:
 
 
 ```bash
-
 gcloud sql connect "$INSTANCE" \
-
   --user="$DB_USER" \
-
   --database="$DB"
-
 ```
 
 
@@ -1274,14 +1035,9 @@ Apague uma linha:
 
 
 ```sql
-
 DELETE FROM clientes
-
 WHERE id = 2;
-
-
 SELECT * FROM clientes ORDER BY id;
-
 ```
 
 
@@ -1289,9 +1045,7 @@ Resultado esperado:
 
 
 ```text
-
 1 | Ana
-
 ```
 
 
@@ -1299,9 +1053,7 @@ Saia:
 
 
 ```text
-
 \q
-
 ```
 
 
@@ -1309,16 +1061,10 @@ Agora temos:
 
 
 ```text
-
 Backup
-
 → contém Ana + Bruno
-
-
 Estado atual
-
 → contém apenas Ana
-
 ```
 
 
@@ -1332,29 +1078,17 @@ Restaure o backup sobre a própria instância do laboratório:
 
 
 ```bash
-
 # Restaura o backup selecionado na instância atual.
-
 #
-
 # --restore-instance
-
 #   define a instância de destino.
-
 #
-
 # --backup-instance
-
 #   informa a instância de origem do backup.
-
 gcloud sql backups restore "$BACKUP_ID" \
-
   --restore-instance="$INSTANCE" \
-
   --backup-instance="$INSTANCE" \
-
   --quiet
-
 ```
 
 
@@ -1362,16 +1096,10 @@ Durante o restore:
 
 
 ```text
-
 instância
-
 → temporariamente indisponível
-
-
 dados atuais do destino
-
 → sobrescritos pelo conteúdo do backup
-
 ```
 
 
@@ -1385,13 +1113,9 @@ Confirme que a instância voltou a ficar disponível:
 
 
 ```bash
-
 # Exibe o estado da instância após a restauração.
-
 gcloud sql instances describe "$INSTANCE" \
-
   --format="value(state)"
-
 ```
 
 
@@ -1399,9 +1123,7 @@ Resultado esperado:
 
 
 ```text
-
 RUNNABLE
-
 ```
 
 
@@ -1409,15 +1131,10 @@ Liste as operações recentes:
 
 
 ```bash
-
 # Mostra as operações recentes da instância.
-
 gcloud sql operations list \
-
   --instance="$INSTANCE" \
-
   --limit=5
-
 ```
 
 
@@ -1431,13 +1148,9 @@ Conecte novamente:
 
 
 ```bash
-
 gcloud sql connect "$INSTANCE" \
-
   --user="$DB_USER" \
-
   --database="$DB"
-
 ```
 
 
@@ -1445,9 +1158,7 @@ Execute:
 
 
 ```sql
-
 SELECT * FROM clientes ORDER BY id;
-
 ```
 
 
@@ -1455,11 +1166,8 @@ Resultado esperado novamente:
 
 
 ```text
-
 1 | Ana
-
 2 | Bruno
-
 ```
 
 
@@ -1467,25 +1175,15 @@ Isso comprova operacionalmente:
 
 
 ```text
-
 criar dados
-
 ↓
-
 backup
-
 ↓
-
 alterar/apagar dado
-
 ↓
-
 restore
-
 ↓
-
 dado recuperado
-
 ```
 
 
@@ -1493,9 +1191,7 @@ Saia:
 
 
 ```text
-
 \q
-
 ```
 
 
@@ -1509,28 +1205,15 @@ Saia:
 
 
 ```text
-
 Backup
-
 → recuperação de dados
-
-
 Restore
-
 → recupera estado a partir do backup
-
-
 HA
-
 → disponibilidade/failover
-
-
 Read replica
-
 → leitura/escala e, dependendo da arquitetura, estratégia de DR
-
 → não substitui backup
-
 ```
 
 
@@ -1538,21 +1221,12 @@ Para a ACE:
 
 
 ```text
-
 "recuperar dado apagado"
-
 → Backup / Restore ou PITR
-
-
 "reduzir indisponibilidade por falha de zona"
-
 → HA
-
-
 "escalar leitura"
-
 → Read Replica
-
 ```
 
 
@@ -1569,16 +1243,10 @@ Modelo:
 
 
 ```text
-
 Backup
-
 → recupera um estado capturado em um backup
-
-
 PITR
-
 → recupera para um ponto específico no tempo
-
 ```
 
 
@@ -1586,13 +1254,9 @@ Não confunda:
 
 
 ```text
-
 PITR
-
 ≠
-
 HA
-
 ```
 
 
@@ -1612,13 +1276,9 @@ Use para responder perguntas como:
 
 
 ```text
-
 Quais bancos existem?
-
 Quais possuem alertas ou insights?
-
 Como está a frota em diferentes projetos?
-
 ```
 
 
@@ -1626,9 +1286,7 @@ No Console:
 
 
 ```text
-
 Database Center
-
 ```
 
 
@@ -1645,19 +1303,12 @@ Antes de usar a Pricing Calculator, decomponha o custo.
 
 
 ```text
-
 compute / machine tier
-
 + armazenamento provisionado
-
 + backups
-
 + HA regional, quando habilitada
-
 + read replicas
-
 + transferência de rede
-
 ```
 
 
@@ -1665,15 +1316,10 @@ compute / machine tier
 
 
 ```text
-
 compute dos nós
-
 + armazenamento
-
 + arquitetura HA / read pools
-
 + transferência
-
 ```
 
 
@@ -1681,21 +1327,12 @@ Compare na Pricing Calculator:
 
 
 ```text
-
 Cenário 1
-
 Cloud SQL pequeno, single-zone, sem réplica
-
-
 Cenário 2
-
 Cloud SQL com HA regional
-
-
 Cenário 3
-
 Cloud SQL com HA + read replica
-
 ```
 
 
@@ -1717,25 +1354,14 @@ Para prova:
 
 
 ```text
-
 Alta disponibilidade
-
 ≠
-
 backup
-
-
 Read replica
-
 ≠
-
 HA automática
-
-
 Mais resiliência / mais capacidade
-
 → normalmente mais recursos faturáveis
-
 ```
 
 
@@ -1752,21 +1378,13 @@ A aula precisa apresentar:
 
 
 ```text
-
 conceito operacional
-
 ↓
-
 configuração/comando
-
 ↓
-
 inspeção
-
 ↓
-
 teste ou comportamento observável
-
 ```
 
 
@@ -1798,16 +1416,10 @@ A diferença importante em relação à versão anterior é:
 
 
 ```text
-
 Restore
-
 antes → apenas mencionado/orientado
-
-
 Restore
-
 agora → executado, inspecionado e validado
-
 ```
 
 
@@ -1869,13 +1481,9 @@ Antes de excluir, confirme que concluiu o exercício de Backup/Restore.
 
 
 ```bash
-
 # Exclui a instância Cloud SQL e encerra sua cobrança.
-
 gcloud sql instances delete "$INSTANCE" \
-
   --quiet
-
 ```
 
 
@@ -1883,11 +1491,8 @@ Valide que a instância não aparece mais:
 
 
 ```bash
-
 # Lista as instâncias restantes no projeto.
-
 gcloud sql instances list
-
 ```
 
 
