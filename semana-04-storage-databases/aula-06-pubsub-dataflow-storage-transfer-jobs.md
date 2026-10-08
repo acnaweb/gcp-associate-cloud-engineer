@@ -372,6 +372,58 @@ Depois, reinspecione:
 gcloud transfer authorize
 ```
 
+### Configuração explícita das permissões nos buckets
+
+No laboratório, prefira também entender e aplicar explicitamente as permissões do service agent em vez de esconder todo o processo atrás de `--add-missing`.
+
+Obtenha o número do projeto dinamicamente:
+
+```bash
+# Obtém o número do projeto atual.
+export PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID"   --format='value(projectNumber)')"
+# Monta o principal do Storage Transfer Service sem hardcode.
+export TRANSFER_SERVICE_AGENT="project-${PROJECT_NUMBER}@storage-transfer-service.iam.gserviceaccount.com"
+# Confirma o principal que receberá acesso aos buckets.
+echo "$TRANSFER_SERVICE_AGENT"
+```
+
+Na **origem**, conceda acesso aos metadados do bucket e leitura dos objetos:
+
+```bash
+# Permite ao service agent consultar os metadados do bucket de origem.
+gcloud storage buckets add-iam-policy-binding   "gs://$TRANSFER_SOURCE"   --member="serviceAccount:$TRANSFER_SERVICE_AGENT"   --role="roles/storage.legacyBucketReader"
+# Permite listar e ler os objetos que serão transferidos.
+gcloud storage buckets add-iam-policy-binding   "gs://$TRANSFER_SOURCE"   --member="serviceAccount:$TRANSFER_SERVICE_AGENT"   --role="roles/storage.objectViewer"
+```
+
+No **destino**, conceda a permissão de escrita usada pelo laboratório:
+
+```bash
+# Permite ao service agent gravar objetos no bucket de destino.
+gcloud storage buckets add-iam-policy-binding   "gs://$TRANSFER_DEST"   --member="serviceAccount:$TRANSFER_SERVICE_AGENT"   --role="roles/storage.legacyBucketWriter"
+```
+
+Inspecione os bindings antes de criar o Transfer Job:
+
+```bash
+# Inspeciona a política IAM da origem.
+gcloud storage buckets get-iam-policy "gs://$TRANSFER_SOURCE"
+# Inspeciona a política IAM do destino.
+gcloud storage buckets get-iam-policy "gs://$TRANSFER_DEST"
+```
+
+Para este laboratório simples:
+
+```text
+origem
+├─ roles/storage.legacyBucketReader
+└─ roles/storage.objectViewer
+destino
+└─ roles/storage.legacyBucketWriter
+```
+
+> Dependendo das opções de overwrite/delete usadas em outra transferência, permissões adicionais podem ser necessárias. Não transforme essa combinação em uma regra universal para qualquer Transfer Job.
+
 ### O que o service agent precisa fazer
 
 Para Cloud Storage → Cloud Storage, o service agent precisa conseguir, conforme as opções da transferência:
@@ -437,6 +489,51 @@ Reteste
 ```
 
 Esse troubleshooting altera uma causa por vez e preserva a evidência do erro original.
+
+### Falha real observada — `FAILED_PRECONDITION` e `storage.buckets.get`
+
+Depois que o service agent passou a existir, o laboratório apresentou uma segunda evidência:
+
+```text
+FAILED_PRECONDITION:
+Failed to obtain the location of the GCS bucket
+...
+service agent does not have storage.buckets.get access
+```
+
+Diagnóstico:
+
+```text
+Sintoma
+→ FAILED_PRECONDITION
+Evidência
+→ permission storage.buckets.get denied na origem
+Causa
+→ service agent sem acesso aos metadados do bucket de origem
+Correção
+→ roles/storage.legacyBucketReader na origem
+→ roles/storage.objectViewer na origem
+→ roles/storage.legacyBucketWriter no destino
+Reteste
+→ gcloud transfer jobs create
+```
+
+Depois de aplicar os bindings e inspecioná-los, execute novamente:
+
+```bash
+# Retesta exatamente o mesmo Transfer Job após corrigir o IAM dos buckets.
+gcloud transfer jobs create   "gs://$TRANSFER_SOURCE"   "gs://$TRANSFER_DEST"   --description="ACE Storage Transfer bucket to bucket"
+```
+
+Esse caso demonstra uma regra importante de troubleshooting:
+
+```text
+mensagem de erro
+→ evidência
+→ permissão ausente
+→ binding mínimo compatível com o laboratório
+→ reteste
+```
 
 ## 6.6 Inspecionar transfer jobs
 
@@ -950,6 +1047,7 @@ Uma mensagem foi entregue a uma subscription pull e processada com sucesso.
 | Pub/Sub — falha/troubleshooting | `P` |
 | Storage Transfer — arquitetura | `E` |
 | Storage Transfer — IAM/service agent | `P` |
+| Storage Transfer — IAM explícito nos buckets | `P` |
 | Storage Transfer — troubleshooting `NOT_FOUND` | `P` |
 | Storage Transfer — bucket→bucket | `P` |
 | Transfer Job — listar/describe | `P` |
@@ -977,6 +1075,10 @@ Uma mensagem foi entregue a uma subscription pull e processada com sucesso.
 - [ ] Validei projeto, conta ativa e existência dos buckets;
 - [ ] Executei `gcloud transfer authorize` antes do primeiro Transfer Job;
 - [ ] Entendi o papel do Storage Transfer Service service agent;
+- [ ] Obtive `PROJECT_NUMBER` dinamicamente;
+- [ ] Concedi `legacyBucketReader` + `objectViewer` na origem;
+- [ ] Concedi `legacyBucketWriter` no destino;
+- [ ] Inspecionei as políticas IAM dos dois buckets;
 - [ ] Diagnostiquei o caso `NOT_FOUND` usando evidências antes de corrigir IAM;
 - [ ] Executei uma transferência gerenciada;
 - [ ] Diferenciei Transfer Job e Transfer Operation;
@@ -1007,7 +1109,18 @@ gcloud pubsub topics delete "$PUBSUB_TOPIC" --quiet
 
 ## 17.2 Storage Transfer
 
-> Se você executou `gcloud transfer authorize --add-missing`, o cleanup dos buckets e do Transfer Job **não revoga automaticamente os papéis IAM adicionados**. Em um projeto de laboratório descartável isso pode ser aceitável; em projeto compartilhado, revise explicitamente os bindings concedidos antes de encerrar a atividade.
+> Se você executou `gcloud transfer authorize --add-missing`, o cleanup dos buckets e do Transfer Job **não revoga automaticamente os papéis IAM adicionados**. Em projeto compartilhado, revise explicitamente os bindings concedidos.
+
+Para os bindings que adicionamos diretamente aos buckets, podemos removê-los explicitamente antes de excluir os buckets:
+
+```bash
+# Remove leitura de metadados da origem.
+gcloud storage buckets remove-iam-policy-binding   "gs://$TRANSFER_SOURCE"   --member="serviceAccount:$TRANSFER_SERVICE_AGENT"   --role="roles/storage.legacyBucketReader"
+# Remove leitura de objetos da origem.
+gcloud storage buckets remove-iam-policy-binding   "gs://$TRANSFER_SOURCE"   --member="serviceAccount:$TRANSFER_SERVICE_AGENT"   --role="roles/storage.objectViewer"
+# Remove escrita no destino.
+gcloud storage buckets remove-iam-policy-binding   "gs://$TRANSFER_DEST"   --member="serviceAccount:$TRANSFER_SERVICE_AGENT"   --role="roles/storage.legacyBucketWriter"
+```
 
 Antes de remover os buckets, confirme que a transferência terminou.
 
