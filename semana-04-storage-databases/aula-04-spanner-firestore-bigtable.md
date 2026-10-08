@@ -496,12 +496,39 @@ resource name
 
 ## 9.3 Listar backups
 
-O backup não é necessariamente criado imediatamente após o schedule.
+> **Atenção — o backup não é criado imediatamente:** criar o `backup schedule` apenas configura o agendamento. O Firestore executará o backup posteriormente, conforme o schedule do serviço. Portanto, ao executar este laboratório pela primeira vez, é **normal** que ainda não exista nenhum backup disponível. Isso não significa que a configuração falhou.
 
 ```bash
-# Lista backups disponíveis no projeto.
+# Lista os backups já gerados pelo schedule.
 gcloud firestore backups list \
   --format="table(name,database,state)"
+```
+
+Se nenhum backup for retornado:
+
+```text
+comportamento esperado
+→ o schedule ainda não executou
+→ não existe backup para restaurar
+→ NÃO tente executar o restore agora
+→ avance para a próxima seção da aula
+→ retorne posteriormente para completar o restore (P*)
+```
+
+Você pode confirmar que o agendamento continua configurado:
+
+```bash
+# Confirma que o backup schedule existe mesmo que nenhum backup tenha sido gerado.
+gcloud firestore backups schedules list \
+  --database="$FIRESTORE_DB"
+```
+
+A diferença é importante:
+
+```text
+backup schedule existente
+≠
+backup já gerado
 ```
 
 ### Classificação M/E/P
@@ -511,15 +538,19 @@ criar backup schedule
 → P
 listar/inspecionar schedule
 → P
-aguardar geração do backup
+verificar backups disponíveis
+→ P
+backup efetivamente gerado
 → P*
 restore efetivo
 → P*
 ```
 
-O `P*` existe porque o horário do backup agendado não é controlado pelo laboratório.
+O `P*` existe porque a execução do backup é assíncrona e o horário em que o primeiro backup ficará disponível não é controlado pelo aluno durante o laboratório.
 
-## 9.4 Restore guiado
+## 9.4 Restore guiado — somente se houver backup disponível
+
+> **Pré-condição obrigatória:** prossiga com esta seção somente se `gcloud firestore backups list` retornar pelo menos um backup. Se a lista estiver vazia, **não há nada para restaurar**. Considere a prática de backup concluída até a inspeção do schedule e retorne posteriormente para executar o restore.
 
 Quando existir um backup disponível, copie seu resource name:
 
@@ -535,6 +566,16 @@ export FIRESTORE_BACKUP="projects/PROJECT_ID/locations/LOCATION/backups/BACKUP_I
 # Define um NOVO database para receber o restore.
 export FIRESTORE_RESTORE_DB=ace-firestore-restore
 ```
+
+Antes de executar, confirme:
+
+```bash
+# Verifica novamente se existe um backup disponível.
+gcloud firestore backups list \
+  --format="table(name,database,state)"
+```
+
+Se a saída continuar vazia, pare esta etapa e prossiga para a próxima seção.
 
 O restore padrão cria um **novo database**:
 
@@ -949,7 +990,10 @@ A equipe precisa recuperar documentos apagados acidentalmente do Firestore.
 - [ ] Provoquei e diagnostiquei uma leitura de documento inexistente;
 - [ ] Excluí um documento;
 - [ ] Criei e inspecionei um backup schedule;
-- [ ] Entendi que o backup é gerado de forma agendada;
+- [ ] Verifiquei se já existe um backup disponível;
+- [ ] Entendi que criar o schedule não cria um backup imediatamente;
+- [ ] Se havia backup disponível, executei ou acompanhei o restore em um novo database;
+- [ ] Se ainda não havia backup, entendi que o restore permanece como prática condicional (`P*`);
 - [ ] Entendi que o restore padrão usa um novo database;
 - [ ] Entendi instance → database → schema → table no Spanner;
 - [ ] Executei ou acompanhei a prática guiada de SQL no Spanner;
