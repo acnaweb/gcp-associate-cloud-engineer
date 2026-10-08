@@ -300,19 +300,145 @@ gcloud storage ls "gs://$TRANSFER_SOURCE/"
 gcloud storage ls "gs://$TRANSFER_DEST/"
 ```
 
-## 6.4 Criar e executar a transferência
+## 6.4 Validar IAM antes de criar o Transfer Job
+
+O Storage Transfer Service não usa apenas as credenciais do usuário que executa `gcloud transfer jobs create`.
+
+Em uma transferência agentless entre buckets, existe também um **service agent do Storage Transfer Service**, normalmente no formato:
+
+```text
+project-PROJECT_NUMBER@storage-transfer-service.iam.gserviceaccount.com
+```
+
+Modelo:
+
+```text
+usuário ativo
+↓
+cria/gerencia Transfer Job
+Storage Transfer Service service agent
+↓
+lê bucket origem
+↓
+grava bucket destino
+```
+
+Por isso, antes de criar o primeiro job, valide as permissões.
+
+```bash
+# Confirma projeto e conta que serão usados na criação do Transfer Job.
+gcloud config get-value project
+gcloud config get-value account
+# Confirma que os dois buckets realmente existem e são acessíveis ao usuário atual.
+gcloud storage buckets describe "gs://$TRANSFER_SOURCE"
+gcloud storage buckets describe "gs://$TRANSFER_DEST"
+# Inspeciona as permissões necessárias ao Storage Transfer Service e informa papéis ausentes.
+gcloud transfer authorize
+```
+
+### Comportamento esperado
+
+Se tudo estiver autorizado, prossiga.
+
+Se o comando indicar papéis ausentes, **não conclua imediatamente que `jobs create` está incorreto**.
+
+Modelo de diagnóstico:
+
+```text
+buckets existem
++
+API habilitada
++
+jobs create retorna NOT_FOUND / falha de autorização
+↓
+verificar IAM do usuário e do service agent
+```
+
+### Correção automática — somente para projeto de laboratório
+
+Em um projeto descartável no qual você tenha permissão administrativa, a CLI pode adicionar os papéis ausentes:
+
+```bash
+# Adiciona automaticamente os papéis que o comando de autorização identificou como ausentes.
+gcloud transfer authorize --add-missing
+```
+
+> **Atenção:** `--add-missing` é uma conveniência para laboratório. Ele pode conceder papéis amplos ao usuário e ao service agent. Em ambiente corporativo, regulado ou com política de least privilege, analise os papéis/permissões ausentes e conceda somente o necessário conforme a política da organização.
+
+Depois, reinspecione:
+
+```bash
+# Confirma que os pré-requisitos IAM agora estão atendidos.
+gcloud transfer authorize
+```
+
+### O que o service agent precisa fazer
+
+Para Cloud Storage → Cloud Storage, o service agent precisa conseguir, conforme as opções da transferência:
+
+```text
+origem
+→ localizar bucket
+→ listar objetos
+→ ler objetos
+destino
+→ localizar bucket
+→ listar objetos quando necessário
+→ criar/gravar objetos
+→ ler/excluir objetos quando a política de overwrite/delete exigir
+```
+
+Não memorize um único papel como solução universal: as permissões mínimas dependem das opções da transferência.
+
+## 6.5 Criar e executar a transferência
+
+Somente depois de validar os buckets e IAM, crie o job.
 
 Sem um schedule explícito e sem `--do-not-run`, o comando cria um job de execução única e inicia a transferência.
 
 ```bash
-# Cria uma transferência imediata entre os buckets.
+# Cria uma transferência imediata entre os buckets após validar os pré-requisitos IAM.
 gcloud transfer jobs create \
   "gs://$TRANSFER_SOURCE" \
   "gs://$TRANSFER_DEST" \
   --description="ACE Storage Transfer bucket to bucket"
 ```
 
-## 6.5 Inspecionar transfer jobs
+### Falha real observada — `NOT_FOUND`
+
+Um erro possível no primeiro uso é:
+
+```text
+ERROR: (gcloud.transfer.jobs.create) NOT_FOUND: Requested entity was not found.
+```
+
+Não use tentativa e erro com flags aleatórias.
+
+Troubleshooting:
+
+```text
+Sintoma
+→ jobs create retorna NOT_FOUND
+Hipótese 1
+→ bucket de origem/destino não existe ou nome está incorreto
+Evidência
+→ gcloud storage buckets describe nos dois buckets
+Hipótese 2
+→ pré-requisitos IAM/service agent do Storage Transfer não estão preparados
+Evidência
+→ gcloud transfer authorize
+Causa
+→ determinada pela evidência retornada pelos comandos anteriores
+Correção
+→ corrigir nome/recurso ou IAM
+→ em laboratório administrativo, --add-missing pode ser usado conscientemente
+Reteste
+→ gcloud transfer jobs create
+```
+
+Esse troubleshooting altera uma causa por vez e preserva a evidência do erro original.
+
+## 6.6 Inspecionar transfer jobs
 
 ```bash
 # Lista os transfer jobs.
@@ -333,7 +459,7 @@ Inspecione:
 gcloud transfer jobs describe "$TRANSFER_JOB"
 ```
 
-## 6.6 Inspecionar operações
+## 6.7 Inspecionar operações
 
 ```bash
 # Lista operações do Storage Transfer Service.
@@ -349,7 +475,7 @@ Transfer Operation
 → execução
 ```
 
-## 6.7 Validar o resultado
+## 6.8 Validar o resultado
 
 ```bash
 # Verifica se o arquivo chegou ao destino.
@@ -823,6 +949,8 @@ Uma mensagem foi entregue a uma subscription pull e processada com sucesso.
 | Pub/Sub — publish/pull/ack | `P` |
 | Pub/Sub — falha/troubleshooting | `P` |
 | Storage Transfer — arquitetura | `E` |
+| Storage Transfer — IAM/service agent | `P` |
+| Storage Transfer — troubleshooting `NOT_FOUND` | `P` |
 | Storage Transfer — bucket→bucket | `P` |
 | Transfer Job — listar/describe | `P` |
 | Transfer Operation — listar | `P` |
@@ -846,6 +974,10 @@ Uma mensagem foi entregue a uma subscription pull e processada com sucesso.
 - [ ] Provoquei e corrigi uma falha simples de Pub/Sub;
 - [ ] Diferenciei `gcloud storage cp` de Storage Transfer Service;
 - [ ] Criei buckets de origem e destino;
+- [ ] Validei projeto, conta ativa e existência dos buckets;
+- [ ] Executei `gcloud transfer authorize` antes do primeiro Transfer Job;
+- [ ] Entendi o papel do Storage Transfer Service service agent;
+- [ ] Diagnostiquei o caso `NOT_FOUND` usando evidências antes de corrigir IAM;
 - [ ] Executei uma transferência gerenciada;
 - [ ] Diferenciei Transfer Job e Transfer Operation;
 - [ ] Diferenciei batch e streaming;
@@ -874,6 +1006,8 @@ gcloud pubsub topics delete "$PUBSUB_TOPIC" --quiet
 ```
 
 ## 17.2 Storage Transfer
+
+> Se você executou `gcloud transfer authorize --add-missing`, o cleanup dos buckets e do Transfer Job **não revoga automaticamente os papéis IAM adicionados**. Em um projeto de laboratório descartável isso pode ser aceitável; em projeto compartilhado, revise explicitamente os bindings concedidos antes de encerrar a atividade.
 
 Antes de remover os buckets, confirme que a transferência terminou.
 
