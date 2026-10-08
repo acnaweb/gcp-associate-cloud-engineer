@@ -694,12 +694,113 @@ gcloud storage buckets create "gs://$DATAFLOW_BUCKET" \
 A entrada usa o arquivo público de exemplo do Google e a saída vai para o bucket do laboratório.
 
 ```bash
+## IAM da Worker Service Account
+O job pode ser criado com sucesso e ainda falhar durante a execução se a **worker service account** não tiver as permissões necessárias.
+Por padrão, os workers usam a Compute Engine default service account:
+```text
+PROJECT_NUMBER-compute@developer.gserviceaccount.com
+```
+Obtenha o principal dinamicamente:
+```bash
+# Obtém o número do projeto atual.
+export PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID"   --format='value(projectNumber)')"
+# Define a worker service account padrão usada pelo Dataflow.
+export DATAFLOW_WORKER_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+# Confirma a identidade que executará o trabalho nos workers.
+echo "$DATAFLOW_WORKER_SA"
+```
+Antes de conceder qualquer papel, inspecione o IAM atual:
+```bash
+# Lista os papéis que a worker service account já possui no projeto.
+gcloud projects get-iam-policy "$PROJECT_ID"   --flatten="bindings[].members"   --filter="bindings.members:serviceAccount:$DATAFLOW_WORKER_SA"   --format="table(bindings.role)"
+```
+Para executar unidades de trabalho do Dataflow, conceda `roles/dataflow.worker` no projeto:
+```bash
+# Permite à worker service account executar os workers do pipeline.
+gcloud projects add-iam-policy-binding "$PROJECT_ID"   --member="serviceAccount:$DATAFLOW_WORKER_SA"   --role="roles/dataflow.worker"
+```
+O WordCount deste laboratório grava o resultado em `gs://$DATAFLOW_BUCKET`. Conceda acesso somente a esse bucket:
+```bash
+# Permite leitura e gravação dos objetos no bucket usado pelo laboratório.
+gcloud storage buckets add-iam-policy-binding   "gs://$DATAFLOW_BUCKET"   --member="serviceAccount:$DATAFLOW_WORKER_SA"   --role="roles/storage.objectAdmin"
+```
+Inspecione novamente antes de executar o job:
+```bash
+# Confirma o papel Dataflow Worker no projeto.
+gcloud projects get-iam-policy "$PROJECT_ID"   --flatten="bindings[].members"   --filter="bindings.members:serviceAccount:$DATAFLOW_WORKER_SA"   --format="table(bindings.role)"
+# Confirma o binding de Storage no bucket de saída.
+gcloud storage buckets get-iam-policy "gs://$DATAFLOW_BUCKET"
+```
+> O bucket público `gs://dataflow-samples` fornece o arquivo de entrada do exemplo. Não tente alterar IAM nesse bucket do Google.
 # Executa o template batch WordCount fornecido pelo Google.
 gcloud dataflow jobs run "$DATAFLOW_JOB" \
   --gcs-location="gs://dataflow-templates/latest/Word_Count" \
   --region="$REGION" \
   --parameters="inputFile=gs://dataflow-samples/shakespeare/kinglear.txt,output=gs://$DATAFLOW_BUCKET/output/wordcount"
 ```
+
+### Falha real observada — job criado e depois `Failed`
+
+No laboratório, o comando `gcloud dataflow jobs run` retornou um Job ID, mas a listagem mostrou:
+
+```text
+TYPE   STATE
+Batch  Failed
+```
+
+A inspeção do IAM da worker service account mostrou inicialmente apenas:
+
+```text
+roles/logging.logWriter
+```
+
+O papel `roles/dataflow.worker` estava ausente.
+
+Troubleshooting:
+
+```text
+Sintoma
+→ job é criado
+→ estado muda para Failed
+Hipótese
+→ worker service account sem permissões de execução/acesso ao sink
+Evidência
+→ inspecionar IAM da worker service account
+Causa observada
+→ roles/dataflow.worker ausente
+→ worker também precisava gravar no bucket de saída
+Correção
+→ roles/dataflow.worker no projeto
+→ roles/storage.objectAdmin somente no bucket do laboratório
+Reteste
+→ criar NOVO job WordCount
+→ acompanhar Pending/Running/Done
+```
+
+Um job batch que terminou em `Failed` não é reutilizado neste laboratório. Gere um novo nome:
+
+```bash
+# Gera um nome novo para o reteste.
+export DATAFLOW_JOB="ace-wordcount-$(date +%Y%m%d-%H%M%S)"
+# Executa novamente o mesmo template após corrigir IAM.
+gcloud dataflow jobs run "$DATAFLOW_JOB"   --gcs-location="gs://dataflow-templates/latest/Word_Count"   --region="$REGION"   --parameters="inputFile=gs://dataflow-samples/shakespeare/kinglear.txt,output=gs://$DATAFLOW_BUCKET/output/wordcount"
+# Acompanha o estado do novo job.
+gcloud dataflow jobs list   --region="$REGION"
+```
+
+Comportamento esperado:
+
+```text
+Pending
+↓
+Running
+↓
+Done
+```
+
+Se voltar para `Failed`, não adicione novos papéis por tentativa. Use `jobs describe` e Cloud Logging para obter evidência antes de alterar IAM.
+
+
 
 O comando retorna informações como:
 
@@ -1053,6 +1154,9 @@ Uma mensagem foi entregue a uma subscription pull e processada com sucesso.
 | Transfer Job — listar/describe | `P` |
 | Transfer Operation — listar | `P` |
 | Dataflow — batch × streaming | `E` |
+| Dataflow — worker service account IAM | `P` |
+| Dataflow — IAM no bucket de saída | `P` |
+| Dataflow — troubleshooting de job `Failed` | `P` |
 | Dataflow — source/transform/sink | `E` |
 | Dataflow — WordCount template | `P` |
 | Dataflow — listar/describe/status | `P` |
@@ -1144,6 +1248,22 @@ gcloud transfer jobs delete "$TRANSFER_JOB"
 ```
 
 ## 17.3 Dataflow
+
+Os papéis concedidos explicitamente durante o laboratório também devem ser removidos quando não forem mais necessários:
+
+```bash
+# Remove o acesso de objetos concedido especificamente ao bucket do laboratório.
+gcloud storage buckets remove-iam-policy-binding \
+  "gs://$DATAFLOW_BUCKET" \
+  --member="serviceAccount:$DATAFLOW_WORKER_SA" \
+  --role="roles/storage.objectAdmin"
+# Remove o papel Dataflow Worker concedido à conta padrão para este laboratório.
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$DATAFLOW_WORKER_SA" \
+  --role="roles/dataflow.worker"
+```
+
+> Em projeto compartilhado, remova um binding somente se ele tiver sido criado especificamente por este laboratório e não for necessário para outros workloads.
 
 Confirme o estado:
 
