@@ -24,6 +24,8 @@ Ao final, você deverá:
 - provocar erros de senha/database de forma controlada;
 
 - diferenciar Cloud SQL e AlloyDB no nível esperado para ACE.
+- criar, inspecionar e testar uma Read Replica do Cloud SQL;
+- diferenciar Primary, Read Replica, HA e Backup.
 
 
 > **Custos:** Cloud SQL gera cobrança enquanto a instância existir. Cleanup é obrigatório.
@@ -1233,7 +1235,236 @@ Para a ACE:
 ---
 
 
-## 10.2 PITR
+## 10.2 Laboratório — Read Replica
+
+Uma **Read Replica** é uma cópia somente leitura da instância Primary, mantida pelo Cloud SQL por replicação assíncrona.
+
+Modelo mental:
+
+```text
+Primary
+→ leitura + escrita
+↓ replicação assíncrona
+Read Replica
+→ leitura
+→ escala consultas
+```
+
+Ela é útil para descarregar consultas de leitura, relatórios e analytics da Primary. Não substitui HA nem Backup.
+
+### 10.2.1 Definir a réplica
+
+```bash
+# Define o nome da Read Replica do laboratório.
+export REPLICA=ace-sql-replica
+```
+
+### 10.2.2 Criar a Read Replica
+
+```bash
+# Cria uma Read Replica associada à instância Primary.
+gcloud sql instances create "$REPLICA" \
+  --master-instance-name="$INSTANCE"
+```
+
+A criação pode levar alguns minutos.
+
+### 10.2.3 Inspecionar
+
+```bash
+# Inspeciona estado, região, Primary associada e tier.
+gcloud sql instances describe "$REPLICA" \
+  --format="yaml(name,state,region,masterInstanceName,settings.tier,databaseVersion)"
+```
+
+Confirme:
+
+```text
+state
+→ RUNNABLE
+masterInstanceName
+→ aponta para ace-sql
+```
+
+Liste as duas instâncias:
+
+```bash
+# Lista Primary e Read Replica.
+gcloud sql instances list
+```
+
+### 10.2.4 Testar leitura
+
+Conecte à réplica usando os pré-requisitos já configurados nesta aula:
+
+```bash
+# Conecta diretamente à Read Replica.
+gcloud sql connect "$REPLICA" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Dentro do `psql`:
+
+```sql
+SELECT * FROM clientes ORDER BY id;
+```
+
+A consulta deve retornar os dados criados na Primary.
+
+### 10.2.5 Quebrar propositalmente — tentar escrever na réplica
+
+Ainda na réplica:
+
+```sql
+INSERT INTO clientes VALUES (3, 'Carla');
+```
+
+Resultado esperado:
+
+```text
+erro de transação somente leitura
+```
+
+Saia:
+
+```text
+\q
+```
+
+### 10.2.6 Troubleshooting
+
+**Sintoma**
+
+```text
+SELECT funciona
+INSERT falha
+```
+
+**Hipótese**
+
+```text
+a conexão está apontando para uma Read Replica
+```
+
+**Evidência**
+
+```bash
+gcloud sql instances describe "$REPLICA" \
+  --format="yaml(name,masterInstanceName,state)"
+```
+
+**Causa**
+
+```text
+Read Replica
+→ somente leitura
+```
+
+**Correção**
+
+Operações de escrita devem ser direcionadas à Primary.
+
+### 10.2.7 Escrever na Primary
+
+```bash
+# Conecta novamente à Primary.
+gcloud sql connect "$INSTANCE" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Dentro do `psql`:
+
+```sql
+INSERT INTO clientes VALUES (3, 'Carla');
+SELECT * FROM clientes ORDER BY id;
+```
+
+Saia:
+
+```text
+\q
+```
+
+### 10.2.8 Validar a replicação
+
+Conecte novamente à Read Replica:
+
+```bash
+gcloud sql connect "$REPLICA" \
+  --user="$DB_USER" \
+  --database="$DB"
+```
+
+Consulte:
+
+```sql
+SELECT * FROM clientes ORDER BY id;
+```
+
+Após a réplica receber a alteração, o resultado deverá incluir:
+
+```text
+3 | Carla
+```
+
+Saia:
+
+```text
+\q
+```
+
+Como a replicação é assíncrona, pode existir **replication lag** entre a escrita na Primary e sua visibilidade na réplica.
+
+### 10.2.9 Inspecionar Primary → Replica
+
+```bash
+# Mostra as réplicas associadas à Primary.
+gcloud sql instances describe "$INSTANCE" \
+  --format="yaml(name,replicaNames)"
+# Mostra a Primary associada à Read Replica.
+gcloud sql instances describe "$REPLICA" \
+  --format="yaml(name,masterInstanceName,state)"
+```
+
+### 10.2.10 Primary x Read Replica x HA x Backup
+
+| Recurso | Objetivo |
+|---|---|
+| Primary | leitura e escrita |
+| Read Replica | escalar leitura |
+| HA | disponibilidade/failover |
+| Backup | recuperação de dados |
+| PITR | recuperação para um ponto no tempo |
+
+Para a ACE:
+
+```text
+"escalar consultas de leitura"
+→ Read Replica
+"reduzir indisponibilidade por falha de zona"
+→ HA
+"recuperar dado apagado"
+→ Backup/Restore ou PITR
+```
+
+### 10.2.11 Cross-region Read Replica — complementar
+
+Uma réplica também pode ser criada em outra região:
+
+```bash
+# Exemplo complementar; não execute no laboratório principal.
+gcloud sql instances create ace-sql-replica-dr \
+  --master-instance-name="$INSTANCE" \
+  --region=us-east1
+```
+
+Cross-region Read Replica pode compor uma estratégia de disaster recovery. Neste laboratório, não a criaremos para evitar custo adicional.
+
+---
+
+## 10.3 PITR
 
 
 Point-in-Time Recovery é outro mecanismo de recuperação.
@@ -1266,7 +1497,7 @@ A configuração detalhada de PITR não é necessária para este laboratório; o
 ---
 
 
-## 10.3 Database Center
+## 10.4 Database Center
 
 
 Database Center oferece uma visão central da frota de bancos suportados no Google Cloud.
@@ -1406,6 +1637,9 @@ Quando a execução depender de privilégio administrativo, custo relevante ou i
 | Validação do dado após restore | `P` |
 
 | Cloud SQL x AlloyDB | `E` |
+| Read Replica — criar e inspecionar | `P` |
+| Read Replica — leitura e falha de escrita | `P` |
+| Replicação Primary → Replica | `P` |
 
 | AlloyDB operacional | `E/P*` |
 
@@ -1461,6 +1695,10 @@ agora → executado, inspecionado e validado
 
 - [ ] Validei a recuperação do dado;
 
+- [ ] Criei e inspecionei uma Read Replica;
+- [ ] Validei leitura na réplica;
+- [ ] Provoquei uma tentativa de escrita e diagnostiquei a falha read-only;
+- [ ] Escrevi na Primary e confirmei o dado na réplica;
 - [ ] Diferenciei Backup, Restore, HA, Read Replica e PITR;
 
 - [ ] Revisei os fatores de custo;
@@ -1477,11 +1715,15 @@ agora → executado, inspecionado e validado
 O Cleanup agora é propositalmente a **última etapa da aula**.
 
 
-Antes de excluir, confirme que concluiu o exercício de Backup/Restore.
+Antes de excluir, confirme que concluiu os exercícios de Backup/Restore e Read Replica.
 
+A Read Replica deve ser excluída antes da Primary.
 
 ```bash
-# Exclui a instância Cloud SQL e encerra sua cobrança.
+# Exclui primeiro a Read Replica.
+gcloud sql instances delete "$REPLICA" \
+  --quiet
+# Depois exclui a instância Primary.
 gcloud sql instances delete "$INSTANCE" \
   --quiet
 ```
