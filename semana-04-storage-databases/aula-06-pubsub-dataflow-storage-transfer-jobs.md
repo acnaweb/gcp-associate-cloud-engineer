@@ -3,517 +3,927 @@
 ## Objetivos
 
 Ao final, você deverá:
-- explicar o modelo de produtores, tópicos, subscriptions e consumidores no Pub/Sub;
-- criar e testar um fluxo básico de mensagens Pub/Sub;
-- explicar quando Dataflow é usado para processamento batch ou streaming;
-- inspecionar o status de jobs Dataflow;
-- explicar o papel do Storage Transfer Service;
-- reconhecer quando usar upload direto, transferência gerenciada ou processamento de dados.
+
+- explicar publisher, topic, subscription, subscriber e acknowledgment no Pub/Sub;
+- criar e inspecionar topic e subscription;
+- publicar e consumir mensagens;
+- provocar e diagnosticar uma falha simples de Pub/Sub;
+- explicar quando usar Storage Transfer Service em vez de uma cópia manual;
+- executar e inspecionar uma transferência entre buckets;
+- diferenciar transfer job e transfer operation;
+- diferenciar processamento batch e streaming no Dataflow;
+- explicar source, transformation e sink em um pipeline;
+- executar um Dataflow job a partir de um template oficial;
+- listar e inspecionar o estado de um Dataflow job;
+- interpretar estados de execução de jobs;
+- diferenciar BigQuery Job, Dataflow Job e Storage Transfer Job/Operation;
+- escolher entre Pub/Sub, Dataflow, Storage Transfer e BigQuery a partir de um cenário;
+- executar o cleanup dos recursos do laboratório.
+
+> **Custos:** Pub/Sub e Storage Transfer usarão volumes mínimos. Dataflow cria recursos de processamento e pode gerar cobrança mesmo em um laboratório curto. Execute o job uma única vez, acompanhe até o estado terminal e faça o cleanup. Templates gerenciados pelo Google usam Dataflow Prime por padrão atualmente; não trate Dataflow como um recurso gratuito.
 
 ---
 
+# 1. Visão geral
 
-## Cobertura no exam guide
-
-Exam Guide 3.3, 3.4 e 4.4: Pub/Sub, Dataflow, eventos, Storage Transfer Service e revisão de status de jobs.
-
-**Custos:** não crie Dataflow jobs sem necessidade; jobs podem gerar cobrança de compute.
-
-## 1. Conceito
-
-Pub/Sub desacopla produtores e consumidores por mensagens. Dataflow executa pipelines batch/stream Apache Beam. Storage Transfer Service move dados entre origens suportadas e Cloud Storage. A ACE deve reconhecer e operar o básico, não desenvolver pipelines Beam complexos.
-
-### Arquitetura / modelo mental
+Esta aula fecha o fluxo de soluções de dados da Semana 4.
 
 ```text
-Producer → Pub/Sub Topic → Subscription → Consumer
-Data source → Dataflow job → sink
-External/GCS source → Storage Transfer Service → GCS
+mensagens/eventos desacoplados
+→ Pub/Sub
+processamento/transformação batch ou streaming
+→ Dataflow
+movimentação gerenciada de conjuntos de dados
+→ Storage Transfer Service
+SQL analítico / data warehouse
+→ BigQuery
 ```
 
-## 2. Criar / Configurar
-
-Pub/Sub hands-on:
-
-```bash
-# Explicação: Habilita a API/serviço indicado no projeto ativo para permitir o uso do recurso no laboratório.
-gcloud services enable pubsub.googleapis.com dataflow.googleapis.com storagetransfer.googleapis.com
-# Explicação: Cria um tópico Pub/Sub para receber mensagens dos produtores.
-gcloud pubsub topics create ace-topic
-# Explicação: Cria uma subscription associada ao tópico Pub/Sub para permitir consumo das mensagens.
-gcloud pubsub subscriptions create ace-sub --topic=ace-topic
-```
-
-Para Dataflow/Storage Transfer, liste jobs/configurações antes de provisionar pipelines que possam gerar custo.
-
-## 3. Inspecionar
-
-```bash
-# Explicação: Lista tópicos Pub/Sub existentes para confirmar a criação e localizar o recurso do laboratório.
-gcloud pubsub topics list
-# Explicação: Exibe a configuração da subscription Pub/Sub, incluindo o tópico associado e parâmetros de entrega.
-gcloud pubsub subscriptions describe ace-sub
-# Explicação: Lista jobs Dataflow para verificar estado e identificar a execução do laboratório.
-gcloud dataflow jobs list --region=us-central1
-# Explicação: Lista jobs do Storage Transfer Service para acompanhar transferências configuradas.
-gcloud transfer jobs list 2>/dev/null || true
-```
-
-> A partir deste ponto, todos os elementos usados no troubleshooting já foram apresentados e inspecionados.
-
-## 4. Testar
-
-```bash
-# Explicação: Publica uma mensagem no tópico Pub/Sub para testar o fluxo de eventos.
-gcloud pubsub topics publish ace-topic --message='ACE'
-# Explicação: Consome mensagens disponíveis na subscription; `--auto-ack` confirma automaticamente o recebimento.
-gcloud pubsub subscriptions pull ace-sub --auto-ack --limit=1
-```
-
-## 5. Quebrar propositalmente
-
-Publique uma mensagem e tente puxar de uma subscription com nome incorreto: `ace-sub-errada`.
-
-## 6. Troubleshooting
-
-**Sintoma:** recurso não encontrado.
-**Hipótese:** subscription ID incorreto.
-**Evidência:** `gcloud pubsub subscriptions list`.
-**Causa:** nome deliberadamente errado.
-**Correção:** usar `ace-sub`.
-
-Para Dataflow, quando um job falhar, primeiro liste e descreva o **job**, antes de supor erro de Pub/Sub ou Storage.
-
-Use a sequência:
-
-```text
-Sintoma → Hipótese → Evidência → Causa → Correção
-```
-
-## 7. Corrigir
-
-Repita pull com a subscription correta. Registre a matriz: Pub/Sub=mensageria, Dataflow=pipeline, Storage Transfer=movimentação gerenciada de objetos/dados suportados.
-
-## 8. Questões estilo ACE
-
-1. Desacoplar eventos? **Pub/Sub**.
-2. Pipeline Apache Beam batch/stream? **Dataflow**.
-3. Mover grande conjunto de objetos de fonte suportada para Cloud Storage? **Storage Transfer Service**.
-4. Ver execução Dataflow? **Dataflow jobs**.
-
-## 9. Cleanup
-
-```bash
-# Explicação: Exclui a subscription Pub/Sub do laboratório.
-gcloud pubsub subscriptions delete ace-sub --quiet
-# Explicação: Exclui o tópico Pub/Sub criado no laboratório.
-gcloud pubsub topics delete ace-topic --quiet
-```
-
-## Checklist
-
-- [ ] Consigo explicar os conceitos sem consultar;
-- [ ] Sei localizar o recurso no Console e/ou CLI;
-- [ ] Executei ou simulei o laboratório indicado;
-- [ ] Inspecionei a configuração antes de provocar a falha;
-- [ ] Diagnostiquei a falha com evidências;
-- [ ] Sei reconhecer a alternativa correta em uma questão de cenário.
-
+Esses serviços podem trabalhar juntos, mas resolvem problemas diferentes.
 
 ---
 
-# Cobertura ACE ampliada — data products e job status
-
-## Pub/Sub
+# 2. Pub/Sub — arquitetura
 
 Modelo:
 
 ```text
-Publisher → Topic → Subscription → Subscriber
+Publisher
+↓
+Topic
+↓
+Subscription
+↓
+Subscriber
+↓
+ACK
 ```
 
-Comandos básicos:
+## 2.1 Topic
 
-```bash
-# Explicação: Cria um tópico Pub/Sub para receber mensagens dos produtores.
-gcloud pubsub topics create ace-topic
-# Explicação: Cria uma subscription associada ao tópico Pub/Sub para permitir consumo das mensagens.
-gcloud pubsub subscriptions create ace-sub --topic=ace-topic
-# Explicação: Publica uma mensagem no tópico Pub/Sub para testar o fluxo de eventos.
-gcloud pubsub topics publish ace-topic --message='ACE'
-# Explicação: Consome mensagens disponíveis na subscription; `--auto-ack` confirma automaticamente o recebimento.
-gcloud pubsub subscriptions pull ace-sub --auto-ack --limit=1
-```
+É o recurso para o qual publishers enviam mensagens.
 
-## Dataflow
+## 2.2 Subscription
 
-Dataflow executa pipelines Apache Beam para batch/streaming. Para ACE, reconheça:
+Representa a entrega das mensagens de um topic para consumidores.
+
+Uma subscription pull permite que o consumidor busque mensagens.
+
+## 2.3 Acknowledgment
+
+Após processar uma mensagem, o subscriber pode confirmar seu processamento com um ACK.
+
+Modelo mental:
 
 ```text
-Pub/Sub → Dataflow → BigQuery
-```
-
-E saiba revisar job status:
-
-```bash
-# Explicação: Lista jobs Dataflow para verificar estado e identificar a execução do laboratório.
-gcloud dataflow jobs list --region=us-central1
-```
-
-## BigQuery jobs
-
-```bash
-# Explicação: Lista datasets, tabelas ou jobs BigQuery conforme o argumento.
-bq ls -j -a -n 10
-```
-
-Job status é parte explícita do escopo operacional.
-
-## Filestore, NetApp Volumes e Managed Lustre
-
-Matriz de storage:
-
-```text
-Cloud Storage        → object storage
-Filestore            → NFS gerenciado para arquivos
-NetApp Volumes       → file storage empresarial com capacidades NetApp
-Managed Lustre       → filesystem paralelo para HPC/AI
-Persistent Disk      → block storage para VMs
-```
-
-Escolha pelo protocolo e workload, não apenas pela capacidade.
-
-
----
-
-## Prática adicional — Dataflow Job e Storage Transfer
-
-### Dataflow — elevar de “listar jobs” para “executar e analisar job”
-
-**Custos:** Dataflow cria recursos de compute. Execute apenas em projeto de laboratório e faça cleanup.
-
-Crie um bucket temporário:
-
-```bash
-# Explicação: Define `PROJECT_ID` com o ID do projeto Google Cloud usado pelos comandos seguintes.
-export PROJECT_ID=$(gcloud config get-value project)
-# Explicação: Define a variável `DF_BUCKET` usada nas próximas etapas do laboratório.
-export DF_BUCKET="gs://$PROJECT_ID-ace-dataflow-$RANDOM"
-# Explicação: Cria um bucket Cloud Storage com localização e opções informadas.
-gcloud storage buckets create "$DF_BUCKET" --location=us-central1
-```
-
-Execute um template de exemplo suportado na região:
-
-```bash
-# Explicação: Inicia um job Dataflow a partir do template e parâmetros informados.
-gcloud dataflow jobs run ace-wordcount \
-  --gcs-location=gs://dataflow-templates-us-central1/latest/Word_Count \
-  --region=us-central1 \
-  --staging-location="$DF_BUCKET/staging" \
-  --parameters inputFile=gs://dataflow-samples/shakespeare/kinglear.txt,output="$DF_BUCKET/output/result"
-```
-
-Inspecione:
-
-```bash
-# Explicação: Lista jobs Dataflow para verificar estado e identificar a execução do laboratório.
-gcloud dataflow jobs list --region=us-central1
-```
-
-Pegue o `JOB_ID` real e descreva:
-
-```bash
-# Explicação: Exibe detalhes e estado do job Dataflow selecionado.
-gcloud dataflow jobs describe JOB_ID --region=us-central1
-```
-
-Agora “job status” deixou de ser apenas mencionado.
-
-### Falha proposital
-
-Use um `JOB_ID` inexistente em `describe` e confirme primeiro a lista real antes de investigar pipeline, Pub/Sub ou IAM.
-
-### Storage Transfer Service — prática completa via gcloud
-
-O Storage Transfer Service cria **jobs gerenciados de transferência**. Um job define:
-
-```text
-origem
-  ↓
-regras/opções
-  ↓
-schedule
-  ↓
-destino
+publish
+→ topic
+→ subscription
+→ pull
+→ process
+→ ack
 ```
 
 Não confunda:
 
 ```text
-gcloud storage cp
-→ o seu cliente executa a cópia
-
-Storage Transfer Service
-→ serviço gerenciado executa e acompanha um transfer job
+topic
+≠
+subscription
 ```
 
-#### 1. Preparar os buckets
+---
+
+# 3. Laboratório Pub/Sub
+
+## 3.1 Variáveis e API
 
 ```bash
-# Define o projeto atual.
+# Obtém o projeto configurado.
 export PROJECT_ID="$(gcloud config get-value project)"
+# Define recursos do laboratório.
+export PUBSUB_TOPIC=ace-topic
+export PUBSUB_SUB=ace-sub
+# Habilita a API Pub/Sub.
+gcloud services enable pubsub.googleapis.com
+```
 
-# Define nomes únicos para origem e destino.
-export STS_SOURCE="gs://${PROJECT_ID}-ace-sts-src-$RANDOM"
-export STS_DEST="gs://${PROJECT_ID}-ace-sts-dst-$RANDOM"
+## 3.2 Criar topic
 
+```bash
+# Cria o topic.
+gcloud pubsub topics create "$PUBSUB_TOPIC"
+# Lista topics.
+gcloud pubsub topics list
+# Inspeciona o topic.
+gcloud pubsub topics describe "$PUBSUB_TOPIC"
+```
+
+## 3.3 Criar subscription pull
+
+```bash
+# Cria uma subscription pull associada ao topic.
+gcloud pubsub subscriptions create "$PUBSUB_SUB" \
+  --topic="$PUBSUB_TOPIC"
+# Lista subscriptions.
+gcloud pubsub subscriptions list
+# Inspeciona a subscription.
+gcloud pubsub subscriptions describe "$PUBSUB_SUB"
+```
+
+## 3.4 Publicar
+
+```bash
+# Publica três mensagens.
+gcloud pubsub topics publish "$PUBSUB_TOPIC" --message="evento-1"
+gcloud pubsub topics publish "$PUBSUB_TOPIC" --message="evento-2"
+gcloud pubsub topics publish "$PUBSUB_TOPIC" --message="evento-3"
+```
+
+## 3.5 Consumir e confirmar
+
+```bash
+# Faz pull e confirma automaticamente as mensagens retornadas.
+gcloud pubsub subscriptions pull "$PUBSUB_SUB" \
+  --auto-ack \
+  --limit=10
+```
+
+Fluxo praticado:
+
+```text
+publisher
+→ topic
+→ subscription
+→ pull
+→ ACK
+```
+
+---
+
+# 4. Quebrar Pub/Sub propositalmente
+
+Altere somente uma variável conhecida: o nome da subscription.
+
+```bash
+# Tenta consumir de uma subscription inexistente.
+gcloud pubsub subscriptions pull ace-sub-inexistente \
+  --auto-ack \
+  --limit=1
+```
+
+## Sintoma
+
+```text
+subscription não encontrada
+```
+
+## Hipótese
+
+```text
+nome da subscription está incorreto
+```
+
+## Evidência
+
+```bash
+# Lista as subscriptions realmente existentes.
+gcloud pubsub subscriptions list
+# Inspeciona a subscription correta.
+gcloud pubsub subscriptions describe "$PUBSUB_SUB"
+```
+
+## Causa
+
+```text
+ace-sub-inexistente
+≠
+ace-sub
+```
+
+## Correção
+
+```bash
+# Usa novamente a subscription criada e inspecionada.
+gcloud pubsub subscriptions pull "$PUBSUB_SUB" \
+  --auto-ack \
+  --limit=1
+```
+
+Se não houver mensagens, isso não significa que a correção falhou: as mensagens anteriores podem já ter sido confirmadas.
+
+Publique outra:
+
+```bash
+# Publica nova mensagem para validar a correção.
+gcloud pubsub topics publish "$PUBSUB_TOPIC" --message="evento-correcao"
+# Consome a nova mensagem.
+gcloud pubsub subscriptions pull "$PUBSUB_SUB" \
+  --auto-ack \
+  --limit=1
+```
+
+---
+
+# 5. Storage Transfer Service
+
+Storage Transfer Service é um serviço gerenciado para movimentação de dados.
+
+Não confunda:
+
+```text
+gcloud storage cp
+→ comando de cópia executado pelo cliente
+Storage Transfer Service
+→ serviço gerenciado de transferência
+```
+
+Arquitetura do laboratório:
+
+```text
+bucket origem
+↓
+Transfer Job
+↓
+Transfer Operation
+↓
+bucket destino
+```
+
+Um **Transfer Job** define a transferência.
+
+Uma **Transfer Operation** representa uma execução do job.
+
+---
+
+# 6. Laboratório Storage Transfer
+
+## 6.1 Variáveis
+
+```bash
+# Define nomes globalmente únicos usando project ID.
+export TRANSFER_SOURCE="${PROJECT_ID}-ace-transfer-source"
+export TRANSFER_DEST="${PROJECT_ID}-ace-transfer-dest"
+# Define localização dos buckets.
+export STORAGE_LOCATION=US
 # Habilita a API do Storage Transfer Service.
 gcloud services enable storagetransfer.googleapis.com
+```
 
-# Cria o bucket de origem.
-gcloud storage buckets create "$STS_SOURCE" \
-  --location=us-central1
+## 6.2 Criar buckets
 
-# Cria o bucket de destino.
-gcloud storage buckets create "$STS_DEST" \
-  --location=us-central1
+```bash
+# Cria bucket de origem.
+gcloud storage buckets create "gs://$TRANSFER_SOURCE" \
+  --location="$STORAGE_LOCATION"
+# Cria bucket de destino.
+gcloud storage buckets create "gs://$TRANSFER_DEST" \
+  --location="$STORAGE_LOCATION"
+# Lista os buckets.
+gcloud storage buckets list
+```
 
-# Cria um arquivo pequeno para provar a transferência.
-printf 'ACE Storage Transfer Service
-' > /tmp/ace-sts.txt
+## 6.3 Criar objeto de origem
 
-# Envia o arquivo ao bucket de origem.
-gcloud storage cp /tmp/ace-sts.txt "$STS_SOURCE/"
+```bash
+# Cria um arquivo pequeno.
+cat > dados-transfer.csv <<'EOF'
+id,nome
+1,Ana
+2,Bruno
+EOF
+# Envia o arquivo somente para a origem.
+gcloud storage cp dados-transfer.csv "gs://$TRANSFER_SOURCE/"
+# Confirma a origem.
+gcloud storage ls "gs://$TRANSFER_SOURCE/"
+# Confirma que o destino ainda está vazio.
+gcloud storage ls "gs://$TRANSFER_DEST/"
+```
+
+## 6.4 Criar e executar a transferência
+
+Sem um schedule explícito e sem `--do-not-run`, o comando cria um job de execução única e inicia a transferência.
+
+```bash
+# Cria uma transferência imediata entre os buckets.
+gcloud transfer jobs create \
+  "gs://$TRANSFER_SOURCE" \
+  "gs://$TRANSFER_DEST" \
+  --description="ACE Storage Transfer bucket to bucket"
+```
+
+## 6.5 Inspecionar transfer jobs
+
+```bash
+# Lista os transfer jobs.
+gcloud transfer jobs list
+```
+
+Copie o nome do job retornado para a variável:
+
+```bash
+# Substitua pelo resource name real retornado.
+export TRANSFER_JOB="transferJobs/SEU_JOB"
 ```
 
 Inspecione:
 
 ```bash
-# Lista o conteúdo da origem antes da transferência.
-gcloud storage ls "$STS_SOURCE"
+# Exibe a definição do transfer job.
+gcloud transfer jobs describe "$TRANSFER_JOB"
 ```
 
-#### 2. Entender a identidade do serviço
-
-O Storage Transfer Service usa um **service agent gerenciado pelo Google** para acessar buckets.
-
-Em projetos/ambientes em que as permissões não são concedidas automaticamente, o service agent precisa conseguir:
-
-```text
-origem
-→ listar/ler objetos
-
-destino
-→ criar objetos
-```
-
-Se o job falhar com `PERMISSION_DENIED`, investigue primeiro IAM no source/destination e a identidade do Storage Transfer Service.
-
-#### 3. Criar o transfer job
+## 6.6 Inspecionar operações
 
 ```bash
-# Cria um transfer job Cloud Storage → Cloud Storage.
-# Sem schedule explícito, o comando inicia a transferência imediatamente,
-# salvo quando --do-not-run é utilizado.
-gcloud transfer jobs create \
-  "$STS_SOURCE" \
-  "$STS_DEST" \
-  --name="ace-storage-transfer" \
-  --description="ACE - transferencia pequena entre buckets"
-```
-
-#### 4. Listar e inspecionar jobs
-
-```bash
-# Lista jobs do Storage Transfer Service.
-gcloud transfer jobs list
-```
-
-Identifique o nome real retornado, normalmente no formato:
-
-```text
-transferJobs/...
-```
-
-Defina:
-
-```bash
-# Substitua pelo nome retornado pelo comando anterior.
-export STS_JOB="transferJobs/SEU_JOB"
-```
-
-Descreva:
-
-```bash
-# Exibe source, destination, status, schedule e opções do job.
-gcloud transfer jobs describe "$STS_JOB"
-```
-
-Procure conceitualmente por:
-
-```text
-transferSpec
-schedule
-status
-description
-```
-
-#### 5. Inspecionar operações
-
-Um **job** é a configuração. Cada execução cria uma **operation**.
-
-```bash
-# Lista operações associadas ao projeto.
+# Lista operações do Storage Transfer Service.
 gcloud transfer operations list
 ```
 
-Se houver operação ativa/concluída, descreva a operação real:
+A execução pode levar algum tempo. O conceito importante é:
 
-```bash
-# Substitua OPERATION_NAME pelo nome retornado.
-gcloud transfer operations describe OPERATION_NAME
+```text
+Transfer Job
+→ configuração
+Transfer Operation
+→ execução
 ```
 
-#### 6. Testar o resultado
+## 6.7 Validar o resultado
 
 ```bash
-# Verifica se o objeto chegou ao destino.
-gcloud storage ls "$STS_DEST"
-```
-
-Teste o conteúdo:
-
-```bash
-# Copia o objeto do destino para stdout.
-gcloud storage cat "$STS_DEST/ace-sts.txt"
+# Verifica se o arquivo chegou ao destino.
+gcloud storage ls "gs://$TRANSFER_DEST/"
+# Lê o conteúdo transferido.
+gcloud storage cat "gs://$TRANSFER_DEST/dados-transfer.csv"
 ```
 
 Resultado esperado:
 
 ```text
-ACE Storage Transfer Service
-```
-
-#### 7. Schedule: quando usar
-
-O mesmo comando suporta transferências agendadas.
-
-Modelo:
-
-```text
-one-time
-→ transferência pontual
-
-scheduled
-→ execução em uma data/cadência definida
-```
-
-Exemplo conceitual:
-
-```bash
-# Exemplo: cria um job e não inicia imediatamente.
-# Use --schedule-starts / --schedule-repeats-every quando quiser recorrência.
-gcloud transfer jobs create \
-  "$STS_SOURCE" \
-  "$STS_DEST" \
-  --do-not-run
-```
-
-Não deixe jobs recorrentes ativos apenas para estudo.
-
-#### 8. Quebrar propositalmente
-
-Crie uma evidência simples de falha usando um destino inexistente:
-
-```bash
-# Este caminho aponta para um bucket que não existe.
-export BAD_DEST="gs://${PROJECT_ID}-bucket-inexistente-ace"
-
-# A criação/execução deve falhar por destino inválido ou inacessível.
-gcloud transfer jobs create \
-  "$STS_SOURCE" \
-  "$BAD_DEST" \
-  --name="ace-sts-falha"
-```
-
-#### 9. Troubleshooting
-
-```text
-Sintoma
-→ job não transfere o objeto
-
-Hipóteses
-→ origem incorreta
-→ destino incorreto
-→ service agent sem permissão
-→ job desabilitado / schedule ainda não executou
-
-Evidências
-→ gcloud transfer jobs describe
-→ gcloud transfer operations list/describe
-→ gcloud storage ls source/destination
-
-Causa
-→ determinar a partir do job/operação real
-
-Correção
-→ corrigir URI, IAM ou schedule e executar novamente
-```
-
-#### 10. Cleanup do Storage Transfer Service
-
-```bash
-# Exclui o transfer job.
-gcloud transfer jobs delete "$STS_JOB"
-
-# Remove objetos e buckets usados no laboratório.
-gcloud storage rm --recursive "$STS_SOURCE/**" 2>/dev/null || true
-gcloud storage rm --recursive "$STS_DEST/**" 2>/dev/null || true
-gcloud storage buckets delete "$STS_SOURCE" --quiet
-gcloud storage buckets delete "$STS_DEST" --quiet
-
-# Remove o arquivo local.
-rm -f /tmp/ace-sts.txt
-```
-
-### Cleanup Dataflow
-
-Depois do job terminar:
-
-```bash
-# Explicação: Remove objeto(s) do Cloud Storage conforme o caminho/padrão informado.
-gcloud storage rm --recursive "$DF_BUCKET/**" 2>/dev/null || true
-# Explicação: Exclui o bucket; ele precisa estar vazio ou ser removido recursivamente conforme o comando.
-gcloud storage buckets delete "$DF_BUCKET" --quiet
+id,nome
+1,Ana
+2,Bruno
 ```
 
 ---
 
-<!-- MEP-ACCEPTANCE-V9 -->
-# Critério de aceite M/E/P desta aula
+# 7. Dataflow — batch e streaming
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
+Dataflow é um serviço gerenciado para processamento de dados baseado no modelo Apache Beam.
 
-Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+Arquitetura genérica:
 
 ```text
-conceito operacional
-   ↓
-configuração/comando
-   ↓
-inspeção
-   ↓
-teste ou comportamento observável
+Source
+↓
+Transformations
+↓
+Sink
 ```
 
-Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+Exemplos:
 
-## Tópicos do guia mapeados para esta aula
+```text
+Cloud Storage
+↓
+Dataflow
+↓
+Cloud Storage / BigQuery
+```
 
-| Seção | Tópico | Esperado | Nível da matriz |
-|---|---|---:|---:|
-| 3.4 | Pub/Sub | `P` | `P` |
-| 3.4 | Dataflow | `P` | `P` |
-| 3.4 | Storage Transfer Service | `P` | `P` |
-| 4.4 | Status Dataflow jobs | `P` | `P` |
+e:
+
+```text
+Pub/Sub
+↓
+Dataflow
+↓
+BigQuery
+```
+
+## 7.1 Batch
+
+```text
+conjunto finito de dados
+→ processa
+→ termina
+```
+
+## 7.2 Streaming
+
+```text
+fluxo contínuo de eventos
+→ processa continuamente
+```
+
+Não confunda:
+
+```text
+Pub/Sub
+→ transporte/mensageria
+Dataflow
+→ processamento/transformação
+```
+
+---
+
+# 8. Laboratório Dataflow — WordCount
+
+Usaremos o template oficial `Word_Count`.
+
+Ele é apropriado para o laboratório porque:
+
+```text
+batch
++
+entrada conhecida
++
+transformação conhecida
++
+saída em Cloud Storage
++
+job termina
+```
+
+> **Atenção a custos:** Dataflow provisiona recursos de processamento. Não repita o job desnecessariamente. Acompanhe o estado e remova os artefatos ao final.
+
+## 8.1 Preparar
+
+```bash
+# Define o bucket de saída do Dataflow.
+export DATAFLOW_BUCKET="${PROJECT_ID}-ace-dataflow"
+# Define a região.
+export REGION=us-central1
+# Cria um nome único de job usando timestamp.
+export DATAFLOW_JOB="ace-wordcount-$(date +%Y%m%d-%H%M%S)"
+# Habilita Dataflow e Compute Engine.
+gcloud services enable \
+  dataflow.googleapis.com \
+  compute.googleapis.com
+# Cria o bucket de saída.
+gcloud storage buckets create "gs://$DATAFLOW_BUCKET" \
+  --location="$REGION"
+```
+
+## 8.2 Executar o template
+
+A entrada usa o arquivo público de exemplo do Google e a saída vai para o bucket do laboratório.
+
+```bash
+# Executa o template batch WordCount fornecido pelo Google.
+gcloud dataflow jobs run "$DATAFLOW_JOB" \
+  --gcs-location="gs://dataflow-templates/latest/Word_Count" \
+  --region="$REGION" \
+  --parameters="inputFile=gs://dataflow-samples/shakespeare/kinglear.txt,output=gs://$DATAFLOW_BUCKET/output/wordcount"
+```
+
+O comando retorna informações como:
+
+```text
+id
+name
+projectId
+type
+currentState
+```
+
+---
+
+# 9. Inspecionar Dataflow Jobs
+
+## 9.1 Listar
+
+```bash
+# Lista jobs Dataflow da região.
+gcloud dataflow jobs list \
+  --region="$REGION"
+```
+
+Observe:
+
+```text
+JOB_ID
+NAME
+TYPE
+STATE
+```
+
+## 9.2 Capturar o ID
+
+```bash
+# Localiza o ID pelo nome do job criado nesta sessão.
+export DATAFLOW_JOB_ID="$(gcloud dataflow jobs list \
+  --region="$REGION" \
+  --filter="name=$DATAFLOW_JOB" \
+  --format='value(id)' \
+  --limit=1)"
+# Confirma o ID.
+echo "$DATAFLOW_JOB_ID"
+```
+
+## 9.3 Descrever
+
+```bash
+# Inspeciona o job específico.
+gcloud dataflow jobs describe "$DATAFLOW_JOB_ID" \
+  --region="$REGION"
+```
+
+Procure:
+
+```text
+name
+type
+currentState
+createTime
+```
+
+Estados relevantes incluem:
+
+```text
+JOB_STATE_PENDING
+JOB_STATE_RUNNING
+JOB_STATE_DONE
+JOB_STATE_FAILED
+JOB_STATE_CANCELLED
+```
+
+Para um job batch bem-sucedido:
+
+```text
+JOB_STATE_DONE
+```
+
+é o estado terminal esperado.
+
+## 9.4 Verificar a saída
+
+Depois que o job chegar a `JOB_STATE_DONE`:
+
+```bash
+# Lista os arquivos gerados pelo WordCount.
+gcloud storage ls "gs://$DATAFLOW_BUCKET/output/"
+```
+
+Leia uma parte:
+
+```bash
+# Exibe as primeiras linhas dos arquivos de saída.
+gcloud storage cat "gs://$DATAFLOW_BUCKET/output/wordcount*" | head
+```
+
+---
+
+# 10. Troubleshooting Dataflow
+
+Não criaremos propositalmente um segundo job Dataflow com erro apenas para consumir recursos.
+
+O laboratório já praticou:
+
+```text
+criar job
+→ listar
+→ obter ID
+→ describe
+→ interpretar estado
+→ validar output
+```
+
+A falha real fica como `P*`.
+
+## Cenário guiado
+
+Sintoma:
+
+```text
+job termina em JOB_STATE_FAILED
+```
+
+Hipóteses iniciais compatíveis com o que já conhecemos:
+
+```text
+input incorreto
+output inacessível
+permissão insuficiente
+configuração do job
+```
+
+Evidências:
+
+```bash
+# Inspeciona estado e detalhes do job.
+gcloud dataflow jobs describe "$DATAFLOW_JOB_ID" \
+  --region="$REGION"
+```
+
+Depois consulte os logs do job no Cloud Logging/Dataflow quando necessário.
+
+Modelo:
+
+```text
+Sintoma
+→ job FAILED
+Hipótese
+→ entrada/saída/permissão/configuração
+Evidência
+→ describe + logs
+Causa
+→ evidência concreta
+Correção
+→ corrigir somente a causa identificada
+```
+
+Classificação:
+
+```text
+executar job real
+→ P
+listar/describe/status
+→ P
+validar output
+→ P
+falha real controlada
+→ P*
+```
+
+---
+
+# 11. O significado de "Job" muda por serviço
+
+| Serviço | Unidade operacional | O que observar |
+|---|---|---|
+| BigQuery | Job | query/load/copy/extract, estado e erro |
+| Dataflow | Job | pipeline batch/streaming, estado e execução |
+| Storage Transfer | Transfer Job | definição/configuração da transferência |
+| Storage Transfer | Transfer Operation | execução concreta do transfer job |
+| Pub/Sub | topic/subscription/mensagem | mensageria; não use "job" como equivalência |
+
+Modelo mental:
+
+```text
+mesma palavra "job"
+≠
+mesmo modelo operacional em todos os serviços
+```
+
+---
+
+# 12. Matriz de decisão
+
+| Necessidade dominante | Serviço |
+|---|---|
+| desacoplar produtores e consumidores por mensagens/eventos | Pub/Sub |
+| transformar/processar dados batch ou streaming | Dataflow |
+| mover conjuntos de dados entre storages de forma gerenciada | Storage Transfer Service |
+| consultar e analisar dados com SQL em data warehouse | BigQuery |
+
+## 12.1 Exemplos combinados
+
+Streaming analytics:
+
+```text
+Pub/Sub
+↓
+Dataflow
+↓
+BigQuery
+```
+
+Processamento batch:
+
+```text
+Cloud Storage
+↓
+Dataflow
+↓
+BigQuery / Cloud Storage
+```
+
+Movimentação:
+
+```text
+Storage externo / Cloud Storage
+↓
+Storage Transfer Service
+↓
+Cloud Storage
+```
+
+Storage Transfer movimenta dados; não é escolhido como engine de transformação equivalente ao Dataflow.
+
+---
+
+# 13. Que serviço escolher?
+
+## Cenário A
+
+> Sensores enviam eventos e produtores não devem depender diretamente dos consumidores.
+
+```text
+Pub/Sub
+```
+
+## Cenário B
+
+> Eventos precisam ser transformados continuamente antes de chegar ao warehouse.
+
+```text
+Pub/Sub
+↓
+Dataflow
+↓
+BigQuery
+```
+
+## Cenário C
+
+> Terabytes de objetos precisam ser migrados de um storage para Cloud Storage por um serviço gerenciado.
+
+```text
+Storage Transfer Service
+```
+
+## Cenário D
+
+> Arquivos históricos precisam ser transformados em batch.
+
+```text
+Dataflow
+```
+
+## Cenário E
+
+> Analistas precisam executar agregações SQL sobre histórico.
+
+```text
+BigQuery
+```
+
+---
+
+# 14. Questões estilo ACE
+
+### Questão 1
+
+Uma aplicação publica eventos e vários consumidores precisam processá-los de forma desacoplada.
+
+**Resposta:** Pub/Sub.
+
+### Questão 2
+
+Você precisa processar continuamente eventos vindos do Pub/Sub e transformá-los antes de gravá-los no BigQuery.
+
+**Resposta:** Dataflow.
+
+### Questão 3
+
+Você precisa mover objetos entre buckets usando um serviço gerenciado de transferência.
+
+**Resposta:** Storage Transfer Service.
+
+### Questão 4
+
+Você precisa analisar o estado de um pipeline Dataflow.
+
+**Resposta:** listar o job e usar `gcloud dataflow jobs describe`.
+
+### Questão 5
+
+Um Storage Transfer Job existe, mas você precisa analisar uma execução específica.
+
+**Resposta:** inspecionar a Transfer Operation correspondente.
+
+### Questão 6
+
+A equipe quer usar Storage Transfer Service para transformar registros antes de carregá-los.
+
+**Resposta:** Storage Transfer é movimentação; Dataflow é o candidato para processamento/transformação.
+
+### Questão 7
+
+Você quer executar SQL analítico sobre grandes volumes históricos.
+
+**Resposta:** BigQuery.
+
+### Questão 8
+
+Uma mensagem foi entregue a uma subscription pull e processada com sucesso.
+
+**Resposta:** o subscriber deve fazer acknowledgment para confirmar o processamento.
+
+---
+
+# 15. M/E/P
+
+| Conteúdo | Nível |
+|---|---:|
+| Pub/Sub — arquitetura | `E` |
+| Pub/Sub — topic/subscription | `P` |
+| Pub/Sub — publish/pull/ack | `P` |
+| Pub/Sub — falha/troubleshooting | `P` |
+| Storage Transfer — arquitetura | `E` |
+| Storage Transfer — bucket→bucket | `P` |
+| Transfer Job — listar/describe | `P` |
+| Transfer Operation — listar | `P` |
+| Dataflow — batch × streaming | `E` |
+| Dataflow — source/transform/sink | `E` |
+| Dataflow — WordCount template | `P` |
+| Dataflow — listar/describe/status | `P` |
+| Dataflow — validar output | `P` |
+| Dataflow — falha real controlada | `P*` |
+| BigQuery/Dataflow/Transfer Jobs | `E/P` |
+| Matriz de decisão | `E/P` |
+
+---
+
+# 16. Checklist
+
+- [ ] Expliquei publisher, topic, subscription, subscriber e ACK;
+- [ ] Criei e inspecionei topic;
+- [ ] Criei e inspecionei subscription;
+- [ ] Publiquei e consumi mensagens;
+- [ ] Provoquei e corrigi uma falha simples de Pub/Sub;
+- [ ] Diferenciei `gcloud storage cp` de Storage Transfer Service;
+- [ ] Criei buckets de origem e destino;
+- [ ] Executei uma transferência gerenciada;
+- [ ] Diferenciei Transfer Job e Transfer Operation;
+- [ ] Diferenciei batch e streaming;
+- [ ] Expliquei source, transformations e sink;
+- [ ] Executei o WordCount oficial no Dataflow;
+- [ ] Listei Dataflow jobs;
+- [ ] Inspecionei o estado do job;
+- [ ] Validei o output do pipeline;
+- [ ] Diferenciei os significados de job entre os serviços;
+- [ ] Resolvi cenários Pub/Sub × Dataflow × Storage Transfer × BigQuery;
+- [ ] Executei o cleanup.
+
+---
+
+# 17. Cleanup
+
+> Execute o cleanup somente depois que o Dataflow job estiver em estado terminal. Não exclua o bucket de saída enquanto o job ainda estiver escrevendo.
+
+## 17.1 Pub/Sub
+
+```bash
+# Remove a subscription.
+gcloud pubsub subscriptions delete "$PUBSUB_SUB" --quiet
+# Remove o topic.
+gcloud pubsub topics delete "$PUBSUB_TOPIC" --quiet
+```
+
+## 17.2 Storage Transfer
+
+Antes de remover os buckets, confirme que a transferência terminou.
+
+```bash
+# Lista operações para confirmar o estado final da transferência.
+gcloud transfer operations list
+# Remove os objetos e buckets do laboratório.
+gcloud storage rm --recursive "gs://$TRANSFER_SOURCE/**"
+gcloud storage rm --recursive "gs://$TRANSFER_DEST/**"
+gcloud storage buckets delete "gs://$TRANSFER_SOURCE" --quiet
+gcloud storage buckets delete "gs://$TRANSFER_DEST" --quiet
+# Remove arquivo local.
+rm -f dados-transfer.csv
+```
+
+O Transfer Job pode permanecer como histórico/configuração até ser removido explicitamente. Se desejar excluí-lo após identificar o resource name:
+
+```bash
+# Remove o transfer job criado pelo laboratório.
+gcloud transfer jobs delete "$TRANSFER_JOB"
+```
+
+## 17.3 Dataflow
+
+Confirme o estado:
+
+```bash
+# Confirma que o job batch terminou.
+gcloud dataflow jobs describe "$DATAFLOW_JOB_ID" \
+  --region="$REGION" \
+  --format="value(currentState)"
+```
+
+Se estiver `JOB_STATE_DONE`, remova o bucket:
+
+```bash
+# Remove outputs do WordCount.
+gcloud storage rm --recursive "gs://$DATAFLOW_BUCKET/**"
+# Remove o bucket.
+gcloud storage buckets delete "gs://$DATAFLOW_BUCKET" --quiet
+```
+
+Se o job ainda estiver executando, não apague o bucket. Aguarde o término ou cancele o job conscientemente antes do cleanup.
+
+---
+
+# 18. Referências oficiais
+
+- Pub/Sub — topics, pull subscriptions, publish, pull e acknowledgment.
+- Storage Transfer Service — transfer jobs e transfer operations.
+- Dataflow — Google-provided templates e WordCount.
+- Dataflow — execução e inspeção de jobs.
+- Associate Cloud Engineer — exam guide.
