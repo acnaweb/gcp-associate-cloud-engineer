@@ -132,6 +132,122 @@ curl -fsS -H "Authorization: Bearer ${ID_TOKEN}" "$SERVICE_URL" | grep 'ACE Cont
 
 **Esperado:** `HTTP 200` e `ACE Containers v1`. Se retornar **403**, confira `roles/run.invoker`; se retornar **401**, confira validade/audience do identity token. Acesso público é **opcional** e depende de política organizacional: não altere `allUsers` para fazer o laboratório funcionar.
 
+## IAM e `roles/run.invoker`
+
+Cloud Run separa **autenticação** de **autorização**. Um identity token comprova quem está fazendo a chamada; o IAM decide se esse principal pode invocar o serviço.
+
+```text
+Request
+   |
+   +--> Autenticação: quem é você?
+   |       Identity Token
+   |
+   v
+Principal identificado
+   |
+   +--> Autorização: pode invocar?
+           IAM
+           roles/run.invoker
+   |
+   v
+Cloud Run Service
+```
+
+O papel predefinido `roles/run.invoker` é destinado à **invocação** de serviços e jobs do Cloud Run. Ele não transforma o principal em administrador do serviço.
+
+| Papel | Uso nesta aula |
+|---|---|
+| `roles/run.invoker` | Invocar o Cloud Run Service |
+| `roles/run.admin` | Administrar recursos do Cloud Run; não deve ser concedido apenas para permitir uma chamada HTTP |
+
+### Inspecionar a política IAM
+
+```bash
+# Exibe a política IAM aplicada ao serviço.
+gcloud run services get-iam-policy "$SERVICE" \
+  --region="$REGION"
+# Mostra a conta gcloud atualmente ativa.
+gcloud auth list --filter="status:ACTIVE"
+```
+
+Para um serviço que exige autenticação, o principal que realiza a chamada precisa estar autorizado a invocá-lo. Em um laboratório individual, conceda o papel somente se necessário e apenas ao principal que fará o teste.
+
+```bash
+# Obtém o e-mail da conta ativa.
+export ACTIVE_ACCOUNT="$(gcloud auth list --filter='status:ACTIVE' --format='value(account)')"
+# Concede ao usuário ativo somente a capacidade de invocar este serviço.
+gcloud run services add-iam-policy-binding "$SERVICE" \
+  --region="$REGION" \
+  --member="user:$ACTIVE_ACCOUNT" \
+  --role="roles/run.invoker"
+# Confirma a política resultante.
+gcloud run services get-iam-policy "$SERVICE" \
+  --region="$REGION"
+```
+
+> Em ambientes corporativos, a concessão pode ser bloqueada por Organization Policy ou o principal pode receber o papel por grupo/projeto. Não adicione bindings redundantes se o acesso já estiver sendo herdado ou administrado centralmente.
+
+### Testar com identity token
+
+```bash
+# Recupera a URL do serviço.
+export SERVICE_URL="$(gcloud run services describe "$SERVICE" \
+  --region="$REGION" \
+  --format='value(status.url)')"
+# Gera um identity token e o envia no cabeçalho Authorization.
+curl -i \
+  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  "$SERVICE_URL"
+```
+
+O ponto importante é:
+
+```text
+Identity Token válido
+        !=
+autorização automática
+
+Identity Token
+      +
+roles/run.invoker
+      =
+chamada autenticada e autorizada
+```
+
+### Serviço público
+
+Quando a política da organização permite acesso público, uma configuração possível é conceder `roles/run.invoker` a `allUsers`.
+
+```text
+allUsers
+   +
+roles/run.invoker
+   |
+   v
+invocação sem autenticação do usuário
+```
+
+```bash
+# EXEMPLO CONDICIONAL: torna o serviço público somente se a política da organização permitir.
+gcloud run services add-iam-policy-binding "$SERVICE" \
+  --region="$REGION" \
+  --member="allUsers" \
+  --role="roles/run.invoker"
+```
+
+Este comando **não é requisito do laboratório**. Prefira o teste autenticado quando o ambiente não deve expor o serviço publicamente.
+
+### Troubleshooting de acesso
+
+| Sintoma | Hipótese | Evidência | Correção |
+|---|---|---|---|
+| `401` | Chamada sem credencial válida | Verificar cabeçalho/token | Gerar e enviar identity token adequado |
+| `403` | Principal autenticado sem autorização suficiente | `get-iam-policy` + conta ativa | Conceder/solicitar `roles/run.invoker` no escopo correto |
+| `allUsers` bloqueado | Restrição organizacional | Erro ao alterar IAM/policy | Manter serviço autenticado; não contornar a policy |
+
+**Regra de troubleshooting:** não conceda `roles/run.admin` para corrigir um `403` de invocação. Primeiro identifique o principal e verifique se ele precisa apenas de `roles/run.invoker`.
+
+
 ## 5. Criar image v2 e publicar no mesmo repositório
 
 A Aula 1 ensinou build/tag/push; aqui repetimos somente o necessário para produzir uma resposta HTTP distinta e observável no canary. Use a pasta criada naquela aula ou recrie seus arquivos.
