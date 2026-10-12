@@ -16,6 +16,22 @@ Ao final, você deverá:
 - Provocar e diagnosticar uma falha determinística de porta e corrigir a configuração;
 - Inspecionar logs e limpar recursos sem apagar artefatos compartilhados.
 
+> [!IMPORTANT]
+> ## Pré-requisito — Aula 1
+>
+> O laboratório desta aula é uma continuação da **Aula 1 — Containers e Artifact Registry**.
+>
+> Antes de iniciar, você deve ter concluído a aula anterior e possuir:
+>
+> - o repositório Docker criado no Artifact Registry;
+> - a container image `ace-web:v1` publicada nesse repositório;
+> - a autenticação do Docker configurada para o Artifact Registry;
+> - as variáveis `PROJECT_ID`, `REGION`, `HOST` e `REPO` configuradas novamente nesta sessão.
+>
+> **Não execute o cleanup da Aula 1 antes de concluir esta aula**, pois a image publicada no Artifact Registry será utilizada para criar o Cloud Run Service.
+>
+> Se você já executou o cleanup da Aula 1, recrie o repositório e publique novamente a image antes de continuar.
+
 ## 1. Conceitos e arquitetura
 
 Cloud Run Services executa containers que recebem requisições HTTP/HTTPS sem administrar servidores. Uma **revision** é um snapshot imutável de image e configurações de execução; um **service** roteia tráfego para uma ou mais revisões; cada revisão pode ter várias **instances**; cada instância pode atender múltiplas **requests** simultâneas.
