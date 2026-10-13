@@ -1,561 +1,684 @@
 # Aula 5 — GKE Autopilot, Standard, Autoscaling e Troubleshooting
 
-## Nível de cobertura M/E/P
-
-```text
-Autopilot x Standard: E/P
-HPA: P
-Cluster Autoscaler: E/P*
-Troubleshooting de Pods: P
-```
-
 ## Objetivos
 
 Ao final, você deverá:
-- comparar **GKE Autopilot** e **GKE Standard**;
-- explicar a diferença entre **HPA**, **VPA** e **Cluster Autoscaler**;
-- configurar e inspecionar um **Horizontal Pod Autoscaler (HPA)**;
-- relacionar HPA com `requests.cpu` e utilização percentual;
-- observar o aumento/redução de réplicas;
-- reconhecer quando o problema exige mais Pods e quando exige mais Nodes;
-- interpretar `Pending`, `ImagePullBackOff` e `CrashLoopBackOff`;
-- provocar e corrigir `ImagePullBackOff` usando evidências.
 
-> **Pré-requisito:** use o cluster GKE criado na Aula 4. Se ele foi removido, recrie um cluster Autopilot pequeno e exclua ao final.
+- comparar GKE Standard e Autopilot com base em responsabilidade operacional e requisitos;
+- reaproveitar e inspecionar o cluster Standard criado na Aula 4;
+- inspecionar node pools de um cluster Standard;
+- explicar e configurar Cluster Autoscaler;
+- compreender como `resources.requests` influenciam scheduling e capacidade;
+- provocar e diagnosticar um Pod `Pending` por insuficiência de recursos;
+- configurar e inspecionar um Horizontal Pod Autoscaler (HPA);
+- diferenciar claramente HPA de Cluster Autoscaler;
+- observar métricas com `kubectl top`;
+- explicar como HPA e Cluster Autoscaler podem atuar em conjunto;
+- criar, inspecionar e comparar um cluster GKE Autopilot;
+- provocar e diagnosticar `CrashLoopBackOff`;
+- utilizar `kubectl logs --previous`;
+- diferenciar readiness e liveness probes;
+- aplicar o fluxo `get → describe → Events → logs → causa → correção`;
+- escolher entre Cloud Run, Cloud Run Jobs, GKE Autopilot, GKE Standard e Compute Engine;
+- executar o cleanup completo dos recursos do laboratório.
 
-> **Custos:** GKE pode gerar cobrança. Não mantenha clusters criados apenas para estudo.
+> [!IMPORTANT]
+> ## Pré-requisito — Aula 4
+>
+> Esta aula foi desenhada para **reaproveitar o cluster Standard `ace-gke` criado na Aula 4**. Se você executou o cleanup completo da Aula 4, recrie o cluster Standard usando as mesmas variáveis antes de continuar.
 
----
+## 1. Visão geral: Standard x Autopilot
 
-# 1. Conceito
+GKE oferece dois modos principais de operação.
 
-## 1.1 Autopilot x Standard
+```text
+GKE Standard                         GKE Autopilot
+     |                                    |
+     +-- Control Plane: Google            +-- Control Plane: Google
+     +-- Node pools: você controla        +-- Nodes: mais abstraídos
+     +-- Machine types: você escolhe      +-- Menos gestão de infraestrutura
+     +-- Autoscaling: configurável        +-- Foco maior no workload
+```
 
-Os dois executam Kubernetes gerenciado pelo Google, mas dividem a responsabilidade operacional de forma diferente.
-
-| Tema | Autopilot | Standard |
+| Tema | Standard | Autopilot |
 |---|---|---|
-| Nodes | gerenciados pelo Google | administrados/configurados pelo usuário |
-| Node pools | abstraídos | controle explícito |
-| Capacidade | ajustada pelo serviço | pode usar Cluster Autoscaler |
-| Controle de infraestrutura | menor | maior |
-| Foco | workload | workload + infraestrutura do cluster |
+| Control plane | Google gerencia | Google gerencia |
+| Nodes | usuário controla mais detalhes | mais abstraídos pelo GKE |
+| Node pools | explícitos | não administrados da mesma forma |
+| Machine types | escolha explícita | menor controle direto |
+| Infraestrutura | mais responsabilidade | menos responsabilidade |
+| Casos típicos | requisitos específicos de infraestrutura | Kubernetes com menor overhead operacional |
 
-Modelo mental:
+A escolha é um **trade-off entre controle e operação**, não uma hierarquia de “melhor” e “pior”.
 
-```text
-Autopilot
-Application → Pod → Google gerencia capacidade de nodes
-
-Standard
-Application → Pod → Node Pool → Nodes
-                           ↑
-                  Cluster Autoscaler
-```
-
-## 1.2 As três dimensões de autoscaling
-
-```text
-                    ESCALABILIDADE NO GKE
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-          ▼                ▼                ▼
-         HPA              VPA       Cluster Autoscaler
-          │                │                │
-          ▼                ▼                ▼
- quantidade de       CPU/memória       quantidade
-    Pods              por Pod           de Nodes
-```
-
-### HPA — Horizontal Pod Autoscaler
-
-O HPA responde à pergunta:
-
-> **Quantas réplicas do workload eu preciso?**
-
-Ele observa uma métrica — frequentemente CPU — e ajusta a quantidade de Pods entre um mínimo e um máximo.
-
-Exemplo:
-
-```text
-Deployment web
-replicas atuais = 1
-
-CPU média > target
-      ↓
-HPA aumenta replicas
-      ↓
-Deployment passa a manter mais Pods
-```
-
-### Por que `requests.cpu` importa?
-
-Quando o HPA usa **percentual de CPU**, ele compara o consumo observado com o **CPU request** declarado pelo container.
-
-Exemplo:
-
-```text
-request = 100m
-consumo = 80m
-
-utilização aproximada = 80%
-```
-
-Se o target do HPA for 50%, 80% indica que o workload está acima do alvo e pode precisar de mais réplicas.
-
-Sem compreender `requests`, o aluno pode criar HPA e não entender por que a métrica aparece como desconhecida ou por que o scaling não ocorre como esperado.
-
-### VPA — Vertical Pod Autoscaler
-
-O VPA responde a outra pergunta:
-
-> **Quanto CPU/memória cada Pod deveria solicitar?**
-
-Ele será praticado em detalhe na **Aula 7**. Aqui basta guardar a diferença:
-
-```text
-HPA → quantidade de Pods
-VPA → tamanho/requisições de cada Pod
-```
-
-### Cluster Autoscaler
-
-No GKE Standard, o Cluster Autoscaler responde:
-
-> **O cluster possui Nodes suficientes para acomodar os Pods?**
-
-Cadeia típica:
-
-```text
-Carga aumenta
-   ↓
-HPA cria mais Pods
-   ↓
-não existe capacidade suficiente nos Nodes
-   ↓
-Pods ficam Pending
-   ↓
-Cluster Autoscaler aumenta Nodes/node pool
-```
-
-Portanto:
-
-```text
-HPA não cria Nodes.
-Cluster Autoscaler não substitui HPA.
-VPA não aumenta o número de Pods.
-```
-
----
-
-# 2. Criar / Configurar — laboratório de HPA
-
-## 2.1 Confirme o cluster
+## 2. Variáveis e preflight
 
 ```bash
-# Lista os clusters GKE para confirmar que existe um cluster disponível para o laboratório.
-gcloud container clusters list
+# Recupera o projeto ativo.
+export PROJECT_ID="$(gcloud config get-value project)"
+# Define a região usada na Semana 5.
+export REGION="southamerica-east1"
+# Define a zona do cluster Standard.
+export ZONE="${REGION}-a"
+# Reutiliza o cluster Standard da Aula 4.
+export CLUSTER="ace-gke"
+# Define o node pool padrão.
+export NODE_POOL="default-pool"
+# Define o namespace desta aula.
+export NAMESPACE="ace-scale"
+# Define o Deployment usado nos testes.
+export DEPLOYMENT="ace-scale-web"
+# Define o cluster Autopilot temporário.
+export AUTOPILOT_CLUSTER="ace-autopilot"
+# Habilita a API do GKE.
+gcloud services enable container.googleapis.com --project="$PROJECT_ID"
+# Confirma que o cluster Standard existe.
+gcloud container clusters describe "$CLUSTER" --zone="$ZONE" --project="$PROJECT_ID"
+```
 
-# Mostra os nodes vistos pelo Kubernetes. Em Autopilot eles são gerenciados pelo Google, mas continuam aparecendo para inspeção do cluster.
+Se o último comando retornar `NOT_FOUND`, recrie o cluster conforme a Aula 4.
+
+## 3. Recuperar credenciais e preparar namespace
+
+```bash
+# Atualiza as credenciais do kubectl para o cluster Standard.
+gcloud container clusters get-credentials "$CLUSTER" --zone="$ZONE" --project="$PROJECT_ID"
+# Cria o namespace desta aula.
+kubectl create namespace "$NAMESPACE"
+# Define o namespace padrão do contexto atual.
+kubectl config set-context --current --namespace="$NAMESPACE"
+# Confirma Nodes disponíveis.
+kubectl get nodes -o wide
+```
+
+## 4. Node pools no GKE Standard
+
+No Standard, node pools representam grupos de Nodes com configurações semelhantes.
+
+```text
+Cluster
+   |
+   +-- Node Pool A
+   |     +-- Node
+   |     +-- Node
+   |
+   +-- Node Pool B
+         +-- Node
+```
+
+```bash
+# Lista node pools do cluster Standard.
+gcloud container node-pools list \
+  --cluster="$CLUSTER" \
+  --zone="$ZONE"
+# Inspeciona o node pool padrão.
+gcloud container node-pools describe "$NODE_POOL" \
+  --cluster="$CLUSTER" \
+  --zone="$ZONE"
+```
+
+Observe machine type, tamanho atual e configurações de autoscaling.
+
+## 5. Cluster Autoscaler
+
+O Cluster Autoscaler ajusta **Nodes**, não Pods.
+
+```text
+Pods Pending por falta de capacidade
+              |
+              v
+      Cluster Autoscaler
+              |
+              v
+        aumenta Nodes
+```
+
+Habilite autoscaling no node pool:
+
+```bash
+# Habilita autoscaling entre 1 e 3 Nodes.
+gcloud container clusters update "$CLUSTER" \
+  --zone="$ZONE" \
+  --enable-autoscaling \
+  --node-pool="$NODE_POOL" \
+  --min-nodes=1 \
+  --max-nodes=3
+# Confirma a configuração.
+gcloud container node-pools describe "$NODE_POOL" \
+  --cluster="$CLUSTER" \
+  --zone="$ZONE"
+```
+
+> [!NOTE]
+> O Cluster Autoscaler reage à necessidade de capacidade para scheduling. Ele não deve ser interpretado como “CPU alta → adiciona Node” de forma direta.
+
+## 6. Requests, scheduling e Pod Pending
+
+O Scheduler usa `resources.requests` para decidir se um Pod cabe em um Node.
+
+```text
+Pod requests
+    |
+    v
+Scheduler
+    |
+    +--> cabe em algum Node? --> sim --> Running
+    |
+    +--> não --> Pending
+                   |
+                   v
+          Cluster Autoscaler pode reagir
+```
+
+Crie um Deployment simples:
+
+```bash
+# Cria o Deployment base.
+kubectl create deployment "$DEPLOYMENT" --image=nginx:alpine
+# Aguarda o rollout.
+kubectl rollout status deployment/"$DEPLOYMENT"
+# Define um request modesto de CPU.
+kubectl set resources deployment "$DEPLOYMENT" \
+  --requests=cpu=100m,memory=64Mi \
+  --limits=cpu=500m,memory=128Mi
+# Confirma a configuração.
+kubectl get deployment "$DEPLOYMENT" -o yaml
+```
+
+Agora provoque uma condição de scheduling mais exigente aumentando replicas e requests de CPU.
+
+```bash
+# Escala para quatro replicas.
+kubectl scale deployment "$DEPLOYMENT" --replicas=4
+# Aumenta o request de CPU por Pod.
+kubectl set resources deployment "$DEPLOYMENT" \
+  --requests=cpu=900m,memory=64Mi \
+  --limits=cpu=1,memory=128Mi
+# Observa Pods e scheduling.
+kubectl get pods -o wide
+# Exibe Events recentes.
+kubectl get events --sort-by='.lastTimestamp'
+```
+
+Dependendo da capacidade efetiva do Node e do tempo de reação do autoscaler, você poderá observar Pods `Pending` e posteriormente novos Nodes sendo adicionados.
+
+```bash
+# Observa Nodes.
 kubectl get nodes
+# Inspeciona um Pod Pending, se houver.
+kubectl get pods
 ```
 
-## 2.2 Crie um workload que consome CPU
-
-O laboratório usará um container `busybox` executando um loop contínuo. O objetivo é produzir consumo de CPU previsível para que o HPA tenha algo para observar.
+Se houver um Pod `Pending`, execute:
 
 ```bash
-# Cria um manifesto de Deployment com 1 réplica.
-# requests.cpu=50m define a referência usada pelo HPA para calcular o percentual de utilização.
-# limits.cpu=200m limita o máximo de CPU que cada container poderá consumir.
-cat > hpa-demo.yaml <<'EOF'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: hpa-demo
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: hpa-demo
-  template:
-    metadata:
-      labels:
-        app: hpa-demo
-    spec:
-      containers:
-      - name: cpu
-        image: busybox:1.36
-        command: ["sh", "-c", "while true; do :; done"]
-        resources:
-          requests:
-            cpu: 50m
-            memory: 16Mi
-          limits:
-            cpu: 200m
-            memory: 32Mi
-EOF
-
-# Aplica o manifesto declarativamente, criando o Deployment e o Pod inicial.
-kubectl apply -f hpa-demo.yaml
+# Substitua <POD_PENDING> pelo Pod observado.
+kubectl describe pod <POD_PENDING>
 ```
 
-## 2.3 Inspecione os requests antes de criar o HPA
+Procure por Events como `FailedScheduling` e mensagens de capacidade insuficiente.
 
-```bash
-# Mostra o Deployment e confirma número desejado/disponível de réplicas.
-kubectl get deployment hpa-demo
+## 7. HPA — Horizontal Pod Autoscaler
 
-# Exibe a configuração completa do Deployment para localizar resources.requests e resources.limits.
-kubectl describe deployment hpa-demo
-
-# Lista o Pod e permite confirmar que ele entrou em Running.
-kubectl get pods -l app=hpa-demo -o wide
-```
-
-O ponto didático é confirmar **antes** do autoscaling:
+HPA ajusta **replicas de Pods**.
 
 ```text
-Deployment existe
-Pod está Running
-CPU request existe
+métrica
+  |
+  v
+ HPA
+  |
+  v
+Deployment replicas
+  |
+  v
+ Pods
 ```
 
----
+Não confunda:
 
-# 3. Criar o HPA
+```text
+HPA                -> Pods
+Cluster Autoscaler -> Nodes
+```
+
+Antes do HPA, reduza o Deployment para um estado simples:
 
 ```bash
-# Cria um Horizontal Pod Autoscaler para o Deployment hpa-demo.
-# --cpu-percent=50 define target médio de 50% do CPU request.
-# --min=1 impede reduzir abaixo de 1 réplica.
-# --max=4 impede ultrapassar 4 réplicas durante o laboratório.
-kubectl autoscale deployment hpa-demo \
+# Retorna a uma replica.
+kubectl scale deployment "$DEPLOYMENT" --replicas=1
+# Ajusta requests para uma base adequada ao HPA.
+kubectl set resources deployment "$DEPLOYMENT" \
+  --requests=cpu=100m,memory=64Mi \
+  --limits=cpu=500m,memory=128Mi
+# Aguarda estabilização.
+kubectl rollout status deployment/"$DEPLOYMENT"
+```
+
+Crie o HPA:
+
+```bash
+# Configura HPA de 1 a 5 replicas com alvo de CPU de 50%.
+kubectl autoscale deployment "$DEPLOYMENT" \
   --cpu-percent=50 \
   --min=1 \
-  --max=4
-```
-
-## O que foi criado?
-
-```text
-HPA
-├── targetRef → Deployment/hpa-demo
-├── minReplicas → 1
-├── maxReplicas → 4
-└── CPU target → 50%
-```
-
----
-
-# 4. Inspecionar o HPA
-
-```bash
-# Lista o HPA em formato resumido.
-# TARGETS mostra utilização observada versus target.
-# MINPODS/MAXPODS delimitam o scaling.
-# REPLICAS mostra a quantidade atual controlada pelo HPA.
+  --max=5
+# Inspeciona o HPA.
 kubectl get hpa
-
-# Exibe detalhes do HPA, incluindo métricas, desired replicas, condições e eventos.
-kubectl describe hpa hpa-demo
-
-# Acompanha mudanças continuamente. Use Ctrl+C para sair.
-kubectl get hpa hpa-demo -w
+# Exibe detalhes.
+kubectl describe hpa "$DEPLOYMENT"
 ```
 
-Campos que você precisa saber interpretar:
+## 8. Métricas com kubectl top
+
+```bash
+# Exibe uso atual dos Nodes.
+kubectl top nodes
+# Exibe uso atual dos Pods.
+kubectl top pods
+```
+
+Se `kubectl top` ainda não retornar métricas, aguarde alguns minutos e tente novamente. Em um HPA, o campo `TARGETS` pode aparecer temporariamente como `<unknown>` enquanto métricas não estão disponíveis.
 
 ```text
-TARGETS      → métrica atual / target
-MINPODS      → mínimo permitido
-MAXPODS      → máximo permitido
-REPLICAS     → réplicas atuais
-Conditions   → consegue ou não calcular/escalar
-Events       → evidências de decisões ou falhas
+kubectl top
+    |
+    v
+uso observado
+resources.requests
+    |
+    v
+base para scheduling e referência de utilização
+HPA
+    |
+    v
+ajuste de replicas
 ```
 
-> A coleta de métricas não é instantânea. Aguarde alguns ciclos antes de concluir que o HPA não funciona.
+## 9. HPA + Cluster Autoscaler
 
----
-
-# 5. Testar o comportamento de scaling
-
-Em outro terminal:
-
-```bash
-# Acompanha a quantidade de Pods do workload.
-kubectl get pods -l app=hpa-demo -w
-```
-
-No primeiro terminal:
-
-```bash
-# Consulta novamente o HPA após alguns ciclos de métricas.
-kubectl get hpa hpa-demo
-
-# Mostra detalhes para verificar current/desired replicas e eventos de scaling.
-kubectl describe hpa hpa-demo
-```
-
-Como o container mantém CPU ocupada, a tendência é o HPA observar utilização acima do target e aumentar as réplicas até que a política/limites estabilizem o workload.
-
-O objetivo não é decorar um número de réplicas, mas observar o fluxo:
+Os dois mecanismos podem atuar em sequência:
 
 ```text
-métrica alta
-   ↓
-HPA calcula desired replicas
-   ↓
-Deployment recebe novo número desejado
-   ↓
-novos Pods são criados
-```
-
----
-
-# 6. Quebrar propositalmente — HPA sem CPU request
-
-Agora provoque **uma única falha**: remova o `requests.cpu` do Deployment.
-
-```bash
-# Remove apenas o campo requests.cpu do primeiro container.
-# O objetivo é demonstrar por que um HPA percentual depende de resource requests.
-kubectl patch deployment hpa-demo \
-  --type=json \
-  -p='[{"op":"remove","path":"/spec/template/spec/containers/0/resources/requests/cpu"}]'
-
-# Aguarda o rollout criado pela alteração no Pod template.
-kubectl rollout status deployment/hpa-demo
-```
-
----
-
-# 7. Troubleshooting do HPA
-
-## Sintoma
-
-O HPA deixa de apresentar a utilização percentual esperada ou não consegue calcular corretamente o número desejado de réplicas.
-
-## Hipótese
-
-O container alvo não possui `requests.cpu`, então a utilização percentual de CPU não possui a referência necessária.
-
-## Evidência
-
-```bash
-# Mostra o HPA e suas condições/eventos.
-kubectl describe hpa hpa-demo
-
-# Confirma a configuração de resources do Deployment.
-kubectl get deployment hpa-demo -o yaml
-
-# Mostra requests/limits efetivamente presentes no Pod atual.
-kubectl describe pod -l app=hpa-demo
-```
-
-Procure evidência de que o CPU request não está definido para o container.
-
-## Causa
-
-Removemos deliberadamente:
-
-```text
-resources.requests.cpu
-```
-
-## Correção
-
-```bash
-# Reaplica o manifesto original, restaurando requests.cpu=50m e limits.cpu=200m.
-kubectl apply -f hpa-demo.yaml
-
-# Aguarda o Deployment estabilizar novamente.
-kubectl rollout status deployment/hpa-demo
-
-# Confirma se o HPA voltou a receber métricas após alguns ciclos.
-kubectl get hpa hpa-demo
-kubectl describe hpa hpa-demo
-```
-
-Fluxo obrigatório:
-
-```text
-Sintoma
-   ↓
-Hipótese
-   ↓
-Evidência
-   ↓
-Causa
-   ↓
-Correção
-```
-
----
-
-# 8. Troubleshooting de Pods — ImagePullBackOff
-
-O exam guide também exige operação do GKE. Vamos manter a falha de imagem da versão anterior do laboratório.
-
-```bash
-# Cria um Deployment deliberadamente quebrado com uma tag inexistente.
-kubectl create deployment quebrado \
-  --image=nginx:tag-que-nao-existe-ace
-
-# Lista os Pods para observar ErrImagePull/ImagePullBackOff.
-kubectl get pods -l app=quebrado
-
-# Mostra eventos e a mensagem retornada pelo runtime ao tentar obter a imagem.
-kubectl describe pod -l app=quebrado
-```
-
-### Sintoma
-
-`ErrImagePull` / `ImagePullBackOff`.
-
-### Hipótese
-
-Imagem ou tag não existe — ou o registry não pode ser acessado.
-
-### Evidência
-
-No nosso caso, os eventos mostram que a tag deliberadamente escolhida não existe.
-
-### Correção
-
-```bash
-# Substitui a imagem inválida por nginx:alpine e inicia novo rollout.
-kubectl set image deployment/quebrado \
-  nginx=nginx:alpine
-
-# Aguarda o rollout concluir.
-kubectl rollout status deployment/quebrado
-
-# Confirma que o Pod agora entra em Running.
-kubectl get pods -l app=quebrado
-```
-
-Não tente resolver `ImagePullBackOff` aumentando HPA, VPA ou Nodes. O erro está na obtenção da imagem.
-
----
-
-# 9. HPA x VPA x Cluster Autoscaler — decisão de prova
-
-| Situação | Recurso principal |
-|---|---|
-| Mais requisições e cada Pod está saudável | HPA |
-| Pod está sub/superdimensionado em CPU/memória | VPA |
-| Pods extras não cabem nos Nodes de cluster Standard | Cluster Autoscaler |
-| Quer menos gestão de Nodes | Autopilot |
-| Precisa controlar node pools/máquinas | Standard |
-
-Exemplo integrado:
-
-```text
-Tráfego ↑
-  ↓
-HPA aumenta Pods
-  ↓
-Pods Pending por falta de capacidade (Standard)
-  ↓
+Load aumenta
+    |
+    v
+HPA pede mais Pods
+    |
+    v
+Deployment aumenta replicas
+    |
+    v
+Pods não cabem nos Nodes
+    |
+    v
+Pods Pending
+    |
+    v
 Cluster Autoscaler aumenta Nodes
+    |
+    v
+Scheduler posiciona os Pods
 ```
 
-Outro cenário:
+A ideia central para o exame é:
 
 ```text
-Pod usa muito mais memória do que request declarado
-  ↓
-VPA observa histórico
-  ↓
-recomenda/ajusta sizing conforme update mode
+HPA escala workload
+Cluster Autoscaler escala capacidade de Nodes
 ```
 
----
+## 10. Troubleshooting: Pod Pending
 
-# 10. Questões estilo ACE
-
-**1.** Uma aplicação recebe picos de requisições. Os Pods atuais funcionam normalmente, mas a empresa precisa aumentar automaticamente a quantidade de réplicas com base em CPU. Qual recurso usar?
-
-**Resposta:** HPA.
-
-**2.** Um Pod possui CPU request de `100m` e consome aproximadamente `80m`. O HPA possui target de 50%. O que representa esse cenário?
-
-**Resposta:** utilização aproximada de 80% do request, acima do target; o HPA pode calcular necessidade de mais réplicas.
-
-**3.** Em um cluster Standard, o HPA criou Pods adicionais, mas eles permanecem `Pending` por falta de capacidade nos Nodes. Qual camada deve ser investigada?
-
-**Resposta:** capacidade dos Nodes/node pools e Cluster Autoscaler.
-
-**4.** A organização quer que o Google gerencie a infraestrutura de Nodes e prefere operar principalmente workloads Kubernetes. Qual modo tende a ser mais apropriado?
-
-**Resposta:** Autopilot.
-
-**5.** O HPA mostra problema para calcular utilização percentual de CPU. Qual configuração deve ser verificada antes de alterar o target?
-
-**Resposta:** `resources.requests.cpu` do workload e disponibilidade da métrica.
-
----
-
-# 11. Cleanup
+Use o fluxo:
 
 ```bash
-# Remove o HPA para que ele deixe de controlar o número de réplicas.
-kubectl delete hpa hpa-demo --ignore-not-found
-
-# Remove o Deployment usado no laboratório de HPA.
-kubectl delete deployment hpa-demo --ignore-not-found
-
-# Remove o Deployment usado no troubleshooting de imagem.
-kubectl delete deployment quebrado --ignore-not-found
-
-# Remove o arquivo temporário do manifesto.
-rm -f hpa-demo.yaml
+# Estado resumido.
+kubectl get pods
+# Events recentes.
+kubectl get events --sort-by='.lastTimestamp'
+# Detalhes do Pod problemático.
+kubectl describe pod <POD_PENDING>
 ```
 
-Se o cluster foi criado apenas para esta sessão, exclua-o conforme a Aula 4.
+Analise:
 
----
+| Sintoma | Evidência comum | Hipótese |
+|---|---|---|
+| `Pending` | `FailedScheduling` | falta de capacidade |
+| `Pending` | `Insufficient cpu` | requests não cabem |
+| `Pending` | constraints/taints | regra impede scheduling |
+| `Pending` com autoscaler | limites atingidos | `max-nodes` pode impedir crescimento |
 
-# 12. Checklist M/E/P
+## 11. CrashLoopBackOff — falha deliberada
 
-- [ ] Consigo explicar Autopilot x Standard;
-- [ ] Consigo explicar HPA x VPA x Cluster Autoscaler;
-- [ ] Entendo por que CPU request é relevante para HPA percentual;
-- [ ] Criei HPA com min/max/target;
-- [ ] Inspecionei `TARGETS`, réplicas, conditions e events;
-- [ ] Observei comportamento de scaling;
-- [ ] Removi propositalmente `requests.cpu`;
-- [ ] Diagnostiquei o HPA usando evidências;
-- [ ] Corrigi sem alterar componentes não relacionados;
-- [ ] Diagnostiquei e corrigi `ImagePullBackOff`;
-- [ ] Executei cleanup.
+Na Aula 4 provocamos `ImagePullBackOff`. Agora criaremos uma falha diferente: o container inicia e termina com erro.
 
----
+```bash
+# Cria um Deployment que termina deliberadamente com exit 1.
+kubectl create deployment ace-crash \
+  --image=alpine:3 \
+  -- sh -c 'echo "falha deliberada"; exit 1'
+# Aguarda reinicializações.
+sleep 15
+# Observa o estado.
+kubectl get pods
+```
 
-<!-- MEP-ACCEPTANCE-V9 -->
-# Critério de aceite M/E/P desta aula
+O estado esperado tende a evoluir para `CrashLoopBackOff`.
 
-> Esta seção não substitui o conteúdo acima; ela explicita o critério usado na auditoria da baseline v9.
+### Diagnóstico
 
-Para um tópico ser classificado como `P` nesta baseline, não basta existir um comando. A aula precisa apresentar:
+```bash
+# Localiza o Pod do Deployment ace-crash.
+export CRASH_POD="$(kubectl get pods -l app=ace-crash -o jsonpath='{.items[0].metadata.name}')"
+# Inspeciona condições e Events.
+kubectl describe pod "$CRASH_POD"
+# Lê logs da tentativa atual.
+kubectl logs "$CRASH_POD"
+# Lê logs da execução anterior do container.
+kubectl logs "$CRASH_POD" --previous
+# Mostra Events recentes.
+kubectl get events --sort-by='.lastTimestamp'
+```
+
+**Sintoma:** reinicializações repetidas / `CrashLoopBackOff`.
+
+**Hipótese:** processo principal encerra com erro.
+
+**Evidência:** logs mostram `falha deliberada` e exit code diferente de zero.
+
+**Causa:** comando configurado para `exit 1`.
+
+**Correção:** substituir o workload por um processo que permaneça saudável.
+
+```bash
+# Corrige a image/comando do Deployment.
+kubectl set image deployment/ace-crash alpine=nginx:alpine
+# Remove os argumentos incompatíveis recriando o Deployment de forma simples.
+kubectl delete deployment ace-crash
+# Recria com um container saudável.
+kubectl create deployment ace-crash --image=nginx:alpine
+# Aguarda o rollout.
+kubectl rollout status deployment/ace-crash
+# Confirma estado saudável.
+kubectl get pods -l app=ace-crash
+```
+
+## 12. Readiness x Liveness
+
+As probes têm responsabilidades diferentes.
 
 ```text
-conceito operacional
-   ↓
-configuração/comando
-   ↓
-inspeção
-   ↓
-teste ou comportamento observável
+readinessProbe
+      |
+      +--> pode receber tráfego?
+livenessProbe
+      |
+      +--> precisa ser reiniciado?
 ```
 
-Quando a execução depender de Organization, privilégio administrativo, custo relevante ou infraestrutura especial, use `P*`.
+| Probe | Pergunta | Efeito típico da falha |
+|---|---|---|
+| Readiness | está pronto para receber tráfego? | sai dos endpoints do Service |
+| Liveness | o processo está saudável? | container pode ser reiniciado |
 
-## Tópicos do guia mapeados para esta aula
+Exemplo conceitual:
 
-| Seção | Tópico | Esperado | Nível da matriz |
-|---|---|---:|---:|
-| 4.2 | HPA | `P` | `P` |
+```yaml
+readinessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 5
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 10
+```
+
+Nesta aula, probes são **E/P***: você deve saber interpretar configuração e sintomas, mas não precisamos construir um segundo laboratório completo somente para probes.
+
+## 13. Criar GKE Autopilot
+
+Agora criaremos um cluster Autopilot temporário para comparação.
+
+```bash
+# Cria um cluster Autopilot regional.
+gcloud container clusters create-auto "$AUTOPILOT_CLUSTER" \
+  --region="$REGION" \
+  --project="$PROJECT_ID"
+# Inspeciona o cluster.
+gcloud container clusters describe "$AUTOPILOT_CLUSTER" \
+  --region="$REGION" \
+  --project="$PROJECT_ID"
+# Configura o kubectl para o Autopilot.
+gcloud container clusters get-credentials "$AUTOPILOT_CLUSTER" \
+  --region="$REGION" \
+  --project="$PROJECT_ID"
+# Observa Nodes fornecidos pelo ambiente.
+kubectl get nodes -o wide
+```
+
+A diferença importante não é “Autopilot não tem Nodes”, e sim que **o usuário administra menos diretamente a infraestrutura de Nodes**.
+
+Crie um workload simples:
+
+```bash
+# Cria namespace de comparação.
+kubectl create namespace ace-autopilot-lab
+# Cria um Deployment no Autopilot.
+kubectl create deployment ace-autopilot-web \
+  --image=nginx:alpine \
+  --namespace=ace-autopilot-lab
+# Aguarda o rollout.
+kubectl rollout status deployment/ace-autopilot-web \
+  --namespace=ace-autopilot-lab
+# Inspeciona Pods.
+kubectl get pods \
+  --namespace=ace-autopilot-lab \
+  -o wide
+```
+
+## 14. Comparação operacional observada
+
+```text
+Standard
+  |
+  +-- você inspecionou node pool
+  +-- configurou min/max Nodes
+  +-- configurou Cluster Autoscaler
+  +-- gerenciou capacidade explicitamente
+Autopilot
+  |
+  +-- você criou o cluster
+  +-- publicou workload
+  +-- trabalhou principalmente com objetos Kubernetes
+  +-- infraestrutura de Nodes ficou mais abstraída
+```
+
+## 15. Cleanup imediato do Autopilot
+
+Para evitar manter dois clusters simultaneamente:
+
+```bash
+# Remove o namespace de teste do Autopilot.
+kubectl delete namespace ace-autopilot-lab
+# Exclui o cluster Autopilot.
+gcloud container clusters delete "$AUTOPILOT_CLUSTER" \
+  --region="$REGION" \
+  --project="$PROJECT_ID" \
+  --quiet
+```
+
+## 16. Voltar ao cluster Standard
+
+```bash
+# Restaura credenciais do cluster Standard.
+gcloud container clusters get-credentials "$CLUSTER" \
+  --zone="$ZONE" \
+  --project="$PROJECT_ID"
+# Restaura namespace da aula.
+kubectl config set-context --current --namespace="$NAMESPACE"
+# Confirma contexto.
+kubectl config current-context
+```
+
+## 17. Troubleshooting por sintoma
+
+| Sintoma | Onde olhar | Causa provável |
+|---|---|---|
+| `Pending` | `describe`, Events | requests, capacity, taints, constraints |
+| `ImagePullBackOff` | `describe`, Events | image/tag/IAM |
+| `CrashLoopBackOff` | logs + `--previous` | processo encerrando repetidamente |
+| `Running` sem tráfego | readiness, Service, selectors | endpoint não ready/selector incorreto |
+| HPA `<unknown>` | HPA + métricas | métricas ainda indisponíveis |
+| Pods Pending e Nodes não crescem | autoscaling config + limits | max nodes/configuração |
+
+Roteiro geral:
+
+```text
+kubectl get
+    |
+    v
+kubectl describe
+    |
+    +--> Events
+    |
+    v
+kubectl logs
+    |
+    +--> --previous quando houver restart
+    |
+    v
+causa
+    |
+    v
+correção
+```
+
+## 18. Cloud Run x Cloud Run Jobs x GKE x Compute Engine
+
+| Requisito | Melhor candidato |
+|---|---|
+| API/container HTTP stateless com mínimo operacional | Cloud Run |
+| processamento batch containerizado serverless | Cloud Run Jobs |
+| Kubernetes obrigatório | GKE |
+| Kubernetes com menor operação de Nodes | GKE Autopilot |
+| node pools/machine types específicos | GKE Standard |
+| operadores, CRDs e recursos Kubernetes | GKE |
+| controle de SO/kernel | Compute Engine |
+| aplicação legada em VM | Compute Engine |
+
+Regra importante:
+
+```text
+"Tenho um container"
+       !=
+"Preciso de Kubernetes"
+```
+
+## 19. Modelo de decisão
+
+```text
+Precisa Kubernetes?
+   |
+   +-- Sim
+   |    |
+   |    +-- precisa controle detalhado de Nodes?
+   |           |
+   |           +-- Sim -> GKE Standard
+   |           +-- Não -> GKE Autopilot
+   |
+   +-- Não
+        |
+        +-- batch containerizado? -> Cloud Run Jobs
+        |
+        +-- HTTP stateless? -> Cloud Run
+        |
+        +-- precisa SO/VM? -> Compute Engine
+```
+
+## 20. Questões estilo ACE
+
+1. Um HPA aumenta replicas, mas novos Pods ficam `Pending` por falta de CPU nos Nodes. Qual mecanismo pode adicionar capacidade? **Cluster Autoscaler.**
+2. Uma equipe precisa de machine type específico e node pool dedicado. Qual modo GKE é mais apropriado? **Standard.**
+3. Uma equipe quer Kubernetes, mas deseja reduzir a administração de Nodes. Qual modo considerar? **Autopilot.**
+4. Um Pod está `Pending` e `describe` mostra `Insufficient cpu`. O que isso indica? **Os requests não cabem na capacidade disponível.**
+5. Um container reinicia repetidamente. Qual comando ajuda a recuperar a saída da tentativa anterior? **`kubectl logs POD --previous`.**
+6. O Pod está `Running`, mas não deve receber tráfego enquanto inicializa. Qual mecanismo representa melhor esse estado? **Readiness probe.**
+7. CPU do workload sobe e você precisa aumentar replicas de Pods. Qual recurso? **HPA.**
+8. Você possui uma API stateless simples e não precisa Kubernetes. Qual serviço tende a reduzir operação? **Cloud Run.**
+9. Você precisa executar processamento batch e terminar ao concluir. Qual opção serverless estudada? **Cloud Run Jobs.**
+10. Pods não podem ser agendados e o node pool já atingiu `max-nodes`. O que verificar? **Limites/configuração do Cluster Autoscaler e capacidade requerida.**
+
+## 21. Cleanup do cluster Standard
+
+Remova os workloads e HPA da aula:
+
+```bash
+# Exclui o namespace e seus recursos.
+kubectl delete namespace "$NAMESPACE"
+# Confirma a remoção.
+kubectl get namespaces
+```
+
+Depois exclua o cluster Standard para interromper os custos:
+
+```bash
+# Exclui o cluster Standard reaproveitado das Aulas 4 e 5.
+gcloud container clusters delete "$CLUSTER" \
+  --zone="$ZONE" \
+  --project="$PROJECT_ID" \
+  --quiet
+# Confirma que os clusters do laboratório foram removidos.
+gcloud container clusters list --project="$PROJECT_ID"
+```
+
+> [!WARNING]
+> Esta é a última aula de GKE da Semana 5. Salvo se você tiver outro laboratório planejado, **não deixe `ace-gke` ou `ace-autopilot` executando**.
+
+## 22. M/E/P
+
+| Conteúdo | Nível | Evidência |
+|---|---|---|
+| Standard x Autopilot | E/P | comparação + clusters observados |
+| Node pools | P | list + describe |
+| Cluster Autoscaler | P | enable + min/max + describe |
+| Requests / scheduling | P | requests + observação de Pending |
+| Pod Pending | P | Events + describe |
+| HPA | P | autoscale + get + describe |
+| Métricas | P | `kubectl top nodes/pods` |
+| HPA + Cluster Autoscaler | E/P* | fluxo combinado e ambiente configurado |
+| CrashLoopBackOff | P | falha deliberada + logs + `--previous` |
+| Readiness / Liveness | E/P* | interpretação de comportamento e YAML |
+| Events | P | consulta ordenada |
+| Troubleshooting | P | get → describe → Events → logs |
+| Cloud Run x Jobs x GKE x CE | E | matriz e cenários |
+| Cleanup | P | Autopilot + Standard |
+
+## 23. Mapa mental final da Semana 5
+
+```text
+Container
+   |
+   +-- Registry -> Artifact Registry
+   |
+   +-- HTTP stateless -> Cloud Run Service
+   |
+   +-- Batch -> Cloud Run Job
+   |
+   +-- Kubernetes -> GKE
+                     |
+                     +-- Autopilot -> menos operação de Nodes
+                     |
+                     +-- Standard -> mais controle de Nodes
+                                       |
+                                       +-- HPA -> Pods
+                                       +-- Cluster Autoscaler -> Nodes
+Troubleshooting Kubernetes:
+get -> describe -> Events -> logs -> causa -> correção
+```
